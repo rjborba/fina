@@ -45,25 +45,25 @@ const columns: TColumn[] = [
     field: "value",
     formatter: (value: any) => {
       if (!Number(value)) return "R$ 0,00";
-      formater.format(value);
+      return formater.format(value);
     },
     justify: "end",
   },
 ];
 
 const months = [
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
 ];
 
 const currentDate = dayjs();
@@ -112,9 +112,8 @@ const Home: NextPage = () => {
 
   return (
     <div style={{ padding: "16px" }}>
-      <h1>Fina</h1>
       <Box sx={{ height: "100px", width: "100%", padding: "4px" }}>
-        <h2 style={{ margin: 0 }}>Somatório</h2>
+        <h2 style={{ margin: 0 }}>Total período</h2>
         <Box style={{ fontSize: "22px", padding: "8px 0px" }}>
           {formater.format(
             entries.reduce((acc, current) => acc + current.value, 0)
@@ -153,8 +152,8 @@ const Home: NextPage = () => {
         </Box>
       </Box>
 
-      <FormControl sx={{ minWidth: "300px" }}>
-        <FormLabel id="demo-row-radio-buttons-group-label">Gender</FormLabel>
+      <FormControl sx={{ paddingBottom: "42px " }}>
+        <FormLabel id="demo-row-radio-buttons-group-label">Meses</FormLabel>
         <RadioGroup
           row
           aria-labelledby="demo-row-radio-buttons-group-label"
