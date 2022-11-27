@@ -1,15 +1,16 @@
+import dayjs from "dayjs";
 import React, { ReactNode, useContext, useEffect, useReducer } from "react";
 import { useDb } from "../hooks/useDb";
-import { TRow } from "../pages";
 import { EntriesAction } from "../types/actions";
+import { TEntry } from "../types/Entry";
 
 type EntriesContextType = {
-  entries: TRow[];
+  entries: TEntry[];
   entriesDispatch: React.Dispatch<EntriesAction>;
 };
 
 interface EntriesState {
-  entries: TRow[];
+  entries: TEntry[];
   initialized: boolean;
 }
 
@@ -18,11 +19,24 @@ const useEntryCollection = (): [
   React.Dispatch<EntriesAction>
 ] => {
   const { query } = useDb();
+
   const entriesReducer = (state: EntriesState, action: EntriesAction) => {
     switch (action.type) {
       case "add":
-        console.log("called");
         return { ...state, entries: [...state.entries, action.payload.entry] };
+      case "delete":
+        const removedIndex = state.entries.findIndex(
+          (entry) => entry.id === action.payload.entryId
+        );
+
+        const oldEntries = [...state.entries];
+
+        oldEntries.splice(removedIndex, 1);
+
+        return {
+          ...state,
+          entries: oldEntries,
+        };
       case "fetch":
         return { ...state, initialized: true, entries: action.payload.data };
       default:
@@ -37,8 +51,9 @@ const useEntryCollection = (): [
 
   useEffect(() => {
     let isCancelled = false;
+    const currentDate = dayjs();
 
-    query().then((res: TRow[]) => {
+    query({ month: currentDate.get("month") }).then((res: TEntry[]) => {
       if (!isCancelled) {
         dispatch({ type: "fetch", payload: { data: res } });
       }

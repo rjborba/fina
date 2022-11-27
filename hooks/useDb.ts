@@ -1,14 +1,20 @@
+import dayjs from "dayjs";
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  deleteDoc,
+  doc,
+  DocumentReference,
+  getFirestore,
+  where,
+} from "firebase/firestore";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { TRow } from "../pages";
 import {
   query as firebaseQuery,
   orderBy,
   startAt,
   getDocs,
 } from "firebase/firestore";
-import { useEntries } from "../context/entriesContext";
+import { TCreateEntryDTO, TEntry } from "../types/Entry";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBe82SjUa_iEoR3a7yaagOmWqqbBTI7C74",
@@ -24,26 +30,53 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
 
-const upsert = (row: TRow) => {
-  return addDoc(collection(db, "entries"), {
-    description: row.description,
-    date: Timestamp.fromDate(row.date),
-    category: row.category,
-    value: row.value,
-  });
+const upsert = (newEntry: TCreateEntryDTO): Promise<TEntry> => {
+  const normalizedEntry = {
+    description: newEntry.description,
+    date: Timestamp.fromDate(newEntry.date),
+    category: newEntry.category,
+    value: newEntry.value,
+  };
+
+  return addDoc(collection(db, "entries"), normalizedEntry).then(
+    (insertedEntry) => ({ ...newEntry, id: insertedEntry.id } as TEntry)
+  );
 };
 
-const remove = () => {
-  throw new Error("To be implemented");
+const remove = (id: TEntry["id"]) => {
+  return deleteDoc(doc(db, "entries", id));
 };
 
-const query = async (): Promise<TRow[]> => {
+type tQueryOptions = { month?: number };
+const query = async (options?: tQueryOptions): Promise<TEntry[]> => {
   const entriesRef = collection(db, "entries");
-  const res = await getDocs(firebaseQuery(entriesRef));
+
+  let queryToBeUsed;
+  if (options?.month) {
+    let monthDate = dayjs();
+    monthDate = monthDate.set("month", options.month);
+    const firstDayOfMonth = monthDate.startOf("month");
+    const lastDayOfMonth = monthDate.endOf("month");
+
+    queryToBeUsed = firebaseQuery(
+      entriesRef,
+      where("date", ">=", Timestamp.fromDate(firstDayOfMonth.toDate())),
+      where("date", "<=", Timestamp.fromDate(lastDayOfMonth.toDate())),
+      orderBy("date", "desc")
+    );
+  } else {
+    queryToBeUsed = firebaseQuery(entriesRef, orderBy("date", "desc"));
+  }
+
+  const res = await getDocs(queryToBeUsed);
 
   return res.docs.map((snapshot) => {
     const snapshotData = snapshot.data();
-    return { ...snapshotData, date: snapshotData.date.toDate() } as TRow;
+    return {
+      ...snapshotData,
+      date: snapshotData.date.toDate(),
+      id: snapshot.id,
+    } as TEntry;
   });
 };
 

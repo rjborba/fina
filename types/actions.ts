@@ -1,9 +1,9 @@
-import { TRow } from "../pages";
+import { TEntry } from "./Entry";
 
 export interface EntriesFetchAction {
   type: "fetch";
   payload: {
-    data: TRow[];
+    data: TEntry[];
   };
 }
 
@@ -11,14 +11,14 @@ export interface EntriesAddAction {
   type: "add";
   payload: {
     // data: Omit<TRow, "id" | "ratings">;
-    entry: TRow;
+    entry: TEntry;
   };
 }
 
 export interface EntriesDeleteAction {
   type: "delete";
   payload: {
-    // entryId: TRow["id"];
+    entryId: TEntry["id"];
   };
 }
 

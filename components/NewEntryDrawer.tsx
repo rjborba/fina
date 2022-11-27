@@ -12,17 +12,18 @@ import { CurrencyField } from "./CurrencyField";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { Dayjs } from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import { useDb } from "../hooks/useDb";
 import { useEntries } from "../context/entriesContext";
 
+const currentDate = dayjs();
 export const NewEntryDrawer: FC<{
   open: boolean;
   onClose: () => void;
 }> = ({ open, onClose }) => {
   const [description, setDescription] = useState("");
   const [value, setValue] = useState(0);
-  const [date, setDate] = useState<Dayjs | null>(null);
+  const [date, setDate] = useState<Dayjs | null>(currentDate);
   const [category, setCategory] = useState("");
 
   useHotkeys("esc", () => internalOnClose());
@@ -47,16 +48,21 @@ export const NewEntryDrawer: FC<{
   const onSubmit = async (event: any) => {
     event.preventDefault();
 
+    if (!date?.isValid()) {
+      // TODO: notify user
+      console.error("Invalid data");
+      return;
+    }
+
     console.log("sending to api...");
     console.log({ description, value, category, date: date!.toDate() });
 
     await upsert({ description, value, category, date: date!.toDate() })
-      .then((e) => {
-        console.log("done");
+      .then((newEntry) => {
         entriesDispatch({
           type: "add",
           payload: {
-            entry: { description, value, category, date: date!.toDate() },
+            entry: newEntry,
           },
         });
       })
@@ -147,8 +153,8 @@ export const NewEntryDrawer: FC<{
       >
         <Button
           ref={submitRef}
-          variant="outlined"
-          color="error"
+          // variant="outlined"
+          color="secondary"
           onClick={internalOnClose}
         >
           Cancelar
@@ -156,7 +162,12 @@ export const NewEntryDrawer: FC<{
             ESC
           </Typography>
         </Button>
-        <Button variant="outlined" type="submit" form="new-entry">
+        <Button
+          variant="outlined"
+          color="primary"
+          type="submit"
+          form="new-entry"
+        >
           Criar
           <Typography color="gray" fontSize={10} paddingLeft={1}>
             ENTER

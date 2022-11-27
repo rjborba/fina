@@ -6,6 +6,15 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
+    primary: {
+      main: "#4AB5EF",
+    },
+    secondary: {
+      main: "#E85959",
+    },
+  },
+  typography: {
+    fontFamily: "Space Grotesk",
   },
 });
 function MyApp({ Component, pageProps }: AppProps) {
