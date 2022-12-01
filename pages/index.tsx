@@ -1,6 +1,8 @@
 import AddIcon from "@mui/icons-material/Add";
 import {
   Box,
+  Button,
+  Checkbox,
   Fab,
   FormControl,
   FormControlLabel,
@@ -12,7 +14,14 @@ import {
 import { format } from "date-fns";
 import dayjs from "dayjs";
 import type { NextPage } from "next";
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { EntriesTable } from "../components/EntriesTable";
 import { NewEntryDrawer } from "../components/NewEntryDrawer";
@@ -22,34 +31,15 @@ import { TEntry } from "../types/Entry";
 
 export type TColumn = {
   title: string;
-  field: string;
+  field?: string;
   justify?: "start" | "center" | "end";
-  formatter?: (raw: string | number | Date) => ReactNode;
+  cellRenderer?: (raw: TEntry) => ReactNode;
 };
 
 const formater = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
-
-const columns: TColumn[] = [
-  {
-    title: "Data",
-    field: "date",
-    formatter: (date: any) => format(date as Date, "dd/MM/yyyy"),
-  },
-  { title: "Descrição", field: "description" },
-  { title: "Categoria", field: "category" },
-  {
-    title: "Valor",
-    field: "value",
-    formatter: (value: any) => {
-      if (!Number(value)) return "R$ 0,00";
-      return formater.format(value);
-    },
-    justify: "end",
-  },
-];
 
 const months = [
   "Jan",
@@ -74,8 +64,69 @@ const Home: NextPage = () => {
 
   const descriptionField = useRef(null); // 1. create
 
-  const { query } = useDb();
+  const { query, remove, update } = useDb();
   const { entries, entriesDispatch } = useEntries();
+
+  const columns: TColumn[] = useMemo(() => {
+    return [
+      {
+        title: "Data",
+        field: "date",
+        cellRenderer: (entryData: TEntry) =>
+          format(entryData.date, "dd/MM/yyyy"),
+      },
+      { title: "Descrição", field: "description" },
+      { title: "Categoria", field: "category" },
+      {
+        title: "Vale",
+        field: "vale",
+        cellRenderer: (entryData: TEntry) => {
+          // const [isValeCheckboxLoading, setIsValeCheckboxLoading] =
+          //   useState(false);
+
+          return (
+            <Checkbox
+              checked={entryData.vale}
+              // disabled={isValeCheckboxLoading}
+              onChange={async (event) => {
+                // setIsValeCheckboxLoading(true);
+                update(entryData.id, {
+                  vale: !entryData.vale,
+                })
+                  .then((updatedEntry: TEntry) => {
+                    entriesDispatch({
+                      type: "update",
+                      payload: { entry: updatedEntry },
+                    });
+                  })
+                  .finally(() => {
+                    // setIsValeCheckboxLoading(false);
+                  });
+              }}
+            />
+          );
+        },
+      },
+      {
+        title: "Valor",
+        field: "value",
+        cellRenderer: (entryData: TEntry) => {
+          if (!entryData.value) return "R$ 0,00";
+          return formater.format(entryData.value);
+        },
+        justify: "end",
+      },
+      {
+        title: "Ações",
+        justify: "center",
+        cellRenderer: (entryData: TEntry) => (
+          <Box sx={{ alignSelf: "center" }}>
+            <Button onClick={() => onRemoveClick(entryData.id)}>Remover</Button>
+          </Box>
+        ),
+      },
+    ];
+  }, []);
 
   useHotkeys("n", () => setIsNewEntryModalVisible(true));
 
@@ -108,6 +159,17 @@ const Home: NextPage = () => {
 
   const onClose = () => {
     setIsNewEntryModalVisible(false);
+  };
+
+  const onRemoveClick = async (id: string) => {
+    await remove(id)
+      .then((res) => {
+        entriesDispatch({ type: "delete", payload: { entryId: id } });
+      })
+      .catch((e) => {
+        console.error("Error while removing");
+        console.error(e);
+      });
   };
 
   return (

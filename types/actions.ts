@@ -22,7 +22,15 @@ export interface EntriesDeleteAction {
   };
 }
 
+export interface EntriesUpdateAction {
+  type: "update";
+  payload: {
+    entry: TEntry;
+  };
+}
+
 export type EntriesAction =
   | EntriesFetchAction
   | EntriesAddAction
-  | EntriesDeleteAction;
+  | EntriesDeleteAction
+  | EntriesUpdateAction;

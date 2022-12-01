@@ -39,6 +39,15 @@ const useEntryCollection = (): [
         };
       case "fetch":
         return { ...state, initialized: true, entries: action.payload.data };
+      case "update":
+        const entriesBeforeUpdate = [...state.entries];
+        const index = entriesBeforeUpdate.findIndex(
+          (currEntry) => currEntry.id === action.payload.entry.id
+        );
+
+        entriesBeforeUpdate[index] = action.payload.entry;
+
+        return { ...state, entries: entriesBeforeUpdate };
       default:
         return { ...state };
     }

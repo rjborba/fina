@@ -6,12 +6,7 @@ import { useDb } from "../hooks/useDb";
 import { TColumn } from "../pages";
 import { TEntry } from "../types/Entry";
 
-const renderRows = (
-  isLoading: boolean,
-  rows: TEntry[],
-  columns: TColumn[],
-  onRemoveClick: (id: string) => void
-) => {
+const renderRows = (isLoading: boolean, rows: TEntry[], columns: TColumn[]) => {
   if (isLoading) {
     return <Box>Carregando...</Box>;
   }
@@ -20,15 +15,15 @@ const renderRows = (
     return <Box>Sem entradas</Box>;
   }
 
-  return rows.map((row, index) => {
-    const reactNodeRows = columns.map((column) => {
+  return rows.map((row, index) =>
+    columns.map((column) => {
       let rowData = row[column.field as keyof typeof row];
       let rowDataFormatted;
 
-      if (!rowData) {
+      if (column.cellRenderer) {
+        rowDataFormatted = column.cellRenderer(row);
+      } else if (rowData === undefined) {
         rowDataFormatted = "N/A";
-      } else if (column.formatter) {
-        rowDataFormatted = column.formatter(rowData);
       } else {
         rowDataFormatted = rowData;
       }
@@ -42,16 +37,8 @@ const renderRows = (
           {rowDataFormatted as any}
         </Box>
       );
-    });
-
-    reactNodeRows.push(
-      <Box key={`row-${index}/actions`} sx={{ alignSelf: "center" }}>
-        <Button onClick={() => onRemoveClick(row.id)}>Remover</Button>
-      </Box>
-    );
-
-    return reactNodeRows;
-  });
+    })
+  );
 };
 
 export const EntriesTable: FC<{
@@ -60,26 +47,12 @@ export const EntriesTable: FC<{
   isLoading?: boolean;
   style?: CSSProperties;
 }> = ({ columns, rows, isLoading, style = {} }) => {
-  const { remove } = useDb();
-  const { entriesDispatch } = useEntries();
-
-  const onRemoveClick = async (id: string) => {
-    await remove(id)
-      .then((res) => {
-        entriesDispatch({ type: "delete", payload: { entryId: id } });
-      })
-      .catch((e) => {
-        console.error("Error while removing");
-        console.error(e);
-      });
-  };
-
   return (
     <Box
       style={style}
       sx={{
         display: "grid",
-        gridTemplateColumns: `repeat(${columns.length + 1}, 1fr)`,
+        gridTemplateColumns: `repeat(${columns.length}, 1fr)`,
         gap: "18px 42px",
       }}
     >
@@ -96,8 +69,7 @@ export const EntriesTable: FC<{
           {column.title}
         </Box>
       ))}
-      <Box></Box>
-      {renderRows(!!isLoading, rows, columns, onRemoveClick)}
+      {renderRows(!!isLoading, rows, columns)}
     </Box>
   );
 };

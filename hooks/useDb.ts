@@ -4,7 +4,9 @@ import {
   deleteDoc,
   doc,
   DocumentReference,
+  getDoc,
   getFirestore,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
@@ -14,7 +16,8 @@ import {
   startAt,
   getDocs,
 } from "firebase/firestore";
-import { TCreateEntryDTO, TEntry } from "../types/Entry";
+import { TCreateEntryDTO, TEntry, TUpdateEntryDTO } from "../types/Entry";
+// import { TCreateEntryDTO, TEntry } from "../types/Entry";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBe82SjUa_iEoR3a7yaagOmWqqbBTI7C74",
@@ -30,18 +33,50 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
 
-const upsert = (newEntry: TCreateEntryDTO): Promise<TEntry> => {
+const insert = (newEntry: TCreateEntryDTO): Promise<TEntry> => {
   const normalizedEntry = {
-    description: newEntry.description,
+    ...newEntry,
     date: Timestamp.fromDate(newEntry.date),
-    category: newEntry.category,
-    value: newEntry.value,
   };
 
   return addDoc(collection(db, "entries"), normalizedEntry).then(
     (insertedEntry) => ({ ...newEntry, id: insertedEntry.id } as TEntry)
   );
 };
+
+const update = (id: string, newData: TUpdateEntryDTO): Promise<any> => {
+  const docRef = doc(db, "entries", id);
+
+  delete newData.id;
+
+  const normalizedEntry: any = { ...newData };
+
+  if (normalizedEntry["date"]) {
+    normalizedEntry["date"] = Timestamp.fromDate(normalizedEntry["date"]);
+  }
+  // Object.keys(newData).forEach((key) => {
+  //   const dataKey = newData[key as keyof TEntry];
+  //   normalizedEntry[key as keyof TEntry] =
+  //     dataKey instanceof Date ? Timestamp.fromDate(dataKey) : dataKey;
+  // });
+
+  return updateDoc(docRef, normalizedEntry).then(() =>
+    getDoc(docRef).then((updatedDoc) => {
+      const docData = updatedDoc.data();
+
+      return {
+        ...docData,
+        date: docData!.date.toDate(),
+        id: id,
+      };
+    })
+  );
+
+  // .then(() => "test");
+  // getDoc(doc(db, "entries", id)).then((updatedDoc =>{ ...newEntry, id: insertedEntry.id }))
+};
+
+// return { ...newEntry, id: insertedEntry.id } as TEntry;
 
 const remove = (id: TEntry["id"]) => {
   return deleteDoc(doc(db, "entries", id));
@@ -81,5 +116,5 @@ const query = async (options?: tQueryOptions): Promise<TEntry[]> => {
 };
 
 export const useDb = () => {
-  return { upsert, remove, query };
+  return { insert, remove, query, update };
 };

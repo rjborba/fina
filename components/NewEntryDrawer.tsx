@@ -31,7 +31,7 @@ export const NewEntryDrawer: FC<{
   const submitRef = useRef(null);
   const descriptionInputRef = useRef(null);
 
-  const { upsert } = useDb();
+  const { insert } = useDb();
   const { entriesDispatch } = useEntries();
 
   const clearForm = () => {
@@ -55,9 +55,21 @@ export const NewEntryDrawer: FC<{
     }
 
     console.log("sending to api...");
-    console.log({ description, value, category, date: date!.toDate() });
+    console.log({
+      description,
+      value,
+      vale: false,
+      category,
+      date: date!.toDate(),
+    });
 
-    await upsert({ description, value, category, date: date!.toDate() })
+    await insert({
+      description,
+      value,
+      vale: false,
+      category,
+      date: date!.toDate(),
+    })
       .then((newEntry) => {
         entriesDispatch({
           type: "add",
