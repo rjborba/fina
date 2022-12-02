@@ -1,8 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import {
   Box,
-  Button,
-  Checkbox,
   Fab,
   FormControl,
   FormControlLabel,
@@ -15,6 +13,7 @@ import { format } from "date-fns";
 import dayjs from "dayjs";
 import type { NextPage } from "next";
 import {
+  FC,
   ReactNode,
   useEffect,
   useLayoutEffect,
@@ -25,6 +24,8 @@ import {
 import { useHotkeys } from "react-hotkeys-hook";
 import { EntriesTable } from "../components/EntriesTable";
 import { NewEntryDrawer } from "../components/NewEntryDrawer";
+import { ActionsCellRenderer } from "../components/table/ActionsCellRenderer";
+import { ValeCheckboxCellRenderer } from "../components/table/ValeCheckboxCellRenderer";
 import { useEntries } from "../context/entriesContext";
 import { useDb } from "../hooks/useDb";
 import { TEntry } from "../types/Entry";
@@ -33,7 +34,9 @@ export type TColumn = {
   title: string;
   field?: string;
   justify?: "start" | "center" | "end";
-  cellRenderer?: (raw: TEntry) => ReactNode;
+  // It should not enforce FC. It only should be a component
+  cellRenderer?: FC<{ entry: TEntry }>;
+  cellFormatter?: (raw: TEntry) => ReactNode;
 };
 
 const formater = new Intl.NumberFormat("pt-BR", {
@@ -67,12 +70,12 @@ const Home: NextPage = () => {
   const { query, remove, update } = useDb();
   const { entries, entriesDispatch } = useEntries();
 
-  const columns: TColumn[] = useMemo(() => {
+  const columns: TColumn[] = useMemo((): TColumn[] => {
     return [
       {
         title: "Data",
         field: "date",
-        cellRenderer: (entryData: TEntry) =>
+        cellFormatter: (entryData: TEntry) =>
           format(entryData.date, "dd/MM/yyyy"),
       },
       { title: "Descrição", field: "description" },
@@ -80,37 +83,12 @@ const Home: NextPage = () => {
       {
         title: "Vale",
         field: "vale",
-        cellRenderer: (entryData: TEntry) => {
-          // const [isValeCheckboxLoading, setIsValeCheckboxLoading] =
-          //   useState(false);
-
-          return (
-            <Checkbox
-              checked={entryData.vale}
-              // disabled={isValeCheckboxLoading}
-              onChange={async (event) => {
-                // setIsValeCheckboxLoading(true);
-                update(entryData.id, {
-                  vale: !entryData.vale,
-                })
-                  .then((updatedEntry: TEntry) => {
-                    entriesDispatch({
-                      type: "update",
-                      payload: { entry: updatedEntry },
-                    });
-                  })
-                  .finally(() => {
-                    // setIsValeCheckboxLoading(false);
-                  });
-              }}
-            />
-          );
-        },
+        cellRenderer: ValeCheckboxCellRenderer,
       },
       {
         title: "Valor",
         field: "value",
-        cellRenderer: (entryData: TEntry) => {
+        cellFormatter: (entryData: TEntry) => {
           if (!entryData.value) return "R$ 0,00";
           return formater.format(entryData.value);
         },
@@ -119,11 +97,7 @@ const Home: NextPage = () => {
       {
         title: "Ações",
         justify: "center",
-        cellRenderer: (entryData: TEntry) => (
-          <Box sx={{ alignSelf: "center" }}>
-            <Button onClick={() => onRemoveClick(entryData.id)}>Remover</Button>
-          </Box>
-        ),
+        cellRenderer: ActionsCellRenderer,
       },
     ];
   }, []);
@@ -159,17 +133,6 @@ const Home: NextPage = () => {
 
   const onClose = () => {
     setIsNewEntryModalVisible(false);
-  };
-
-  const onRemoveClick = async (id: string) => {
-    await remove(id)
-      .then((res) => {
-        entriesDispatch({ type: "delete", payload: { entryId: id } });
-      })
-      .catch((e) => {
-        console.error("Error while removing");
-        console.error(e);
-      });
   };
 
   return (

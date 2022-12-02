@@ -20,8 +20,14 @@ const renderRows = (isLoading: boolean, rows: TEntry[], columns: TColumn[]) => {
       let rowData = row[column.field as keyof typeof row];
       let rowDataFormatted;
 
-      if (column.cellRenderer) {
-        rowDataFormatted = column.cellRenderer(row);
+      if (column.cellFormatter && column.cellRenderer) {
+        throw new Error(
+          "It is not possible to provide both cellRender and cellFormatter"
+        );
+      }
+
+      if (column.cellFormatter) {
+        rowDataFormatted = column.cellFormatter(row);
       } else if (rowData === undefined) {
         rowDataFormatted = "N/A";
       } else {
@@ -34,7 +40,11 @@ const renderRows = (isLoading: boolean, rows: TEntry[], columns: TColumn[]) => {
           alignSelf="center"
           justifySelf={column.justify ?? "start"}
         >
-          {rowDataFormatted as any}
+          {column.cellRenderer ? (
+            <column.cellRenderer entry={row} />
+          ) : (
+            (rowDataFormatted as any)
+          )}
         </Box>
       );
     })
