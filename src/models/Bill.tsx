@@ -1,23 +1,28 @@
+import { Tables, TablesInsert, TablesUpdate } from "@/supabase/supabase_types";
+import { snakeToCamelType } from "@/tools/camelize";
 import { z } from "zod";
 
-const BillSchema = z.object({
-  id: z.string(),
-  createdAt: z.date(),
-  description: z.string(),
-  value: z.number(),
-  dueDay: z.number(),
-  totalInstallments: z.number(),
-  installment: z.number(),
-  purchasedAt: z.date(),
-});
+// export const BillSchemaDTO = z.object({
+//   id: z.number(),
+//   created_at: z.date(),
+//   description: z.string(),
+//   category: z.string(),
+//   total_installments: z.number(),
+//   installment: z.number(),
+//   value: z.number(),
+//   purchased_at: z.date(),
+// });
 
-export type TBill = {
-  id: string;
-  createdAt: Date;
-  description: string;
-  value: number;
-  dueDay: number;
-  totalInstallments?: number;
-  installment?: number;
-  purchasedAt: Date;
-};
+// export const BillSchema = z.object({
+//   id: z.number(),
+//   createdAt: z.date(),
+//   description: z.string(),
+//   category: z.string(),
+//   totalInstallments: z.number(),
+//   installment: z.number(),
+//   value: z.number(),
+//   purchasedAt: z.date(),
+// });
+
+// export type TBillDTO = z.infer<typeof BillSchemaDTO>;
+// export type TBill = z.infer<typeof BillSchema>;

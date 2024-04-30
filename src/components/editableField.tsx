@@ -9,24 +9,32 @@ import React, {
 import { Input } from "./ui/input";
 
 import { Pencil } from "lucide-react";
+import { Controller, useFormContext } from "react-hook-form";
 
-export interface EditableFieldProps
-  extends React.ButtonHTMLAttributes<HTMLInputElement> {}
+export interface EditableFieldProps {
+  name: string;
+  initAsEditMode?: boolean;
+  disabled?: boolean;
+}
 
-export const EditableField: FC<EditableFieldProps> = React.forwardRef<
-  HTMLInputElement,
-  EditableFieldProps
->(({ className, type, ...props }, ref) => {
+export const EditableField: FC<EditableFieldProps> = ({ name, disabled }) => {
   const [isEditMode, setEditMode] = useState(false);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  // const inputRef = props.re;
-  const tempSpanRef = useRef<HTMLSpanElement>(null);
-  const inputWrapperRef = useRef<HTMLDivElement>(null);
+  const useFormMethods = useFormContext();
+  const { ref, ...formRegMethods } = useFormMethods.register(name);
 
-  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+  const [currentValue, setCurrentValue] = useState("");
 
-  const [currentValue, setCurrentValue] = useState(props.defaultValue);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
+  const submissionHappenedRef = useRef(false);
+
+  useEffect(() => {
+    setCurrentValue(useFormMethods.getValues()[name]);
+  }, [name, useFormMethods]);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const currentValueRef = useRef<string | null>(null);
 
   const handleCellClick = () => {
     setEditMode(true);
@@ -35,23 +43,6 @@ export const EditableField: FC<EditableFieldProps> = React.forwardRef<
   const persistChanges = () => {
     setEditMode(false);
   };
-
-  // Sets Input initial value
-  useEffect(() => {
-    if (inputRef?.current) {
-      setCurrentValue(inputRef.current.value);
-    }
-  }, [inputRef?.current?.value]);
-
-  // Updates the input width based on invisible span that has the same content
-  useEffect(() => {
-    if (inputRef?.current && tempSpanRef.current && inputWrapperRef.current) {
-      let inputWidth = Math.max(100, tempSpanRef.current.offsetWidth + 30);
-      inputWidth = Math.min(inputWrapperRef.current.scrollWidth, inputWidth);
-
-      inputRef.current.style.width = `${inputWidth}px`;
-    }
-  }, [currentValue]);
 
   // Delays the timeout
   useEffect(() => {
@@ -67,74 +58,62 @@ export const EditableField: FC<EditableFieldProps> = React.forwardRef<
   }, [inputRef?.current?.value, isEditMode]);
 
   return (
-    <>
-      <span
-        ref={tempSpanRef}
-        style={{
-          visibility: "hidden",
-          position: "absolute",
-          pointerEvents: "none",
-        }}
-      >
-        {currentValue}
-      </span>
-      <div className="max-w-full" ref={inputWrapperRef}>
+    <div className="relative flex h-full flex-grow items-center overflow-hidden">
+      <div className="group/cell max-w-ful flex h-full w-full flex-grow overflow-hidden text-ellipsis whitespace-nowrap">
         <Input
-          ref={inputRef}
-          {...props}
+          {...formRegMethods}
+          className={cn(
+            { "hidden border-transparent": !isEditMode },
+            "h-full overflow-ellipsis rounded-none border-none",
+          )}
+          ref={(e) => {
+            ref(e);
+            inputRef.current = e;
+          }}
           readOnly={!isEditMode}
           onClick={() => !isEditMode && handleCellClick()}
           autoComplete="off"
-          className={cn(
-            { "hidden border-transparent": !isEditMode },
-            "w-fit overflow-ellipsis",
-          )}
           onChange={(e) => {
-            if (!inputRef.current) {
-              return;
-            }
+            currentValueRef.current = e.target.value;
+            formRegMethods.onChange(e);
+          }}
+          onBlur={() => {
+            persistChanges();
 
-            setCurrentValue(inputRef.current.value);
-
-            if (props.onChange) {
-              props.onChange(e);
+            if (submissionHappenedRef.current) {
+              submissionHappenedRef.current = false;
+            } else {
+              useFormMethods.reset();
             }
           }}
-          onBlur={persistChanges}
-          onKeyDown={(event) => {
-            if (props.onKeyDown) {
-              props.onKeyDown(event);
-            }
+          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
             if (!event.shiftKey && event.key === "Enter") {
               persistChanges();
-            }
 
-            return;
+              submissionHappenedRef.current = true;
+            } else if (!event.shiftKey && event.key === "Escape") {
+              event.currentTarget.blur();
+            }
           }}
         />
 
+        <button className="hidden" type="submit" ref={submitButtonRef} />
+
         <div
           className={cn(
+            "flex-shrink-1 flex flex-grow items-center overflow-hidden text-ellipsis whitespace-nowrap",
             {
               hidden: isEditMode,
+              "cursor-not-allowed": disabled,
             },
-            "",
           )}
+          onDoubleClick={handleCellClick}
         >
-          <p
-            role="button"
-            className={`group/cell relative inline-block border border-transparent px-3 py-2 `}
-            onClick={handleCellClick}
-          >
+          <p className={`overflow-hidden text-ellipsis whitespace-nowrap`}>
             {currentValue}
-            <span
-              className={` absolute ml-1 hidden  bg-gray-900 p-1 group-hover/cell:inline-block`}
-            >
-              <Pencil className="h-3 w-3" />
-            </span>
           </p>
         </div>
       </div>
-    </>
+    </div>
   );
-});
+};
