@@ -6,10 +6,10 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <div
+  <div className="relative w-full">
+    <table
       ref={ref}
-      className={cn("table w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />
   </div>
@@ -20,11 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("table-header-group [&_tr]:border-b", className)}
-    {...props}
-  />
+  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -32,9 +28,9 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <tbody
     ref={ref}
-    className={cn("table-row-group [&_tr:last-child]:border-0", className)}
+    className={cn("[&_tr:last-child]:border-0", className)}
     {...props}
   />
 ));
@@ -48,7 +44,7 @@ const TableFooter = React.forwardRef<
     ref={ref}
     className={cn(
       "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-      className,
+      className
     )}
     {...props}
   />
@@ -59,41 +55,26 @@ const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <tr
     ref={ref}
     className={cn(
-      "table-row border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className,
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      className
     )}
     {...props}
   />
 ));
 TableRow.displayName = "TableRow";
 
-const TableFormRow = React.forwardRef<
-  HTMLFormElement,
-  React.HTMLAttributes<HTMLFormElement>
->(({ className, ...props }, ref) => (
-  <form
-    ref={ref}
-    className={cn(
-      "table-row border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className,
-    )}
-    {...props}
-  />
-));
-TableFormRow.displayName = "TableFormRow";
-
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <th
     ref={ref}
     className={cn(
-      "table-cell h-10 border border-r-gray-600 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className,
+      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      className
     )}
     {...props}
   />
@@ -104,11 +85,11 @@ const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <td
     ref={ref}
     className={cn(
-      "table-cell border border-r-gray-600 p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className,
+      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      className
     )}
     {...props}
   />
@@ -134,7 +115,6 @@ export {
   TableFooter,
   TableHead,
   TableRow,
-  TableFormRow,
   TableCell,
   TableCaption,
 };
