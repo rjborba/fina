@@ -126,16 +126,16 @@ function transToGroupOption(options: Option[], groupBy?: string) {
   return groupOption;
 }
 
-function removePickedOption(groupOption: GroupOption, picked: Option[]) {
-  const cloneOption = JSON.parse(JSON.stringify(groupOption)) as GroupOption;
+// function removePickedOption(groupOption: GroupOption, picked: Option[]) {
+//   const cloneOption = JSON.parse(JSON.stringify(groupOption)) as GroupOption;
 
-  for (const [key, value] of Object.entries(cloneOption)) {
-    cloneOption[key] = value.filter(
-      (val) => !picked.find((p) => p.value === val.value)
-    );
-  }
-  return cloneOption;
-}
+//   for (const [key, value] of Object.entries(cloneOption)) {
+//     cloneOption[key] = value.filter(
+//       (val) => !picked.find((p) => p.value === val.value)
+//     );
+//   }
+//   return cloneOption;
+// }
 
 function isOptionsExist(groupOption: GroupOption, targetOption: Option[]) {
   for (const [, value] of Object.entries(groupOption)) {
