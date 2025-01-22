@@ -86,9 +86,6 @@ importers:
       react-router:
         specifier: ^7.1.1
         version: 7.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      root:
-        specifier: github:tanstack/react-query
-        version: git+https://git@github.com:tanstack/react-query.git#c91c590a82a7e25b1e5cdac87a197a6ad2143066
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -1875,10 +1872,6 @@ packages:
     resolution: {integrity: sha512-RaJ45M/kmJUzSWDs1Nnd5DdV4eerC98idtUOVr6FfKcgxqvjwHmxc5upLF9qZU9EpsVzzhleFahrT3shLuJzIw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
-
-  root@git+https://git@github.com:tanstack/react-query.git#c91c590a82a7e25b1e5cdac87a197a6ad2143066:
-    resolution: {commit: c91c590a82a7e25b1e5cdac87a197a6ad2143066, repo: git@github.com:tanstack/react-query.git, type: git}
-    version: 0.0.0
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -3715,8 +3708,6 @@ snapshots:
       '@rollup/rollup-win32-ia32-msvc': 4.29.1
       '@rollup/rollup-win32-x64-msvc': 4.29.1
       fsevents: 2.3.3
-
-  root@git+https://git@github.com:tanstack/react-query.git#c91c590a82a7e25b1e5cdac87a197a6ad2143066: {}
 
   run-parallel@1.2.0:
     dependencies:
