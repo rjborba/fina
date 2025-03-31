@@ -43,7 +43,7 @@ export const Import = () => {
   const { addImport } = useImportsMutation();
   const { addTransactions } = useTransactionMutation();
 
-  const selectedAccount = accountsData?.data?.find(
+  const selectedAccount = accountsData?.find(
     (currentAccount) => String(currentAccount.id) === importAtom.accountId
   );
 
@@ -107,7 +107,7 @@ export const Import = () => {
           <SelectValue placeholder="Account" />
         </SelectTrigger>
         <SelectContent>
-          {accountsData?.data?.map((account) => {
+          {accountsData?.map((account) => {
             return (
               <SelectItem key={account.id} value={String(account.id)}>
                 {account.name}

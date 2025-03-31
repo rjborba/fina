@@ -5,7 +5,16 @@ export const useAccounts = () => {
   return useQuery({
     queryKey: ["accounts"],
     queryFn: async () => {
-      return supabase.from("accounts").select("*");
+      const { data, error } = await supabase
+        .from("accounts")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
     },
   });
 };

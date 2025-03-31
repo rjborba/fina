@@ -138,13 +138,21 @@ export const Accounts: FC = () => {
       <div className="flex flex-col">
         <p>Accounts</p>
         <div className="min-h-[80px] bg-gray-50 rounded-lg p-2 w-full">
-          {accountsData?.data?.length ? (
+          {accountsData?.length ? (
             <ul className="">
-              {accountsData?.data?.map((accountData) => {
+              {accountsData?.map((accountData) => {
                 return (
                   <li className="my-1" key={accountData.id}>
                     <div className="flex justify-between px-2 py-2 items-center rounded-l bg-gray-100">
-                      <div>{accountData.name}</div>
+                      <div className="flex gap-1 items-center">
+                        <span className="text-sm text-gray-400 inline">
+                          #{accountData.id}
+                        </span>
+                        <span>{accountData.name}</span>
+                        <span className="text-sm text-gray-400 inline">
+                          ({accountData.type})
+                        </span>
+                      </div>
                       <div>
                         <RemoveConfirmDialog id={accountData.id} />
                       </div>

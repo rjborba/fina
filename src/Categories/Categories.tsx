@@ -25,7 +25,7 @@ export const Categories: FC = () => {
       >
         <div className="flex flex-col max-w-sm">
           <p>Categories</p>
-          {categoryData?.data?.map((category) => {
+          {categoryData?.map((category) => {
             return (
               <ul key={category.id}>
                 <li className="py-1">

@@ -12,7 +12,7 @@ export const ImportList: FC = () => {
       <h2>Imports</h2>
       <div className="flex flex-col max-w-sm">
         <ul>
-          {importsData?.data?.map((importData) => {
+          {importsData?.map((importData) => {
             return (
               <li className="py-1" key={importData.id}>
                 <div className="flex gap-1 items-center">
