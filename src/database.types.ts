@@ -92,6 +92,8 @@ export type Database = {
           import_id: number | null
           installment_current: number | null
           installment_total: number | null
+          observation: string | null
+          removed: boolean | null
           value: number | null
         }
         Insert: {
@@ -105,6 +107,8 @@ export type Database = {
           import_id?: number | null
           installment_current?: number | null
           installment_total?: number | null
+          observation?: string | null
+          removed?: boolean | null
           value?: number | null
         }
         Update: {
@@ -118,6 +122,8 @@ export type Database = {
           import_id?: number | null
           installment_current?: number | null
           installment_total?: number | null
+          observation?: string | null
+          removed?: boolean | null
           value?: number | null
         }
         Relationships: [

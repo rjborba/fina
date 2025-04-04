@@ -17,34 +17,29 @@ export const useTransactionMutation = () => {
     const transactionNormalized = { ...transaction };
     delete transactionNormalized.id;
 
+    const { data, error } = await supabase
+      .from("transactions")
+      .update(transactionNormalized)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update the cache with the new data
     queryClient.setQueryData<Transaction["Row"][]>(
       ["transactions"],
       (oldData) => {
         if (!oldData) return oldData;
 
-        const transactionIndex = oldData.findIndex(
-          (oldTransaction) => oldTransaction.id === id
-        );
-
-        if (transactionIndex === -1) return oldData;
-
-        return oldData.map((oldTransaction, index) => {
-          if (index === transactionIndex) {
-            return { ...oldTransaction, ...transactionNormalized };
+        return oldData.map((oldTransaction) => {
+          if (oldTransaction.id === id) {
+            return data;
           }
           return oldTransaction;
         });
       }
     );
-
-    // Perform the actual update
-    await supabase
-      .from("transactions")
-      .update(transactionNormalized)
-      .eq("id", id);
-
-    // Revalidate to ensure consistency
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
   };
 
   const addTransactions = async (transactions: Transaction["Insert"][]) => {

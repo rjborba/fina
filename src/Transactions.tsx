@@ -21,6 +21,7 @@ import {
 } from "./components/ui/select";
 import { SelectValue } from "@radix-ui/react-select";
 import { useTransactionMutation } from "./data/transactions/useTransactionsMutation";
+import { EditableText } from "./components/ui/editable-text";
 
 const NONE_CATEGORY_ID = "none" as const;
 
@@ -31,6 +32,7 @@ const HEADERS = [
   "installment",
   "value",
   "category",
+  "observation",
 ] as const;
 
 export const Transactions: FC = () => {
@@ -63,10 +65,12 @@ export const Transactions: FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>#</TableHead>
-              <TableHead>Account</TableHead>
+              <TableHead className="w-[50px]">#</TableHead>
+              <TableHead className="w-[150px]">Account</TableHead>
               {HEADERS.map((column) => (
-                <TableHead key={column}>{column}</TableHead>
+                <TableHead key={column} className="w-[150px]">
+                  {column}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -74,26 +78,28 @@ export const Transactions: FC = () => {
             {transactionsData?.map((row, rowIndex) => {
               return (
                 <TableRow key={rowIndex}>
-                  <TableCell>{rowIndex + 1}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[50px]">{rowIndex + 1}</TableCell>
+                  <TableCell className="w-[150px]">
                     {row.account_id
                       ? accountsMapById[row.account_id]?.name || "ERROR"
                       : "NO ACCOUNT"}
                   </TableCell>
-                  <TableCell>{dayjs(row.date).format("DD/MM/YYYY")}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[150px]">
+                    {dayjs(row.date).format("DD/MM/YYYY")}
+                  </TableCell>
+                  <TableCell className="w-[150px]">
                     {row.credit_due_date
                       ? dayjs(row.credit_due_date).format("DD/MM/YYYY")
                       : ""}
                   </TableCell>
-                  <TableCell>{row.description}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[150px]">{row.description}</TableCell>
+                  <TableCell className="w-[150px]">
                     {row.installment_current
                       ? `${row.installment_current}/${row.installment_total}`
                       : "Única"}
                   </TableCell>
-                  <TableCell>{row.value}</TableCell>
-                  <TableCell>
+                  <TableCell className="w-[150px]">{row.value}</TableCell>
+                  <TableCell className="w-[150px]">
                     <Select
                       value={
                         row.category_id
@@ -124,6 +130,16 @@ export const Transactions: FC = () => {
                         <SelectItem value={NONE_CATEGORY_ID}>-</SelectItem>
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell className="w-[150px]">
+                    <EditableText
+                      value={row.observation || ""}
+                      onChange={(value) => {
+                        updateTransaction(row.id, {
+                          observation: value,
+                        });
+                      }}
+                    />
                   </TableCell>
                   {/* <TableCell>{row.category_id}</TableCell> */}
                 </TableRow>
