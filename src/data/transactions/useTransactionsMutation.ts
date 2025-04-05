@@ -17,39 +17,26 @@ export const useTransactionMutation = () => {
     const transactionNormalized = { ...transaction };
     delete transactionNormalized.id;
 
-    const { data, error } = await supabase
+    return supabase
       .from("transactions")
       .update(transactionNormalized)
       .eq("id", id)
       .select()
       .single();
+  };
 
-    if (error) throw error;
-
-    // Update the cache with the new data
-    queryClient.setQueryData<Transaction["Row"][]>(
-      ["transactions"],
-      (oldData) => {
-        if (!oldData) return oldData;
-
-        return oldData.map((oldTransaction) => {
-          if (oldTransaction.id === id) {
-            return data;
-          }
-          return oldTransaction;
-        });
-      }
-    );
+  const removeTransaction = async (id: number) => {
+    return supabase
+      .from("transactions")
+      .update({ removed: true })
+      .eq("id", id)
+      .select()
+      .single();
   };
 
   const addTransactions = async (transactions: Transaction["Insert"][]) => {
     const resp = await supabase.from("transactions").insert(transactions);
     console.log(resp);
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-  };
-
-  const removeTransaction = async (id: string) => {
-    await supabase.from("transactions").delete().eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
   };
 

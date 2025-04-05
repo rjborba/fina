@@ -17,6 +17,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
 }) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editValue, setEditValue] = React.useState(value);
+  const [localValue, setLocalValue] = React.useState(value);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -26,7 +27,10 @@ export const EditableText: React.FC<EditableTextProps> = ({
   }, [isEditing]);
 
   const handleAccept = () => {
-    onChange(editValue);
+    if (editValue !== value) {
+      setLocalValue(editValue);
+      onChange(editValue);
+    }
     setIsEditing(false);
   };
 
@@ -54,7 +58,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
         )}
         onClick={() => setIsEditing(true)}
       >
-        {value || "-"}
+        {localValue || "-"}
       </div>
     );
   }
@@ -66,6 +70,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
         value={editValue}
         onChange={(e) => setEditValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={handleAccept}
         className="h-8"
       />
       <Button

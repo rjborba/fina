@@ -1,25 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
 
-export const useTransactions = () => {
+interface UseTransactionsOptions {
+  page: number;
+  pageSize: number;
+}
+
+export const useTransactions = ({ page, pageSize }: UseTransactionsOptions) => {
   return useQuery({
-    queryKey: ["transactions"],
+    queryKey: ["transactions", page, pageSize],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await supabase
         .from("transactions")
-        .select("*")
-        // .or(
-        //   `credit_due_date.gte.2024-01-01 00:00:00,credit_due_date.lte.2028-01-05 23:59:59` +
-        //     `,date.gte.2024-01-01 00:00:00,date.lte.2028-01-30 23:59:59`
-        // )
+        .select("*", { count: "exact" })
+        .eq("removed", false)
         .order("date", { ascending: true })
-        .order("id", { ascending: true });
+        .order("id", { ascending: true })
+        .range(from, to);
 
       if (error) {
         throw error;
       }
 
-      return data;
+      return {
+        data,
+        totalCount: count || 0,
+      };
     },
   });
 };
