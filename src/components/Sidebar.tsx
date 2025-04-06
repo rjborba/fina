@@ -1,13 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import {
-  Home,
-  List,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Settings,
-} from "lucide-react";
+import { Home, List, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
