@@ -9,8 +9,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const auth = useAuth();
   const location = useLocation();
 
-  console.log("auth", auth?.user);
-
   if (auth?.user === null) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

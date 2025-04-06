@@ -1,9 +1,25 @@
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import { Home, List, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import {
+  Home,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserProfile } from "./UserProfile";
 
 interface NavigationItem {
   path: string;
@@ -25,7 +41,7 @@ export function Sidebar() {
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const navigationItems = useMemo(
     () =>
@@ -82,18 +98,25 @@ export function Sidebar() {
           </Button>
         ))}
       </nav>
-      <div className="border-t p-2">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start",
-            isSidebarCollapsed && "justify-center"
-          )}
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4" />
-          {!isSidebarCollapsed && <span className="ml-2">Logout</span>}
-        </Button>
+      <div className="border-t p-2 space-y-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="w-full">
+            {user && (
+              <UserProfile
+                user={user}
+                isSidebarCollapsed={isSidebarCollapsed}
+              />
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

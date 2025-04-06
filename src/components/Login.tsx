@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router";
+import { FcGoogle } from "react-icons/fc";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -23,7 +24,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, signInWithGoogle } = useAuth();
 
   const {
     register,
@@ -120,6 +121,27 @@ export default function Login() {
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSignUp ? "Sign up" : "Sign in"}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-50 text-gray-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => signInWithGoogle()}
+            >
+              <FcGoogle className="mr-2 h-4 w-4" />
+              Google
             </Button>
           </form>
 

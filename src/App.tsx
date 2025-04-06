@@ -6,8 +6,14 @@ import { Toaster } from "./components/ui/toaster";
 import Home from "./Home";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { AuthGuard } from "./components/AuthGuard";
+import { useAuth } from "./hooks/useAuth";
 
 function AppContent() {
+  const { user } = useAuth();
+
+  if (user === undefined) {
+    return <div>Loading...</div>;
+  }
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

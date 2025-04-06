@@ -64,8 +64,6 @@ export const Import = () => {
     return d.toDate();
   };
 
-  console.log(importedEntries);
-
   return (
     <div className="mt-4">
       <h2 className="text-2xl">Import</h2>
