@@ -38,7 +38,7 @@ export const rawEntriesToTransactions = ({
   const digitRegex = /^\d+\/\d+$/;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return rawData.map((row: any) => {
+  return rawData.map((row: any): Transaction["Insert"] => {
     const parsedRow: Partial<Transaction["Row"]> = {
       account_id: Number(accountId),
       date: null,

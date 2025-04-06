@@ -4,9 +4,9 @@ import dayjs from "dayjs";
 import { Account } from "../accounts/Account";
 import { Transaction } from "./Transaction";
 import { useTransactionMutation } from "./useTransactionsMutation";
-import { EditableText } from "../../components/ui/editable-text";
+import { EditableText } from "./EditableTextCell";
 import { Button } from "../../components/ui/button";
-import { CategorySelect } from "./CategorySelect";
+import { EditableSelect } from "./EditableSelectCell";
 import { Trash } from "lucide-react";
 import { ConfirmationDialog } from "../../components/ui/confirmation-dialog";
 
@@ -19,15 +19,19 @@ interface TransactionRowProps {
 
 export const TransactionRow: FC<TransactionRowProps> = ({
   row,
-  rowIndex,
   accountsMapById,
   categoriesData,
 }) => {
-  const { updateTransaction, removeTransaction } = useTransactionMutation();
+  const {
+    updateMutation: updateTransaction,
+    removeMutation: removeTransaction,
+  } = useTransactionMutation();
 
   return (
     <TableRow>
-      <TableCell className="w-[50px]">{rowIndex + 1}</TableCell>
+      <TableCell className="w-[50px] text-muted-foreground text-xs">
+        #{row.id}
+      </TableCell>
       <TableCell className="w-[150px]">
         {row.account_id
           ? accountsMapById[row.account_id]?.name || "ERROR"
@@ -49,18 +53,29 @@ export const TransactionRow: FC<TransactionRowProps> = ({
       </TableCell>
       <TableCell className="w-[150px]">{row.value || ""}</TableCell>
       <TableCell className="w-[150px]">
-        <CategorySelect
+        <EditableSelect
           value={row.category_id}
           categories={categoriesData}
           transactionId={row.id}
+          onChange={(value) => {
+            return updateTransaction.mutateAsync({
+              id: row.id,
+              transaction: {
+                category_id: value,
+              },
+            });
+          }}
         />
       </TableCell>
       <TableCell className="w-[150px]">
         <EditableText
           value={row.observation || ""}
           onChange={(value) => {
-            updateTransaction(row.id, {
-              observation: value,
+            return updateTransaction.mutateAsync({
+              id: row.id,
+              transaction: {
+                observation: value,
+              },
             });
           }}
         />
@@ -74,7 +89,7 @@ export const TransactionRow: FC<TransactionRowProps> = ({
           }
           title="Delete Transaction"
           description="Are you sure you want to delete this transaction? This action cannot be undone."
-          onConfirm={() => removeTransaction(row.id)}
+          onConfirm={() => removeTransaction.mutateAsync(row.id)}
           confirmText="Delete"
         />
       </TableCell>

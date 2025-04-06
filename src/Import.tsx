@@ -41,7 +41,7 @@ export const Import = () => {
 
   const { data: accountsData } = useAccounts();
   const { addImport } = useImportsMutation();
-  const { addTransactions } = useTransactionMutation();
+  const { addMutation: addTransaction } = useTransactionMutation();
 
   const selectedAccount = accountsData?.find(
     (currentAccount) => String(currentAccount.id) === importAtom.accountId
@@ -199,7 +199,7 @@ export const Import = () => {
             return;
           }
 
-          await addTransactions(data);
+          await addTransaction.mutateAsync(data);
         }}
       >
         Import

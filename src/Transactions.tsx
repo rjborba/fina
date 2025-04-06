@@ -82,10 +82,10 @@ export const Transactions: FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactionsData?.data?.map((row, rowIndex) => (
+            {transactionsData?.data?.map((transaction, rowIndex) => (
               <TransactionRow
-                key={rowIndex}
-                row={row}
+                key={transaction.id}
+                row={transaction}
                 rowIndex={rowIndex}
                 accountsMapById={accountsMapById}
                 categoriesData={categoriesData || []}

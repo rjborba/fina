@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Transactions } from "./Transactions.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
@@ -25,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
         </div>
       </BrowserRouter>
       <Toaster />
+      <ReactQueryDevtools initialIsOpen={true} />
     </QueryClientProvider>
   </StrictMode>
 );

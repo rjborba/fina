@@ -1,49 +1,76 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
 import { Transaction } from "./Transaction";
 
 export const useTransactionMutation = () => {
   const queryClient = useQueryClient();
 
-  const addTransaction = async (transaction: Transaction["Insert"]) => {
-    await supabase.from("transactions").insert(transaction);
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-  };
+  const addMutation = useMutation({
+    mutationFn: async (transactions: Transaction["Insert"][]) => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert(transactions);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
 
-  const updateTransaction = async (
-    id: number,
-    transaction: Transaction["Update"]
-  ) => {
-    const transactionNormalized = { ...transaction };
-    delete transactionNormalized.id;
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      transaction,
+    }: {
+      id: number;
+      transaction: Transaction["Update"];
+    }) => {
+      throw new Error("Not implemented");
+      const transactionNormalized = { ...transaction };
+      delete transactionNormalized.id;
 
-    return supabase
-      .from("transactions")
-      .update(transactionNormalized)
-      .eq("id", id)
-      .select()
-      .single();
-  };
+      const { data, error } = await supabase
+        .from("transactions")
+        .update(transactionNormalized)
+        .eq("id", id)
+        .select()
+        .single();
 
-  const removeTransaction = async (id: number) => {
-    return supabase
-      .from("transactions")
-      .update({ removed: true })
-      .eq("id", id)
-      .select()
-      .single();
-  };
+      if (error) {
+        throw error;
+      }
 
-  const addTransactions = async (transactions: Transaction["Insert"][]) => {
-    const resp = await supabase.from("transactions").insert(transactions);
-    console.log(resp);
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-  };
+      return data;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .update({ removed: true })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
 
   return {
-    addTransaction,
-    addTransactions,
-    removeTransaction,
-    updateTransaction,
+    addMutation,
+    updateMutation,
+    removeMutation,
   };
 };

@@ -4,48 +4,39 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "../../components/ui/select";
+} from "@/components/ui/select";
 import { SelectValue } from "@radix-ui/react-select";
-import { useTransactionMutation } from "./useTransactionsMutation";
+import { toast } from "@/hooks/use-toast";
 
 const NONE_CATEGORY_ID = "none" as const;
 
-interface CategorySelectProps {
+interface EditableSelectProps {
   transactionId: number;
   value: number | null;
   categories: { id: number; name: string | null }[];
+  onChange: (value: number | null) => Promise<unknown>;
 }
 
-export const CategorySelect: FC<CategorySelectProps> = ({
+export const EditableSelect: FC<EditableSelectProps> = ({
   value,
   categories,
-  transactionId,
+  onChange,
 }) => {
-  const { updateTransaction } = useTransactionMutation();
   const [internalValue, setInternalValue] = useState(value);
-  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <Select
       value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
-      disabled={isLoading}
       onValueChange={(newValue) => {
-        const newValueNumber =
+        const normalizedNewValue =
           newValue === NONE_CATEGORY_ID ? null : Number(newValue);
-        setInternalValue(newValueNumber);
-        setIsLoading(true);
 
-        updateTransaction(transactionId, {
-          category_id: newValueNumber,
-        })
-          .catch((error) => {
-            console.error("Failed to update transaction:", error);
-            alert("Failed to update transaction");
-            setInternalValue(value);
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+        setInternalValue(normalizedNewValue);
+
+        onChange(normalizedNewValue).catch(() => {
+          toast({ title: "Something went wrong", variant: "destructive" });
+          setInternalValue(value);
+        });
       }}
     >
       <SelectTrigger>

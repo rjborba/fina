@@ -1,26 +1,30 @@
-import * as React from "react";
-import { Button } from "./button";
-import { Input } from "./input";
 import { cn } from "@/lib/utils";
 import { Check, X } from "lucide-react";
+import { FC, useEffect, useRef, useState, KeyboardEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
 
 interface EditableTextProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string) => Promise<unknown>;
   className?: string;
 }
 
-export const EditableText: React.FC<EditableTextProps> = ({
+export const EditableText: FC<EditableTextProps> = ({
   value,
   onChange,
   className,
 }) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(value);
-  const [localValue, setLocalValue] = React.useState(value);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    setEditValue(value);
+  }, [value]);
+
+  useEffect(() => {
     if (isEditing) {
       inputRef.current?.focus();
     }
@@ -28,8 +32,10 @@ export const EditableText: React.FC<EditableTextProps> = ({
 
   const handleAccept = () => {
     if (editValue !== value) {
-      setLocalValue(editValue);
-      onChange(editValue);
+      onChange(editValue).catch(() => {
+        toast({ title: "Something went wrong", variant: "destructive" });
+        setEditValue(value);
+      });
     }
     setIsEditing(false);
   };
@@ -39,7 +45,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       handleAccept();
@@ -58,7 +64,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
         )}
         onClick={() => setIsEditing(true)}
       >
-        {localValue || "-"}
+        {editValue || "-"}
       </div>
     );
   }
