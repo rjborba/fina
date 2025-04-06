@@ -1,15 +1,9 @@
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import {
-  Home,
-  List,
-  Import,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Home, List, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NavigationItem {
   path: string;
@@ -24,18 +18,14 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     label: "Transactions",
     icon: <List className="h-4 w-4" />,
   },
-  { path: "/import", label: "Import", icon: <Import className="h-4 w-4" /> },
-  {
-    path: "/settings",
-    label: "Settings",
-    icon: <Settings className="h-4 w-4" />,
-  },
 ];
 
 export function Sidebar() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const navigationItems = useMemo(
     () =>
@@ -46,10 +36,15 @@ export function Sidebar() {
     [location.pathname]
   );
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
   return (
     <div
       className={cn(
-        "flex flex-col h-screen border-r bg-background transition-all duration-300",
+        "flex flex-col h-screen border-r bg-background transition-all duration-300 sticky top-0",
         isSidebarCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -87,6 +82,19 @@ export function Sidebar() {
           </Button>
         ))}
       </nav>
+      <div className="border-t p-2">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start",
+            isSidebarCollapsed && "justify-center"
+          )}
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          {!isSidebarCollapsed && <span className="ml-2">Logout</span>}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -29,7 +29,6 @@ export const useTransactionMutation = () => {
       id: number;
       transaction: Transaction["Update"];
     }) => {
-      throw new Error("Not implemented");
       const transactionNormalized = { ...transaction };
       delete transactionNormalized.id;
 

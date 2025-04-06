@@ -1,22 +1,42 @@
-import { Accounts } from "./Accounts/Accounts";
-import { Categories } from "./Categories/Categories";
-import { Import } from "./Import";
-import { ImportList } from "./ImportList/ImportList";
+import Login from "./components/Login";
+import { Sidebar } from "./components/Sidebar";
+import { Transactions } from "./Transactions";
+import { Route, Routes, Outlet } from "react-router";
+import { Toaster } from "./components/ui/toaster";
+import Home from "./Home";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { AuthGuard } from "./components/AuthGuard";
+
+function AppContent() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+
+      <Route
+        element={
+          <AuthGuard>
+            <div className="flex">
+              <Sidebar />
+              <div className="flex-1">
+                <Outlet />
+              </div>
+            </div>
+          </AuthGuard>
+        }
+      >
+        <Route path="/" element={<Home />} />
+        <Route path="/transactions" element={<Transactions />} />
+      </Route>
+    </Routes>
+  );
+}
 
 function App() {
   return (
-    <div className="flex h-screen">
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="flex flex-col gap-8">
-            <Accounts />
-            <Categories />
-            <ImportList />
-            <Import />
-          </div>
-        </main>
-      </div>
-    </div>
+    <AuthProvider>
+      <AppContent />
+      <Toaster />
+    </AuthProvider>
   );
 }
 
