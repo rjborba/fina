@@ -1,19 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
 
-type UseImportsProps = {
+type UseUsersPerGroupProps = {
   groupId?: string;
 };
 
-export const useImports = ({ groupId }: UseImportsProps) => {
+export const useUsersPerGroup = ({ groupId }: UseUsersPerGroupProps) => {
+  const { user } = useAuth();
+
   return useQuery({
     enabled: groupId !== undefined,
-    queryKey: ["imports", groupId],
+    queryKey: ["usersPerGroup", groupId],
     queryFn: async () => {
+      if (!user?.id) return [];
+
       const { data, error } = await supabase
-        .from("imports")
+        .from("users_per_group")
         .select("*")
-        .order("id", { ascending: true })
         .eq("group_id", groupId!);
 
       if (error) {

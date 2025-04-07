@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { TableCell, TableRow } from "../../components/ui/table";
 import dayjs from "dayjs";
-import { Account } from "../accounts/Account";
+import { BankAccount } from "../bankAccounts/BankAccount";
 import { Transaction } from "./Transaction";
 import { useTransactionMutation } from "./useTransactionsMutation";
 import { EditableText } from "./EditableTextCell";
@@ -13,7 +13,7 @@ import { ConfirmationDialog } from "../../components/ui/confirmation-dialog";
 interface TransactionRowProps {
   row: Transaction["Row"];
   rowIndex: number;
-  accountsMapById: Record<string, Account["Row"]>;
+  accountsMapById: Record<string, BankAccount["Row"]>;
   categoriesData: { id: number; name: string | null }[];
 }
 
@@ -33,8 +33,8 @@ export const TransactionRow: FC<TransactionRowProps> = ({
         #{row.id}
       </TableCell>
       <TableCell className="w-[150px]">
-        {row.account_id
-          ? accountsMapById[row.account_id]?.name || "ERROR"
+        {row.bankaccount_id
+          ? accountsMapById[row.bankaccount_id]?.name || "ERROR"
           : "NO ACCOUNT"}
       </TableCell>
       <TableCell className="w-[150px]">

@@ -1,9 +1,20 @@
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import { Home, List, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import {
+  Home,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Banknote,
+  Tag,
+  Import,
+  Settings,
+} from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +24,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserProfile } from "./UserProfile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "./ui/avatar";
 
 interface NavigationItem {
   path: string;
@@ -27,6 +46,26 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     label: "Transactions",
     icon: <List className="h-4 w-4" />,
   },
+  {
+    path: "/bank-accounts",
+    label: "Bank Accounts",
+    icon: <Banknote className="h-4 w-4" />,
+  },
+  {
+    path: "/categories",
+    label: "Categories",
+    icon: <Tag className="h-4 w-4" />,
+  },
+  {
+    path: "/imports",
+    label: "Imports",
+    icon: <Import className="h-4 w-4" />,
+  },
+  {
+    path: "/group-settings",
+    label: "Group Settings",
+    icon: <Settings className="h-4 w-4" />,
+  },
 ];
 
 export function Sidebar() {
@@ -35,6 +74,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { selectedGroup, groups, setSelectedGroup } = useActiveGroup();
 
   const navigationItems = useMemo(
     () =>
@@ -44,6 +84,8 @@ export function Sidebar() {
       })),
     [location.pathname]
   );
+
+  console.log(selectedGroup?.id);
 
   const handleLogout = async () => {
     await signOut();
@@ -71,6 +113,51 @@ export function Sidebar() {
             <ChevronLeft className="h-4 w-4" />
           )}
         </Button>
+      </div>
+      <div className="p-4">
+        {isSidebarCollapsed ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild value={selectedGroup?.id}>
+              <Button variant="ghost" size="icon" className="w-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {selectedGroup?.name?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {groups.map((group) => (
+                <DropdownMenuItem key={group.id}>
+                  <Avatar className="h-6 w-6 mr-2">
+                    <AvatarFallback className="text-xs">A</AvatarFallback>
+                  </Avatar>
+                  {group.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Select
+            value={selectedGroup?.id.toString()}
+            onValueChange={(item) => {
+              setSelectedGroup(
+                groups.find((group) => group.id === Number(item))!
+              );
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select group" />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((group) => (
+                <SelectItem value={group.id.toString()} key={group.id}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
       <nav className="flex-1 space-y-1 p-2">
         {navigationItems.map(({ path, label, icon, isActive }) => (

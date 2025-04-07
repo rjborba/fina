@@ -2,13 +2,16 @@ import { Button } from "@/components/ui/button";
 import { useImports } from "@/data/imports/useImports";
 import { useImportsMutation } from "@/data/imports/useImportsMutation";
 import { FC } from "react";
-
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 export const ImportList: FC = () => {
-  const { data: importsData } = useImports();
+  const { selectedGroup } = useActiveGroup();
+  const { data: importsData } = useImports({
+    groupId: selectedGroup?.id?.toString(),
+  });
   const { removeImport } = useImportsMutation();
 
   return (
-    <div className="border border-back rounded-md p-5 w-[500px]">
+    <div className="border border-back rounded-md p-5 w-full">
       <h2>Imports</h2>
       <div className="flex flex-col max-w-sm">
         <ul>

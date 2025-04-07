@@ -7,11 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "./components/ui/table";
-import { useAccounts } from "./data/accounts/useAccounts";
-import { Account } from "./data/accounts/Account";
+import { useBankAccounts } from "./data/bankAccounts/useBankAccounts";
+import { BankAccount } from "./data/bankAccounts/BankAccount";
 import { useCategories } from "./data/categories/useCategories";
 import { TransactionRow } from "./data/transactions/TransactionRow";
 import { Pagination } from "./components/ui/pagination";
+import { useActiveGroup } from "./contexts/ActiveGroupContext";
 
 const HEADERS = [
   "date",
@@ -29,24 +30,30 @@ const DEFAULT_PAGE_SIZE = 100;
 export const Transactions: FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { selectedGroup } = useActiveGroup();
 
   const { data: transactionsData, isLoading: isLoadingTransactions } =
-    useTransactions({ page: currentPage, pageSize });
+    useTransactions({
+      page: currentPage,
+      pageSize,
+      groupdId: selectedGroup?.id?.toString(),
+    });
 
-  const { data: accountsData, isLoading: isLoadingAccounts } = useAccounts();
+  const { data: bankAccountsData, isLoading: isLoadingAccounts } =
+    useBankAccounts({ groupId: selectedGroup?.id?.toString() });
   const { data: categoriesData, isLoading: isLoadingCategories } =
-    useCategories();
+    useCategories({ groupId: selectedGroup?.id?.toString() });
 
   const accountsMapById = useMemo(() => {
-    if (!accountsData) {
+    if (!bankAccountsData) {
       return {};
     }
 
-    return accountsData.reduce((acc, current) => {
+    return bankAccountsData.reduce((acc, current) => {
       acc[current.id] = current;
       return acc;
-    }, {} as Record<string, Account["Row"]>);
-  }, [accountsData]);
+    }, {} as Record<string, BankAccount["Row"]>);
+  }, [bankAccountsData]);
 
   const totalPages = Math.ceil((transactionsData?.totalCount || 0) / pageSize);
 

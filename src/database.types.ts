@@ -9,42 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      accounts: {
+      bankaccounts: {
         Row: {
           created_at: string
           due_date: string | null
+          group_id: number
           id: number
           name: string | null
-          owner: number | null
           type: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
           due_date?: string | null
+          group_id: number
           id?: number
           name?: string | null
-          owner?: number | null
           type?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
           due_date?: string | null
+          group_id?: number
           id?: number
           name?: string | null
-          owner?: number | null
           type?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "accounts_owner_fkey"
-            columns: ["owner"]
+            foreignKeyName: "bankaccounts_group_id_fkey"
+            columns: ["group_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]
       }
       categories: {
+        Row: {
+          created_at: string
+          group_id: number | null
+          id: number
+          name: string | null
+        }
+        Insert: {
+          created_at?: string
+          group_id?: number | null
+          id?: number
+          name?: string | null
+        }
+        Update: {
+          created_at?: string
+          group_id?: number | null
+          id?: number
+          name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
         Row: {
           created_at: string
           id: number
@@ -66,28 +98,40 @@ export type Database = {
         Row: {
           created_at: string
           fileName: string | null
+          group_id: number | null
           id: number
         }
         Insert: {
           created_at?: string
           fileName?: string | null
+          group_id?: number | null
           id?: number
         }
         Update: {
           created_at?: string
           fileName?: string | null
+          group_id?: number | null
           id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "imports_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
-          account_id: number | null
+          bankaccount_id: number
           category_id: number | null
           created_at: string
           credit_due_date: string | null
           date: string | null
           description: string | null
+          group_id: number | null
           id: number
           import_id: number | null
           installment_current: number | null
@@ -97,12 +141,13 @@ export type Database = {
           value: number | null
         }
         Insert: {
-          account_id?: number | null
+          bankaccount_id: number
           category_id?: number | null
           created_at?: string
           credit_due_date?: string | null
           date?: string | null
           description?: string | null
+          group_id?: number | null
           id?: number
           import_id?: number | null
           installment_current?: number | null
@@ -112,12 +157,13 @@ export type Database = {
           value?: number | null
         }
         Update: {
-          account_id?: number | null
+          bankaccount_id?: number
           category_id?: number | null
           created_at?: string
           credit_due_date?: string | null
           date?: string | null
           description?: string | null
+          group_id?: number | null
           id?: number
           import_id?: number | null
           installment_current?: number | null
@@ -128,10 +174,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_account_id_fkey"
-            columns: ["account_id"]
+            foreignKeyName: "transactions_bankaccount_id_fkey"
+            columns: ["bankaccount_id"]
             isOneToOne: false
-            referencedRelation: "accounts"
+            referencedRelation: "bankaccounts"
             referencedColumns: ["id"]
           },
           {
@@ -139,6 +185,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
           {
@@ -150,27 +203,56 @@ export type Database = {
           },
         ]
       }
-      users: {
+      user_group: {
         Row: {
           created_at: string
+          group_id: number
           id: number
-          name: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
+          group_id: number
           id?: number
-          name?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
+          group_id?: number
           id?: number
-          name?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_group_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
-      [_ in never]: never
+      users_per_group: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          group_id: number | null
+          group_name: string | null
+          id: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never

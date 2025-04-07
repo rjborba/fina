@@ -1,13 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
 
-export const useAccounts = () => {
+type UseBankAccountsProps = {
+  groupId?: string;
+};
+
+export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
   return useQuery({
-    queryKey: ["accounts"],
+    enabled: groupId !== undefined,
+    queryKey: ["bankaccounts", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("accounts")
+        .from("bankaccounts")
         .select("*")
+        .eq("group_id", groupId!)
         .order("id", { ascending: true });
 
       if (error) {

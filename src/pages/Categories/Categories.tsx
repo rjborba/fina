@@ -1,15 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { useCategories } from "@/data/categories/useCategories";
 import { useCategoriesMutation } from "@/data/categories/useCategoriesMutation";
 import { FC } from "react";
 
 export const Categories: FC = () => {
+  const { selectedGroup } = useActiveGroup();
   const { addCategory, removeCategory } = useCategoriesMutation();
-  const { data: categoryData } = useCategories();
+  const { data: categoryData } = useCategories({
+    groupId: selectedGroup?.id?.toString(),
+  });
 
   return (
-    <div className="border border-back rounded-md p-5 w-[500px]">
+    <div className="p-5 w-full">
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -34,6 +38,7 @@ export const Categories: FC = () => {
                     <div>
                       <Button
                         variant="destructive"
+                        size="sm"
                         type="button"
                         onClick={() => removeCategory(category.id)}
                       >

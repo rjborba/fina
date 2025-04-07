@@ -8,9 +8,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
-import { useAccounts } from "@/data/accounts/useAccounts";
-import { useAccountsMutation } from "@/data/accounts/useAccountsMutation";
-import { FC, useState } from "react";
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
+import { useAccountsMutation } from "@/data/bankAccounts/useBankAccountsMutation";
+import { FC, useEffect, useState } from "react";
 import {
   Form,
   FormControl,
@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Account } from "@/data/accounts/Account";
+import { BankAccount } from "@/data/bankAccounts/BankAccount";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -31,11 +31,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
 
 type FormData = {
   accountName: string;
   accountType: string;
   dueDate: string;
+  user_id: string;
 };
 
 const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
@@ -43,7 +46,6 @@ const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
   const { toast } = useToast();
   const { removeAccount } = useAccountsMutation();
   const [isLoading, setIsLoading] = useState(false);
-
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
@@ -88,26 +90,51 @@ const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
 };
 
 export const Accounts: FC = () => {
-  const { data: accountsData } = useAccounts();
+  const { selectedGroup } = useActiveGroup();
+  const { data: bankAccountsData } = useBankAccounts({
+    groupId: selectedGroup?.id?.toString(),
+  });
   const { addAccount } = useAccountsMutation();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { data: usersPerGroup } = useUsersPerGroup({
+    groupId: selectedGroup?.id?.toString(),
+  });
+
   const form = useForm<FormData>({
     defaultValues: {
       accountName: "",
       accountType: "checkout",
       dueDate: "",
+      user_id: "",
     },
   });
+
+  useEffect(() => {
+    if (!usersPerGroup || !usersPerGroup.length) {
+      return;
+    }
+
+    form.setValue("user_id", usersPerGroup[0].user_id!);
+  }, [form, usersPerGroup]);
 
   const accountType = form.watch("accountType");
 
   const onSubmit = async (data: FormData) => {
-    const addAccountPayload: Account["Insert"] = {
+    if (!selectedGroup?.id) {
+      throw new Error("No group selected");
+    }
+
+    if (!data.user_id) {
+      throw new Error("User not found");
+    }
+
+    const addAccountPayload: BankAccount["Insert"] = {
       name: data.accountName,
       type: data.accountType,
+      group_id: selectedGroup?.id,
+      user_id: data.user_id,
       // TODO
-      owner: 1,
     };
 
     if (accountType === "credit") {
@@ -134,27 +161,27 @@ export const Accounts: FC = () => {
   };
 
   return (
-    <div className="border border-back rounded-md p-5 w-[500px]">
+    <div className="p-5 w-full">
       <div className="flex flex-col">
         <p>Accounts</p>
         <div className="min-h-[80px] bg-gray-50 rounded-lg p-2 w-full">
-          {accountsData?.length ? (
+          {bankAccountsData?.length ? (
             <ul className="">
-              {accountsData?.map((accountData) => {
+              {bankAccountsData?.map((bankAccountsData) => {
                 return (
-                  <li className="my-1" key={accountData.id}>
+                  <li className="my-1" key={bankAccountsData.id}>
                     <div className="flex justify-between px-2 py-2 items-center rounded-l bg-gray-100">
                       <div className="flex gap-1 items-center">
                         <span className="text-sm text-gray-400 inline">
-                          #{accountData.id}
+                          #{bankAccountsData.id}
                         </span>
-                        <span>{accountData.name}</span>
+                        <span>{bankAccountsData.name}</span>
                         <span className="text-sm text-gray-400 inline">
-                          ({accountData.type})
+                          ({bankAccountsData.type})
                         </span>
                       </div>
                       <div>
-                        <RemoveConfirmDialog id={accountData.id} />
+                        <RemoveConfirmDialog id={bankAccountsData.id} />
                       </div>
                     </div>
                   </li>
@@ -202,6 +229,38 @@ export const Accounts: FC = () => {
                     <SelectContent>
                       <SelectItem value="checkout">Checkout</SelectItem>
                       <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="user_id"
+            rules={{ required: true }}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>User</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    name={field.name}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue onBlur={field.onBlur} ref={field.ref} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usersPerGroup?.map((groupUser) => (
+                        <SelectItem
+                          key={groupUser.email}
+                          value={groupUser.user_id!}
+                        >
+                          {groupUser.email}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormControl>
