@@ -39,8 +39,12 @@ export const rawEntriesToTransactions = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rawData.map((row: any): Transaction["Insert"] => {
-    const parsedRow: Partial<Transaction["Row"]> = {
-      account_id: Number(accountId),
+    if (!accountId) {
+      throw new Error("Account ID is required");
+    }
+
+    const parsedRow: Transaction["Insert"] = {
+      bankaccount_id: Number(accountId),
       date: null,
       description: null,
       installment_current: null,
@@ -51,7 +55,7 @@ export const rawEntriesToTransactions = ({
     };
 
     if (typeof row !== "object" || row === null) {
-      return parsedRow;
+      throw new Error("Invalid datas");
     }
 
     if (importFieldMap.date) {
