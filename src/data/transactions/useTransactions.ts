@@ -9,7 +9,7 @@ export const useTransactions = (options: FetchTransactionsOptions) => {
     enabled:
       options.page !== undefined &&
       options.pageSize !== undefined &&
-      options.groupdId !== undefined,
+      !!options.groupdId,
     queryKey: [
       "transactions",
       options.page,

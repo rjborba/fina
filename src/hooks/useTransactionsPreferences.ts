@@ -33,7 +33,7 @@ export function useTransactionsPreferences(groupId?: string) {
       try {
         const parsed = JSON.parse(storedPreferences);
         setPreferences(parsed);
-      } catch (e) {
+      } catch {
         // If parsing fails, use defaults
         setPreferences(DEFAULT_PREFERENCES);
       }

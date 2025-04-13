@@ -1,4 +1,5 @@
 import supabase from "@/supabaseClient";
+import { Tables } from "@/database.types";
 
 export interface FetchTransactionsOptions {
   page: number;
@@ -10,7 +11,7 @@ export interface FetchTransactionsOptions {
 }
 
 export interface FetchTransactionsResult {
-  data: any[];
+  data: Tables<"transactions">[];
   totalCount: number;
 }
 
