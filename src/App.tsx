@@ -1,18 +1,45 @@
+import { lazy, Suspense } from "react";
 import Login from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
-import { Transactions } from "./Transactions";
 import { Route, Routes, Outlet, Navigate } from "react-router";
 import { Toaster } from "./components/ui/toaster";
-import Home from "./Home";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import { useAuth } from "./hooks/useAuth";
 import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
-import { Accounts } from "./pages/Accounts/Accounts";
-import { Categories } from "./pages/Categories/Categories";
-import { Import } from "./pages/Imports/Import";
-import { Settings } from "./pages/Settings/Settings";
-import { TransactionsCategorization } from "./pages/TransactionsCategorization";
+
+// Lazy load components with named exports and better chunking
+const Home = lazy(() =>
+  import("./Home").then((module) => ({ default: module.default }))
+);
+const Transactions = lazy(() =>
+  import("./Transactions").then((module) => ({ default: module.Transactions }))
+);
+const TransactionsCategorization = lazy(() =>
+  import("./pages/TransactionsCategorization").then((module) => ({
+    default: module.TransactionsCategorization,
+  }))
+);
+const Accounts = lazy(() =>
+  import("./pages/Accounts/Accounts").then((module) => ({
+    default: module.Accounts,
+  }))
+);
+const Categories = lazy(() =>
+  import("./pages/Categories/Categories").then((module) => ({
+    default: module.Categories,
+  }))
+);
+const Import = lazy(() =>
+  import("./pages/Imports/Import").then((module) => ({
+    default: module.Import,
+  }))
+);
+const Settings = lazy(() =>
+  import("./pages/Settings/Settings").then((module) => ({
+    default: module.Settings,
+  }))
+);
 
 function AppContent() {
   const { user } = useAuth();
@@ -30,7 +57,9 @@ function AppContent() {
             <div className="flex">
               <Sidebar />
               <div className="flex-1">
-                <Outlet />
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Outlet />
+                </Suspense>
               </div>
             </div>
           </AuthGuard>
