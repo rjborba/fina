@@ -12,6 +12,7 @@ import { Accounts } from "./pages/Accounts/Accounts";
 import { Categories } from "./pages/Categories/Categories";
 import { Import } from "./pages/Imports/Import";
 import { Settings } from "./pages/Settings/Settings";
+import { TransactionsCategorization } from "./pages/TransactionsCategorization";
 
 function AppContent() {
   const { user } = useAuth();
@@ -37,6 +38,10 @@ function AppContent() {
       >
         <Route path="/" element={<Home />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route
+          path="/transactions/categorization"
+          element={<TransactionsCategorization />}
+        />
         <Route path="/bank-accounts" element={<Accounts />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/imports" element={<Import />} />

@@ -19,12 +19,10 @@ const ActiveGroupContext = createContext<ActiveGroupContextType | undefined>(
 );
 
 export function ActiveGroupProvider({ children }: { children: ReactNode }) {
-  const { data } = useGroups();
+  const { data: groups } = useGroups();
   const [selectedGroup, setSelectedGroup] = useState<Group["Row"] | undefined>(
     undefined
   );
-
-  const groups = data || [];
 
   useEffect(() => {
     if (!groups) {
@@ -38,11 +36,11 @@ export function ActiveGroupProvider({ children }: { children: ReactNode }) {
     if (groups.length > 0) {
       setSelectedGroup(groups[0]);
     }
-  }, [groups]);
+  }, [groups, selectedGroup]);
 
   return (
     <ActiveGroupContext.Provider
-      value={{ selectedGroup, groups, setSelectedGroup }}
+      value={{ selectedGroup, groups: groups || [], setSelectedGroup }}
     >
       {children}
     </ActiveGroupContext.Provider>

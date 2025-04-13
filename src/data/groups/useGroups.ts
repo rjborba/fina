@@ -23,9 +23,9 @@ export const useGroups = () => {
         throw error;
       }
 
-      console.log(data);
-
-      return data?.map((item) => item.group) || [];
+      return (
+        data?.filter((item) => !!item.group).map((item) => item.group) || []
+      );
     },
   });
 };

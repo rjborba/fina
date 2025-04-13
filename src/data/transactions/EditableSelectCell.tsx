@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -23,35 +23,54 @@ export const EditableSelect: FC<EditableSelectProps> = ({
   onChange,
 }) => {
   const [internalValue, setInternalValue] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedCategory = categories.find((cat) => cat.id === value);
+  const displayText = selectedCategory?.name || "-";
+
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
 
   return (
-    <Select
-      value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
-      onValueChange={(newValue) => {
-        const normalizedNewValue =
-          newValue === NONE_CATEGORY_ID ? null : Number(newValue);
-
-        setInternalValue(normalizedNewValue);
-
-        onChange(normalizedNewValue).catch(() => {
-          toast({ title: "Something went wrong", variant: "destructive" });
-          setInternalValue(value);
-        });
-      }}
+    <div
+      className="cursor-pointer hover:underline"
+      onClick={() => setIsOpen(true)}
     >
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {categories?.map((category) => {
-          return (
-            <SelectItem key={category.id} value={String(category.id)}>
-              {category.name || "-"}
-            </SelectItem>
-          );
-        })}
-        <SelectItem value={NONE_CATEGORY_ID}>-</SelectItem>
-      </SelectContent>
-    </Select>
+      {isOpen ? (
+        <Select
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
+          onValueChange={(newValue) => {
+            const normalizedNewValue =
+              newValue === NONE_CATEGORY_ID ? null : Number(newValue);
+
+            setInternalValue(normalizedNewValue);
+
+            onChange(normalizedNewValue).catch(() => {
+              toast({ title: "Something went wrong", variant: "destructive" });
+              setInternalValue(value);
+            });
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {categories?.map((category) => {
+              return (
+                <SelectItem key={category.id} value={String(category.id)}>
+                  {category.name || "-"}
+                </SelectItem>
+              );
+            })}
+            <SelectItem value={NONE_CATEGORY_ID}>-</SelectItem>
+          </SelectContent>
+        </Select>
+      ) : (
+        <span className="">{displayText}</span>
+      )}
+    </div>
   );
 };
