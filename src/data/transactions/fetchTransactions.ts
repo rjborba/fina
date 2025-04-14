@@ -7,11 +7,12 @@ export interface FetchTransactionsOptions {
   groupdId: string;
   startDate?: string;
   endDate?: string;
-  category_id?: number | null;
+  category_ids?: (number | null)[];
+  account_ids?: number[];
 }
 
 export interface FetchTransactionsResult {
-  data: Tables<"transactions">[];
+  data: Tables<"transactions">[] | null;
   totalCount: number;
 }
 
@@ -21,7 +22,8 @@ export const fetchTransactions = async ({
   groupdId,
   startDate,
   endDate,
-  category_id,
+  category_ids,
+  account_ids,
 }: FetchTransactionsOptions): Promise<FetchTransactionsResult> => {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -46,12 +48,19 @@ export const fetchTransactions = async ({
     );
   }
 
-  if (category_id !== undefined) {
-    if (category_id === null) {
-      query = query.is("category_id", null);
+  if (category_ids && category_ids.length > 0) {
+    const withoutNull = category_ids.filter((current) => current !== null);
+    if (category_ids.includes(null)) {
+      query = query.or(
+        `category_id.is.null,category_id.in.(${withoutNull.join(",")})`
+      );
     } else {
-      query = query.eq("category_id", category_id);
+      query = query.in("category_id", withoutNull);
     }
+  }
+
+  if (account_ids && account_ids.length > 0) {
+    query = query.in("account_id", account_ids);
   }
 
   const { data, error, count } = await query.range(from, to);

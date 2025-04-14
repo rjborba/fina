@@ -40,9 +40,9 @@ export function TransactionsCategorization() {
           page: 1,
           pageSize: 1000, // Load a large number of transactions at once
           groupdId: selectedGroup.id.toString(),
-          category_id: null,
+          category_ids: [null],
         });
-        setTransactionsData(result.data);
+        setTransactionsData(result.data || []);
       } catch (error) {
         console.error("Error loading transactions:", error);
       } finally {

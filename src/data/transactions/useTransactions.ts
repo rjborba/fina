@@ -1,24 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  fetchTransactions,
-  FetchTransactionsOptions,
-} from "./fetchTransactions";
+import { fetchTransactions } from "./fetchTransactions";
 
-export const useTransactions = (options: FetchTransactionsOptions) => {
+interface UseTransactionsProps {
+  page: number;
+  pageSize: number;
+  groupdId: string;
+  startDate?: string;
+  endDate?: string;
+  category_ids?: (number | null)[];
+  account_ids?: number[];
+}
+
+export const useTransactions = ({
+  page,
+  pageSize,
+  groupdId,
+  startDate,
+  endDate,
+  category_ids,
+  account_ids,
+}: UseTransactionsProps) => {
   return useQuery({
-    enabled:
-      options.page !== undefined &&
-      options.pageSize !== undefined &&
-      !!options.groupdId,
+    enabled: !!groupdId,
     queryKey: [
       "transactions",
-      options.page,
-      options.pageSize,
-      options.groupdId,
-      options.startDate,
-      options.endDate,
-      options.category_id,
+      page,
+      pageSize,
+      groupdId,
+      startDate,
+      endDate,
+      category_ids,
+      account_ids,
     ],
-    queryFn: () => fetchTransactions(options),
+    queryFn: () =>
+      fetchTransactions({
+        page,
+        pageSize,
+        groupdId,
+        startDate,
+        endDate,
+        category_ids,
+        account_ids,
+      }),
   });
 };

@@ -28,6 +28,22 @@ import { Badge } from "./components/ui/badge";
 import dayjs from "dayjs";
 import { useTransactionsPreferences } from "./hooks/useTransactionsPreferences";
 import { CreateTransactionModal } from "./components/CreateTransactionModal";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./components/ui/popover";
+import { Button } from "./components/ui/button";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "./lib/utils";
 
 const HEADERS = [
   "date",
@@ -111,6 +127,11 @@ export const Transactions: FC = () => {
   const { preferences, updatePreferences } = useTransactionsPreferences(
     selectedGroup?.id?.toString()
   );
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<
+    (number | null)[]
+  >([]);
+  const [openCategoriesFilter, setOpenCategoriesFilter] = useState(false);
 
   const { data: transactionsData, isLoading: isLoadingTransactions } =
     useTransactions({
@@ -131,6 +152,8 @@ export const Transactions: FC = () => {
             .year(preferences.selectedYear)
             .endOf("month")
             .format("YYYY-MM-DD"),
+      account_ids: selectedAccount ? [Number(selectedAccount)] : undefined,
+      category_ids: selectedCategories,
     });
 
   const { data: bankAccountsData, isLoading: isLoadingAccounts } =
@@ -216,6 +239,107 @@ export const Transactions: FC = () => {
                   <SelectItem value="custom">Custom Dates</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label>Account:</Label>
+              <Select
+                value={selectedAccount ?? "all"}
+                onValueChange={(value) => {
+                  setSelectedAccount(value === "all" ? null : value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  {bankAccountsData?.map((account) => (
+                    <SelectItem key={account.id} value={String(account.id)}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCategoriesFilter}
+                    onClick={() =>
+                      setOpenCategoriesFilter(!openCategoriesFilter)
+                    }
+                    className="w-[200px] justify-between"
+                  >
+                    {selectedCategories.length > 0
+                      ? `${selectedCategories.length} categories selected`
+                      : "Select categories..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <Command>
+                    <CommandInput placeholder="Search categories..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup heading="Suggestions">
+                        <CommandItem
+                          onSelect={() => {
+                            setSelectedCategories((current) => {
+                              if (current.includes(null)) {
+                                return current.filter((id) => id !== null);
+                              }
+                              return [...current, null];
+                            });
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedCategories.includes(null)
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          Without category
+                        </CommandItem>
+                        {(categoriesData || []).map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            onSelect={() => {
+                              setSelectedCategories((current) => {
+                                if (current.includes(category.id)) {
+                                  return current.filter(
+                                    (id) => id !== category.id
+                                  );
+                                }
+                                return [...current, category.id];
+                              });
+                              setCurrentPage(1);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedCategories.includes(category.id)
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {category.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {preferences.useCustomDates ? (
