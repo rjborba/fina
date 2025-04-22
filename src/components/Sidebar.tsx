@@ -107,8 +107,6 @@ export function Sidebar() {
     navigate("/login");
   };
 
-  console.log(groups);
-
   return (
     <div
       className={cn(

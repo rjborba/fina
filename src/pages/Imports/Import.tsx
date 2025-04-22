@@ -197,8 +197,6 @@ export const Import = () => {
               importId,
             });
 
-            console.log(data);
-
             if (!data) {
               return;
             }

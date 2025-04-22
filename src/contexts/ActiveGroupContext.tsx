@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Group } from "@/data/groups/Groups";
 import { useGroups } from "@/data/groups/useGroups";
 import {

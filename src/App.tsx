@@ -7,13 +7,16 @@ import { AuthProvider } from "./contexts/AuthProvider";
 import { AuthGuard } from "./components/AuthGuard";
 import { useAuth } from "./hooks/useAuth";
 import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
+import { WalletMinimal } from "lucide-react";
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
   import("./Home").then((module) => ({ default: module.default }))
 );
 const Transactions = lazy(() =>
-  import("./Transactions").then((module) => ({ default: module.Transactions }))
+  import("./pages/Transactions/Transactions").then((module) => ({
+    default: module.Transactions,
+  }))
 );
 const TransactionsCategorization = lazy(() =>
   import("./pages/TransactionsCategorization").then((module) => ({
@@ -45,7 +48,7 @@ function AppContent() {
   const { user } = useAuth();
 
   if (user === undefined) {
-    return <div>Loading...</div>;
+    return null;
   }
   return (
     <Routes>
@@ -57,7 +60,13 @@ function AppContent() {
             <div className="flex">
               <Sidebar />
               <div className="flex-1">
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-screen">
+                      <WalletMinimal className="w-40 h-40 text-muted" />
+                    </div>
+                  }
+                >
                   <Outlet />
                 </Suspense>
               </div>

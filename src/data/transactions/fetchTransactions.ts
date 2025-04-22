@@ -1,18 +1,24 @@
 import supabase from "@/supabaseClient";
 import { Tables } from "@/database.types";
+import dayjs from "dayjs";
 
 export interface FetchTransactionsOptions {
   page: number;
   pageSize: number;
   groupdId: string;
-  startDate?: string;
-  endDate?: string;
-  category_ids?: (number | null)[];
-  account_ids?: number[];
+  startDate?: Date;
+  endDate?: Date;
+  categoryIdList?: number[];
+  accountIdList?: number[];
+  search?: string;
 }
 
+type TransactionWithCategoryName = Tables<"transactions"> & {
+  categoryName: string | null;
+};
+
 export interface FetchTransactionsResult {
-  data: Tables<"transactions">[] | null;
+  data: TransactionWithCategoryName[] | null;
   totalCount: number;
 }
 
@@ -22,15 +28,24 @@ export const fetchTransactions = async ({
   groupdId,
   startDate,
   endDate,
-  category_ids,
-  account_ids,
+  categoryIdList,
+  accountIdList,
+  search,
 }: FetchTransactionsOptions): Promise<FetchTransactionsResult> => {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+  const formattedStartDate = dayjs(startDate).format("YYYY-MM-DD");
+  const formattedEndDate = dayjs(endDate).format("YYYY-MM-DD");
 
   let query = supabase
     .from("transactions")
-    .select("*", { count: "exact" })
+    .select(
+      `
+      *,
+      categories!left(name)
+    `,
+      { count: "exact" }
+    )
     .eq("removed", false)
     .eq("group_id", groupdId)
     .order("date", { ascending: true })
@@ -38,19 +53,19 @@ export const fetchTransactions = async ({
 
   if (startDate) {
     query = query.or(
-      `credit_due_date.gte.${startDate},and(credit_due_date.is.null,date.gte.${startDate})`
+      `credit_due_date.gte.${formattedStartDate},and(credit_due_date.is.null,date.gte.${formattedStartDate})`
     );
   }
 
   if (endDate) {
     query = query.or(
-      `credit_due_date.lte.${endDate},and(credit_due_date.is.null,date.lte.${endDate})`
+      `credit_due_date.lte.${formattedEndDate},and(credit_due_date.is.null,date.lte.${formattedEndDate})`
     );
   }
 
-  if (category_ids && category_ids.length > 0) {
-    const withoutNull = category_ids.filter((current) => current !== null);
-    if (category_ids.includes(null)) {
+  if (categoryIdList && categoryIdList.length > 0) {
+    const withoutNull = categoryIdList.filter((current) => current !== null);
+    if (categoryIdList.includes(-1)) {
       query = query.or(
         `category_id.is.null,category_id.in.(${withoutNull.join(",")})`
       );
@@ -59,8 +74,12 @@ export const fetchTransactions = async ({
     }
   }
 
-  if (account_ids && account_ids.length > 0) {
-    query = query.in("account_id", account_ids);
+  if (accountIdList && accountIdList.length > 0) {
+    query = query.in("account_id", accountIdList);
+  }
+
+  if (search) {
+    query = query.ilike("description", `%${search}%`);
   }
 
   const { data, error, count } = await query.range(from, to);
@@ -69,8 +88,13 @@ export const fetchTransactions = async ({
     throw error;
   }
 
+  const transformedData = data?.map((transaction) => ({
+    ...transaction,
+    categoryName: transaction.categories?.name ?? null,
+  }));
+
   return {
-    data,
+    data: transformedData,
     totalCount: count || 0,
   };
 };

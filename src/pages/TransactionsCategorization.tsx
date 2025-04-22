@@ -40,7 +40,7 @@ export function TransactionsCategorization() {
           page: 1,
           pageSize: 1000, // Load a large number of transactions at once
           groupdId: selectedGroup.id.toString(),
-          category_ids: [null],
+          categoryIdList: [-1],
         });
         setTransactionsData(result.data || []);
       } catch (error) {
