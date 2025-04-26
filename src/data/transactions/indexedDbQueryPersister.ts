@@ -1,6 +1,7 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
 const INDEXED_DB_NAME = "fina";
+const CACHE_STORE_NAME = "cacheStore";
 
 export const indexedDBPersister = createAsyncStoragePersister({
   storage: {
@@ -12,8 +13,8 @@ export const indexedDBPersister = createAsyncStoragePersister({
   
           request.onsuccess = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const transaction = db.transaction('myStore', 'readonly');
-            const objectStore = transaction.objectStore('myStore');
+            const transaction = db.transaction(CACHE_STORE_NAME, 'readonly');
+            const objectStore = transaction.objectStore(CACHE_STORE_NAME);
             const getRequest = objectStore.get(key);
   
             getRequest.onsuccess = (event) => {
@@ -26,7 +27,7 @@ export const indexedDBPersister = createAsyncStoragePersister({
   
           request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            db.createObjectStore('myStore');
+            db.createObjectStore(CACHE_STORE_NAME);
           };
         });
       },
@@ -38,8 +39,8 @@ export const indexedDBPersister = createAsyncStoragePersister({
   
           request.onsuccess = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const transaction = db.transaction('myStore', 'readwrite');
-            const objectStore = transaction.objectStore('myStore');
+            const transaction = db.transaction(CACHE_STORE_NAME, 'readwrite');
+            const objectStore = transaction.objectStore(CACHE_STORE_NAME);
             const putRequest = objectStore.put(value, key);
   
             putRequest.onsuccess = () => resolve(void 0);
@@ -48,7 +49,7 @@ export const indexedDBPersister = createAsyncStoragePersister({
   
           request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            db.createObjectStore('myStore');
+            db.createObjectStore(CACHE_STORE_NAME);
           };
         });
       },
@@ -60,8 +61,8 @@ export const indexedDBPersister = createAsyncStoragePersister({
         
             request.onsuccess = (event) => {
               const db = (event.target as IDBOpenDBRequest).result;
-              const transaction = db.transaction('myStore', 'readwrite');
-              const objectStore = transaction.objectStore('myStore');
+              const transaction = db.transaction(CACHE_STORE_NAME, 'readwrite');
+              const objectStore = transaction.objectStore(CACHE_STORE_NAME);
               const deleteRequest = objectStore.delete(key);
         
               deleteRequest.onsuccess = () => resolve();
@@ -70,7 +71,7 @@ export const indexedDBPersister = createAsyncStoragePersister({
         
             request.onupgradeneeded = (event) => {
               const db = (event.target as IDBOpenDBRequest).result;
-              db.createObjectStore('myStore');
+              db.createObjectStore(CACHE_STORE_NAME);
             };
           });
       },
