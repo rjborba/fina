@@ -40,13 +40,7 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     path: "/transactions",
     label: "Transactions",
     icon: <List className="size-4" />,
-    subItems: [
-      {
-        path: "/transactions/categorization",
-        label: "Categorization",
-        icon: <Tag className="size-4" />,
-      },
-    ],
+
   },
   {
     path: "/bank-accounts",

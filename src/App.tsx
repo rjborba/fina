@@ -18,11 +18,6 @@ const Transactions = lazy(() =>
     default: module.Transactions,
   }))
 );
-const TransactionsCategorization = lazy(() =>
-  import("./pages/TransactionsCategorization").then((module) => ({
-    default: module.TransactionsCategorization,
-  }))
-);
 const Accounts = lazy(() =>
   import("./pages/Accounts/Accounts").then((module) => ({
     default: module.Accounts,
@@ -76,10 +71,6 @@ function AppContent() {
       >
         <Route path="/" element={<Home />} />
         <Route path="/transactions" element={<Transactions />} />
-        <Route
-          path="/transactions/categorization"
-          element={<TransactionsCategorization />}
-        />
         <Route path="/bank-accounts" element={<Accounts />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/imports" element={<Import />} />
