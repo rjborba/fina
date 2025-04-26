@@ -1,10 +1,12 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
+const INDEXED_DB_NAME = "fina";
+
 export const indexedDBPersister = createAsyncStoragePersister({
   storage: {
     getItem: async (key) => {
         return new Promise((resolve, reject) => {
-          const request = indexedDB.open('myDB', 1);
+          const request = indexedDB.open(INDEXED_DB_NAME, 1);
   
           request.onerror = () => reject(new Error('IndexedDB error'));
   
@@ -30,7 +32,7 @@ export const indexedDBPersister = createAsyncStoragePersister({
       },
       setItem: async (key, value) => {
         return new Promise((resolve, reject) => {
-          const request = indexedDB.open('myDB', 1);
+          const request = indexedDB.open(INDEXED_DB_NAME, 1);
   
           request.onerror = () => reject(new Error('IndexedDB error'));
   
@@ -52,7 +54,7 @@ export const indexedDBPersister = createAsyncStoragePersister({
       },
       removeItem: async (key) => {
            return new Promise((resolve, reject) => {
-            const request = indexedDB.open('myDB', 1);
+            const request = indexedDB.open(INDEXED_DB_NAME, 1);
         
             request.onerror = () => reject(new Error('IndexedDB error'));
         
