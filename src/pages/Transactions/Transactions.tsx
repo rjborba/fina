@@ -34,6 +34,8 @@ export const Transactions: FC = () => {
     data: transactionsData,
     isLoading,
     isError,
+    refetch,
+    isRefetching
   } = useTransactions({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
@@ -52,6 +54,8 @@ export const Transactions: FC = () => {
         <TransactionsHeader
           isFilterOpen={isFilterOpen}
           onFilterToggle={setIsFilterOpen}
+          onRefresh={refetch}
+          isRefetching={isRefetching}
         />
         <Separator />
         <Suspense
