@@ -7,9 +7,26 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   plugins: [react(), VitePWA({
     registerType: 'autoUpdate',
+    injectRegister: 'auto',
     devOptions: {
       enabled: true
-    }
+    },
+    manifest: {
+      "name": "Fina",
+      "short_name": "Fina",
+      "description": "A modern web application",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#000000",
+      "icons": [
+        {
+          "src": "/vite.svg",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ],
+    },
   })],
   resolve: {
     alias: {
