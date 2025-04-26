@@ -1,6 +1,6 @@
 import { FC } from "react";
 
-import { Filter, RefreshCcw } from "lucide-react";
+import { Filter, RefreshCw } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter";
 import { Button } from "../ui/button";
@@ -28,7 +28,7 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
 
       <div className="flex items-center gap-2">
         <Button variant="ghost" onClick={onRefresh} disabled={isRefetching}>
-          <RefreshCcw className={cn("h-4 w-4", {
+          <RefreshCw className={cn("h-4 w-4", {
             "animate-spin": isRefetching
           })} />
         </Button>
