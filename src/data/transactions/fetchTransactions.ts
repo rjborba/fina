@@ -13,7 +13,7 @@ export interface FetchTransactionsOptions {
   search?: string;
 }
 
-type TransactionWithCategoryName = Tables<"transactions"> & {
+export type TransactionWithCategoryName = Tables<"transactions"> & {
   categoryName: string | null;
 };
 

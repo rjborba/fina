@@ -5,13 +5,24 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import "./index.css";
+import { indexedDBPersister } from "./data/transactions/indexedDbQueryPersister.ts";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
+      staleTime: 0, // 0 minutes
+      gcTime: 1000 * 60 * 5, // 5 minutes
     },
   },
+});
+
+// Setup query persistence
+persistQueryClient({
+  queryClient,
+  persister: indexedDBPersister,
+  maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
 });
 
 createRoot(document.getElementById("root")!).render(
