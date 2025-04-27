@@ -14,10 +14,8 @@
     "moduleDetection": "force",
     "noEmit": true,
 
-    /* Linting */
+    /* TypeScript Compiler Options */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },

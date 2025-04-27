@@ -7,13 +7,16 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "supabase:gen-types": "supabase login && supabase gen types typescript --project-id krgwgeabxeyvejwscoer > ./src/database.types.ts",
-    "lint": "eslint .",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format --check .",
     "preview": "vite preview",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+      "biome format --write",
+      "biome lint"
     ]
   },
   "dependencies": {
@@ -65,6 +68,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@eslint/js": "^9.17.0",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.3.18",

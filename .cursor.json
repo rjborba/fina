@@ -1,0 +1,22 @@
+{
+    "packageManager": "pnpm",
+    "formatOnSave": true,
+    "defaultFormatter": "biome",
+    "typescript": {
+        "preferences": {
+            "importModuleSpecifier": "non-relative"
+        }
+    },
+    "search": {
+        "exclude": [
+            "node_modules",
+            "dist",
+            ".git"
+        ]
+    },
+    "editor": {
+        "tabSize": 2,
+        "insertSpaces": true,
+        "wordWrap": "on"
+    }
+}
