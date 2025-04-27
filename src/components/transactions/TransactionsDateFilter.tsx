@@ -33,6 +33,16 @@ export const TransactionsDateFilter: FC = () => {
     to: endDate,
   });
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [firstVisibleMonth, setFirstVisibleMonth] = useState<Date | undefined>(pendingDate?.from);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      // Wait for the popover to close before setting the first visible month
+      setTimeout(() => {
+        setFirstVisibleMonth(pendingDate?.from);
+      }, 200);
+    }
+  }, [isPopoverOpen]);
 
   const isFullMonth = checkIfFullMonth(startDate, endDate);
   const startDayjs = dayjs(startDate)
@@ -65,11 +75,8 @@ export const TransactionsDateFilter: FC = () => {
 
   const setCurrentMonth = () => {
     const today = dayjs();
-    setFilterProps((old: TransactionFilterType) => ({
-      ...old,
-      startDate: today.startOf("month").toDate(),
-      endDate: today.endOf("month").toDate(),
-    }));
+    setPendingDate(old => ({ ...old, from: today.startOf("month").toDate(), to: today.endOf("month").toDate() }))
+    setFirstVisibleMonth(today.startOf("month").toDate());
   };
 
 
@@ -147,6 +154,8 @@ export const TransactionsDateFilter: FC = () => {
           <div className="flex flex-col">
             <Calendar
               initialFocus
+              month={firstVisibleMonth}
+              onMonthChange={setFirstVisibleMonth}
               mode="range"
               defaultMonth={pendingDate?.from}
               selected={pendingDate}
