@@ -15,48 +15,63 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { FC, useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
+
+function checkIfFullMonth(startDate: Date, endDate: Date) {
+  const startDayjs = dayjs(startDate)
+  const endDayjs = dayjs(endDate)
+
+  return (
+    (startDayjs.date() === 1 &&
+      endDayjs.date() === startDayjs.endOf("month").date()
+    )
+  )
+}
 export const TransactionsDateFilter: FC = () => {
-  const [filterProps, setFilterProps] = useAtom(transactionFilterAtom);
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: filterProps.startDate,
-    to: filterProps.endDate,
+  const [{ startDate, endDate }, setFilterProps] = useAtom(transactionFilterAtom);
+  const [pendingDate, setPendingDate] = useState<DateRange | undefined>({
+    from: startDate,
+    to: endDate,
   });
-  const [pendingDate, setPendingDate] = useState<DateRange | undefined>(date);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const isFullMonth =
-    !date ||
-    (dayjs(date?.from).date() === 1 &&
-      dayjs(date?.to).date() === dayjs(date?.to).endOf("month").date());
+  const isFullMonth = checkIfFullMonth(startDate, endDate);
+  const startDayjs = dayjs(startDate)
+  const endDayjs = dayjs(endDate)
 
+  function setFilterPropsDates(startDate: Date, endDate: Date) {
+    setFilterProps((old: TransactionFilterType) => ({
+      ...old,
+      startDate: startDate,
+      endDate: endDate,
+    }));
+  }
+
+  // Keeps the pending date in sync with the filter props
   useEffect(() => {
-    setFilterProps((old: TransactionFilterType) => {
-      if (!date) {
-        return old;
-      }
-
-      return { ...old, startDate: date.from!, endDate: date.to! };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+    setFilterPropsDates(startDate, endDate);
+  }, [startDate, endDate]);
 
   const handleConfirm = () => {
-    setDate(pendingDate);
-    setIsOpen(false);
+    if (pendingDate?.from && pendingDate?.to) {
+      setFilterPropsDates(pendingDate.from!, pendingDate.to!);
+    }
+    setIsPopoverOpen(false);
   };
 
   const handleCancel = () => {
-    setPendingDate(date);
-    setIsOpen(false);
+    setFilterPropsDates(startDate, endDate);
+    setIsPopoverOpen(false);
   };
 
   const setCurrentMonth = () => {
     const today = dayjs();
-    setDate({
-      from: today.startOf("month").toDate(),
-      to: today.endOf("month").toDate(),
-    });
+    setFilterProps((old: TransactionFilterType) => ({
+      ...old,
+      startDate: today.startOf("month").toDate(),
+      endDate: today.endOf("month").toDate(),
+    }));
   };
+
 
   return (
     <div className="flex items-center gap-2">
@@ -65,22 +80,24 @@ export const TransactionsDateFilter: FC = () => {
         size="icon"
         onClick={() => {
           if (isFullMonth) {
-            const baseDate = dayjs(date?.from).subtract(1, "month");
-            setDate({
-              from: baseDate.startOf("month").toDate(),
-              to: baseDate.endOf("month").toDate(),
-            });
+            const baseDate = dayjs(startDate).subtract(1, "month");
+            setFilterProps((old: TransactionFilterType) => ({
+              ...old,
+              startDate: baseDate.startOf("month").toDate(),
+              endDate: baseDate.endOf("month").toDate(),
+            }));
           } else {
-            setDate({
-              from: dayjs(date?.from).subtract(1, "month").toDate(),
-              to: dayjs(date?.to).subtract(1, "month").toDate(),
-            });
+            setFilterProps((old: TransactionFilterType) => ({
+              ...old,
+              startDate: dayjs(startDate).subtract(1, "month").toDate(),
+              endDate: dayjs(endDate).subtract(1, "month").toDate(),
+            }));
           }
         }}
       >
         <ChevronLeftIcon className="size-2" />
       </Button>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" className="w-auto">
             <div className="flex items-center justify-center flex-col gap-0">
@@ -88,29 +105,29 @@ export const TransactionsDateFilter: FC = () => {
                 <div className="flex gap-2 items-center">
                   <div className="flex items-center justify-center flex-col gap-0">
                     <div className="text-sm">
-                      {dayjs(date?.from).format("DD MMMM")}{" "}
+                      {startDayjs.format("DD MMMM")}{" "}
                     </div>
                     <div className="text-xs">
-                      {dayjs(date?.from).format("YYYY")}
+                      {startDayjs.format("YYYY")}
                     </div>
                   </div>
                   <div>-</div>
                   <div className="flex items-center justify-center flex-col gap-0">
                     <div className="text-sm">
-                      {dayjs(date?.to).format("DD MMMM")}
+                      {endDayjs.format("DD MMMM")}
                     </div>
                     <div className="text-xs">
-                      {dayjs(date?.to).format("YYYY")}
+                      {endDayjs.format("YYYY")}
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center flex-col gap-0">
                   <div className="text-sm">
-                    {dayjs(date?.to).format("MMMM")}
+                    {endDayjs.format("MMMM")}
                   </div>
                   <div className="text-xs">
-                    {dayjs(date?.to).format("YYYY")}
+                    {endDayjs.format("YYYY")}
                   </div>
                 </div>
               )}
@@ -141,9 +158,7 @@ export const TransactionsDateFilter: FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setCurrentMonth();
-                  }}
+                  onClick={setCurrentMonth}
                   className="text-xs"
                 >
                   Current Month
@@ -167,16 +182,10 @@ export const TransactionsDateFilter: FC = () => {
         size="icon"
         onClick={() => {
           if (isFullMonth) {
-            const baseDate = dayjs(date?.from).add(1, "month");
-            setDate({
-              from: baseDate.startOf("month").toDate(),
-              to: baseDate.endOf("month").toDate(),
-            });
+            const baseDate = startDayjs.add(1, "month");
+            setFilterPropsDates(baseDate.startOf("month").toDate(), baseDate.endOf("month").toDate());
           } else {
-            setDate({
-              from: dayjs(date?.from).add(1, "month").toDate(),
-              to: dayjs(date?.to).add(1, "month").toDate(),
-            });
+            setFilterPropsDates(startDayjs.add(1, "month").toDate(), endDayjs.add(1, "month").toDate());
           }
         }}
       >
