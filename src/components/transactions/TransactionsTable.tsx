@@ -1,22 +1,23 @@
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useCategories } from "@/data/categories/useCategories";
-import { EditableSelect } from "@/data/transactions/EditableSelectCell";
-import { EditableText } from "@/data/transactions/EditableTextCell";
-import { Transaction } from "@/data/transactions/Transaction";
-import { cn } from "@/lib/utils";
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
+import { useCategories } from '@/data/categories/useCategories';
+import { EditableSelect } from '@/data/transactions/EditableSelectCell';
+import { EditableText } from '@/data/transactions/EditableTextCell';
+import type { Transaction } from '@/data/transactions/Transaction';
+import { cn } from '@/lib/utils';
 import {
-  ColumnDef,
+  type ColumnDef,
   flexRender,
   getCoreRowModel,
-  Row,
+  type Row,
   useReactTable,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import dayjs from "dayjs";
-import { Frown, Trash } from "lucide-react";
-import { FC, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+} from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import dayjs from 'dayjs';
+import { Frown, Trash } from 'lucide-react';
+import type { FC } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import {
   Table,
   TableBody,
@@ -24,21 +25,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { TransactionDetailsModal } from "./TransactionDetailsModal";
-import { Skeleton } from "../ui/skeleton";
+} from '@/components/ui/table';
+import { TransactionDetailsModal } from './TransactionDetailsModal';
+import { Skeleton } from '../ui/skeleton';
 
 export interface TransactionsTableProps {
-  data?: Transaction["Row"][] | null;
+  data?: Transaction['Row'][] | null;
   totalCount: number;
   pageIndex: number;
   pageSize: number;
   isLoading: boolean;
   isError: boolean;
-  onUpdateTransaction: (
-    id: number,
-    transaction: Partial<Transaction["Row"]>
-  ) => Promise<void>;
+  onUpdateTransaction: (id: number, transaction: Partial<Transaction['Row']>) => Promise<void>;
   onDeleteTransaction: (id: number) => Promise<void>;
 }
 
@@ -68,60 +66,63 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     );
   }, [categoriesData]);
 
-  const columns = useMemo<ColumnDef<Transaction["Row"]>[]>(
+  const columns = useMemo<ColumnDef<Transaction['Row']>[]>(
     () => [
       {
-        accessorKey: "date",
+        accessorKey: 'date',
         cell: ({ row }) => {
-          return <div>{dayjs(row.original.date).format("DD/MM/YYYY")}</div>;
+          return <div>{dayjs(row.original.date).format('DD/MM/YYYY')}</div>;
         },
-        header: "Date",
+        header: 'Date',
       },
       {
-        accessorKey: "credit_due_date",
+        accessorKey: 'credit_due_date',
         cell: ({ row }) => {
           if (!row.original.credit_due_date) {
-            return "-";
+            return '-';
           }
 
-          return (
-            <div>
-              {dayjs(row.original.credit_due_date).format("DD/MM/YYYY")}
-            </div>
-          );
+          return <div>{dayjs(row.original.credit_due_date).format('DD/MM/YYYY')}</div>;
         },
-        header: "Credit Due Date",
+        header: 'Credit Due Date',
       },
       {
-        accessorKey: "description",
-        header: "Description",
+        accessorKey: 'description',
+        header: 'Description',
       },
       {
-        accessorKey: "installment",
+        accessorKey: 'installment',
         cell: ({ row }) => {
           if (!row.original.installment_total) {
-            return "-";
+            return '-';
           }
 
           return (
             <div>{`${row.original.installment_current}/${row.original.installment_total}`}</div>
           );
         },
-        header: "Installment",
+        header: 'Installment',
       },
       {
-        accessorKey: "value",
-        header: "Value",
+        accessorKey: 'value',
+        header: 'Value',
       },
       {
-        accessorKey: "categoryName",
-        header: "Category",
+        accessorKey: 'categoryName',
+        header: 'Category',
         cell: ({ row }) => {
           return (
-            <div
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
+              tabIndex={0}
             >
               <EditableSelect
                 value={row.original.category_id}
@@ -133,34 +134,41 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                   });
                 }}
               />
-            </div>
+            </button>
           );
         },
       },
       {
-        accessorKey: "observation",
+        accessorKey: 'observation',
         cell: ({ row }) => {
           return (
-            <div
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
+              tabIndex={0}
             >
               <EditableText
-                value={row.original.observation || ""}
+                value={row.original.observation || ''}
                 onChange={(value) => {
                   return onUpdateTransaction(row.original.id, {
                     observation: value,
                   });
                 }}
               />
-            </div>
+            </button>
           );
         },
-        header: "Observation",
+        header: 'Observation',
       },
       {
-        header: "Actions",
+        header: 'Actions',
         cell: ({ row }) => {
           return (
             <ConfirmationDialog
@@ -201,19 +209,15 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     estimateSize: () => 33,
     getScrollElement: () => tableContainerRef.current,
     measureElement:
-      typeof window !== "undefined" &&
-      navigator.userAgent.indexOf("Firefox") === -1
+      typeof window !== 'undefined' && navigator.userAgent.indexOf('Firefox') === -1
         ? (element) => element?.getBoundingClientRect().height
         : undefined,
     overscan: 5,
   });
 
-  const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] =
-    useState(false);
+  const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] = useState(false);
 
-  const [selectedTransactionIndex, setSelectedTransactionIndex] = useState<
-    number | null
-  >(null);
+  const [selectedTransactionIndex, setSelectedTransactionIndex] = useState<number | null>(null);
 
   const RenderTable = () => {
     return (
@@ -225,49 +229,41 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                 <TableHead key={header.id} style={{ width: header.getSize() }}>
                   {header.isPlaceholder
                     ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                    : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
               ))}
             </TableRow>
           ))}
         </TableHeader>
         <TableBody className={`h-[${rowVirtualizer.getTotalSize()}px]`}>
-          {rowVirtualizer
-            .getVirtualItems()
-            .map((virtualRow, virtualRowIndex) => {
-              const row = rows[virtualRow.index] as Row<Transaction["Row"]>;
+          {rowVirtualizer.getVirtualItems().map((virtualRow, virtualRowIndex) => {
+            const row = rows[virtualRow.index] as Row<Transaction['Row']>;
 
-              return (
-                <TableRow
-                  key={row.id}
-                  className="cursor-pointer"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${
-                      virtualRow.start - virtualRowIndex * virtualRow.size
-                    }px)`,
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      onClick={() => {
-                        setSelectedTransactionIndex(virtualRow.index);
-                        setIsTransactionsDetailsModalOpen(true);
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })}
+            return (
+              <TableRow
+                key={row.id}
+                className="cursor-pointer"
+                style={{
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${
+                    virtualRow.start - virtualRowIndex * virtualRow.size
+                  }px)`,
+                }}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    onClick={() => {
+                      setSelectedTransactionIndex(virtualRow.index);
+                      setIsTransactionsDetailsModalOpen(true);
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     );
@@ -286,6 +282,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     return (
       <div className="flex flex-col gap-4">
         {Array.from({ length: 5 }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: Immutable data
           <div key={index} className="flex gap-2">
             <Skeleton className="w-1/12 h-12" />
             <Skeleton className="w-1/12 h-12" />
@@ -323,11 +320,11 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
 
   return (
     <div className="flex relative" ref={tableContainerRef}>
-      <div className={cn("p-4 flex-1 transition-all duration-300")}>
+      <div className={cn('p-4 flex-1 transition-all duration-300')}>
         {RenderContent()}
-        {selectedTransactionIndex && (
+        {selectedTransactionIndex && data && (
           <TransactionDetailsModal
-            transaction={data![selectedTransactionIndex]}
+            transaction={data[selectedTransactionIndex]}
             open={isTransactionsDetailsModalOpen}
             onOpenChange={setIsTransactionsDetailsModalOpen}
           />

@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router";
-import { Button } from "./ui/button";
+import { Link, useLocation, useNavigate } from 'react-router';
+import { Button } from './ui/button';
 import {
   Home,
   List,
@@ -11,11 +11,11 @@ import {
   Import,
   Settings,
   ChevronDown,
-} from "lucide-react";
-import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+} from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +23,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { UserProfile } from "./UserProfile";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+} from '@/components/ui/dropdown-menu';
+import { UserProfile } from './UserProfile';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface NavigationItem {
   path: string;
@@ -35,44 +35,43 @@ interface NavigationItem {
 }
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
-  { path: "/", label: "Dashboard", icon: <Home className="size-4" /> },
+  { path: '/', label: 'Dashboard', icon: <Home className="size-4" /> },
   {
-    path: "/transactions",
-    label: "Transactions",
+    path: '/transactions',
+    label: 'Transactions',
     icon: <List className="size-4" />,
-
   },
   {
-    path: "/bank-accounts",
-    label: "Bank Accounts",
+    path: '/bank-accounts',
+    label: 'Bank Accounts',
     icon: <Banknote className="size-4" />,
   },
   {
-    path: "/categories",
-    label: "Categories",
+    path: '/categories',
+    label: 'Categories',
     icon: <Tag className="size-4" />,
   },
   {
-    path: "/imports",
-    label: "Imports",
+    path: '/imports',
+    label: 'Imports',
     icon: <Import className="size-4" />,
   },
   {
-    path: "/group-settings",
-    label: "Group Settings",
+    path: '/group-settings',
+    label: 'Group Settings',
     icon: <Settings className="size-4" />,
   },
 ];
 
 const getGroupInitials = (name: string | null | undefined) => {
-  if (!name) return "";
+  if (!name) return '';
   return name
     .toUpperCase()
-    .split(" ")
-    .filter((word) => word !== "E" && word !== "AND")
+    .split(' ')
+    .filter((word) => word !== 'E' && word !== 'AND')
     .slice(0, 2)
     .map((word) => word.charAt(0))
-    .join("");
+    .join('');
 };
 
 export function Sidebar() {
@@ -98,24 +97,19 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate("/login");
+    navigate('/login');
   };
 
   return (
     <div
       className={cn(
-        "flex flex-col h-screen border-r bg-background transition-all duration-300 sticky top-0",
-        isSidebarCollapsed ? "w-16" : "w-64"
+        'flex flex-col h-screen border-r bg-background transition-all duration-300 sticky top-0',
+        isSidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
       <div className="flex h-14 items-center border-b px-4 justify-between">
         {!isSidebarCollapsed && <h1 className="font-semibold">Fina</h1>}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSidebar}
-          className="h-8 w-8"
-        >
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-8 w-8">
           {isSidebarCollapsed ? (
             <ChevronRight className="size-4" />
           ) : (
@@ -140,7 +134,7 @@ export function Sidebar() {
                   </Avatar>
                   <div
                     className={cn({
-                      "text-sm font-medium truncate": true,
+                      'text-sm font-medium truncate': true,
                       hidden: isSidebarCollapsed,
                     })}
                   >
@@ -178,11 +172,11 @@ export function Sidebar() {
         {navigationItems.map(({ path, label, icon, isActive, subItems }) => (
           <div key={path} className="space-y-1">
             <Button
-              variant={isActive ? "secondary" : "ghost"}
+              variant={isActive ? 'secondary' : 'ghost'}
               className={cn(
-                "w-full justify-start",
-                isSidebarCollapsed && "justify-center",
-                isActive && "bg-muted hover:bg-muted"
+                'w-full justify-start',
+                isSidebarCollapsed && 'justify-center',
+                isActive && 'bg-muted hover:bg-muted'
               )}
               asChild
             >
@@ -192,20 +186,15 @@ export function Sidebar() {
               </Link>
             </Button>
             {subItems && (
-              <div
-                className={cn(
-                  "space-y-1",
-                  isSidebarCollapsed ? "ml-1" : "ml-6"
-                )}
-              >
+              <div className={cn('space-y-1', isSidebarCollapsed ? 'ml-1' : 'ml-6')}>
                 {subItems.map((subItem) => (
                   <Button
                     key={subItem.path}
-                    variant={subItem.isActive ? "secondary" : "ghost"}
+                    variant={subItem.isActive ? 'secondary' : 'ghost'}
                     className={cn(
-                      "w-full justify-start",
-                      isSidebarCollapsed && "justify-center",
-                      subItem.isActive && "bg-muted hover:bg-muted"
+                      'w-full justify-start',
+                      isSidebarCollapsed && 'justify-center',
+                      subItem.isActive && 'bg-muted hover:bg-muted'
                     )}
                     asChild
                   >
@@ -229,12 +218,7 @@ export function Sidebar() {
       <div className="border-t p-2 space-y-2">
         <DropdownMenu>
           <DropdownMenuTrigger className="w-full">
-            {user && (
-              <UserProfile
-                user={user}
-                isSidebarCollapsed={isSidebarCollapsed}
-              />
-            )}
+            {user && <UserProfile user={user} isSidebarCollapsed={isSidebarCollapsed} />}
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel>Account</DropdownMenuLabel>

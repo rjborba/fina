@@ -1,6 +1,6 @@
-import supabase from "@/supabaseClient";
-import { Tables } from "@/database.types";
-import dayjs from "dayjs";
+import supabase from '@/supabaseClient';
+import type { Tables } from '@/database.types';
+import dayjs from 'dayjs';
 
 export interface FetchTransactionsOptions {
   page: number;
@@ -13,7 +13,7 @@ export interface FetchTransactionsOptions {
   search?: string;
 }
 
-export type TransactionWithCategoryName = Tables<"transactions"> & {
+export type TransactionWithCategoryName = Tables<'transactions'> & {
   categoryName: string | null;
 };
 
@@ -34,22 +34,22 @@ export const fetchTransactions = async ({
 }: FetchTransactionsOptions): Promise<FetchTransactionsResult> => {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const formattedStartDate = dayjs(startDate).format("YYYY-MM-DD");
-  const formattedEndDate = dayjs(endDate).format("YYYY-MM-DD");
+  const formattedStartDate = dayjs(startDate).format('YYYY-MM-DD');
+  const formattedEndDate = dayjs(endDate).format('YYYY-MM-DD');
 
   let query = supabase
-    .from("transactions")
+    .from('transactions')
     .select(
       `
       *,
       categories!left(name)
     `,
-      { count: "exact" }
+      { count: 'exact' }
     )
-    .eq("removed", false)
-    .eq("group_id", groupdId)
-    .order("date", { ascending: true })
-    .order("id", { ascending: true });
+    .eq('removed', false)
+    .eq('group_id', groupdId)
+    .order('date', { ascending: true })
+    .order('id', { ascending: true });
 
   if (startDate) {
     query = query.or(
@@ -66,20 +66,18 @@ export const fetchTransactions = async ({
   if (categoryIdList && categoryIdList.length > 0) {
     const withoutNull = categoryIdList.filter((current) => current !== null);
     if (categoryIdList.includes(-1)) {
-      query = query.or(
-        `category_id.is.null,category_id.in.(${withoutNull.join(",")})`
-      );
+      query = query.or(`category_id.is.null,category_id.in.(${withoutNull.join(',')})`);
     } else {
-      query = query.in("category_id", withoutNull);
+      query = query.in('category_id', withoutNull);
     }
   }
 
   if (accountIdList && accountIdList.length > 0) {
-    query = query.in("account_id", accountIdList);
+    query = query.in('account_id', accountIdList);
   }
 
   if (search) {
-    query = query.ilike("description", `%${search}%`);
+    query = query.ilike('description', `%${search}%`);
   }
 
   const { data, error, count } = await query.range(from, to);

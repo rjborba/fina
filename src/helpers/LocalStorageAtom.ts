@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom } from 'jotai';
 
 export const AtomWithLocalStorage = <T>(key: string, initialValue: T) => {
   const getInitialValue = () => {
@@ -12,8 +12,7 @@ export const AtomWithLocalStorage = <T>(key: string, initialValue: T) => {
   const derivedAtom = atom(
     (get) => get(baseAtom),
     (get, set, update) => {
-      const nextValue =
-        typeof update === "function" ? update(get(baseAtom)) : update;
+      const nextValue = typeof update === 'function' ? update(get(baseAtom)) : update;
       set(baseAtom, nextValue);
       localStorage.setItem(key, JSON.stringify(nextValue));
     }

@@ -1,6 +1,6 @@
 // import { Input } from "@/components/ui/input";
-import clsx from "clsx";
-import { FC, useEffect, useLayoutEffect, useState } from "react";
+import clsx from 'clsx';
+import { type FC, useEffect, useLayoutEffect, useState } from 'react';
 
 const literalRegex = /^".+"$/;
 
@@ -8,13 +8,11 @@ const Chip: FC<{ text: string }> = ({ text }) => {
   return <div className="p-1 bg-blue-300 rounded-md chip">{text}</div>;
 };
 
-export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
-  rawFieldsList,
-}) => {
-  const [text, setText] = useState("");
+export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({ rawFieldsList }) => {
+  const [text, setText] = useState('');
   const [chips, setChips] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const operatorsOptions = ["+"];
+  const operatorsOptions = ['+'];
   const options = [...operatorsOptions, ...rawFieldsList];
   const [chipsWrapperWidth, setChipsWrapperWidth] = useState(0);
 
@@ -22,11 +20,13 @@ export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
     option.toLowerCase().startsWith(text.toLowerCase())
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: this should be fine here
   useLayoutEffect(() => {
-    const chipsWrapper = document.getElementById("chipsWrapper");
+    const chipsWrapper = document.getElementById('chipsWrapper');
     setChipsWrapperWidth(chipsWrapper?.getBoundingClientRect().width || 0);
   }, [chips]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: this should be fine here
   useEffect(() => {
     setSelectedIndex(-1);
   }, [text]);
@@ -40,41 +40,43 @@ export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
           event.stopPropagation();
 
           switch (event.key) {
-            case "ArrowDown":
+            case 'ArrowDown':
               if (selectedIndex >= filteredOptions.length - 1) {
                 break;
               }
 
               setSelectedIndex((old) => old + 1);
               break;
-            case "ArrowUp":
+            case 'ArrowUp':
               if (selectedIndex - 1 < -1) {
                 break;
               }
               setSelectedIndex((old) => old - 1);
 
               break;
-            case "Tab":
-            case "Enter":
+            case 'Tab':
+            case 'Enter':
               event.preventDefault();
               if (literalRegex.test(text)) {
                 setChips((old) => [...old, text]);
-                setText("");
+                setText('');
                 return;
-              } else if (selectedIndex === -1 || !options) {
-                return;
-              } else {
-                setChips((old) => [...old, filteredOptions[selectedIndex]]);
-                setText("");
               }
+
+              if (selectedIndex === -1 || !options) {
+                return;
+              }
+
+              setChips((old) => [...old, filteredOptions[selectedIndex]]);
+              setText('');
 
               break;
 
-            case "Esc":
+            case 'Esc':
               setSelectedIndex(-1);
               break;
 
-            case "Backspace":
+            case 'Backspace':
               if (chips.length > 0 && text.length === 0) {
                 event.preventDefault();
                 setChips((old) => {
@@ -87,29 +89,27 @@ export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
               break;
           }
         }}
-        className={`pr-2 h-10 outline-none w-full peer`}
+        className={'pr-2 h-10 outline-none w-full peer'}
         style={{ paddingLeft: chipsWrapperWidth + 8 }}
       />
       <div id="chipsWrapper" className="absolute flex gap-1">
         {chips.map((chip, index) => {
-          return <Chip key={index} text={chip} />;
+          // biome-ignore lint/suspicious/noArrayIndexKey: this should be fine here
+          return <Chip key={`${chip}-${index}`} text={chip} />;
         })}
       </div>
       {filteredOptions.length ? (
         <div
           className="px-1 min-w-[100px] bg-white border border-1 border-black z-50 hidden peer-focus:block"
           style={{
-            position: "absolute",
+            position: 'absolute',
             left: chipsWrapperWidth + 8,
-            top: "calc(50% + 20px)",
+            top: 'calc(50% + 20px)',
           }}
         >
           <ul>
             {filteredOptions.map((option, index) => (
-              <li
-                key={option}
-                className={clsx({ "bg-red-50": index === selectedIndex })}
-              >
+              <li key={option} className={clsx({ 'bg-red-50': index === selectedIndex })}>
                 {option}
               </li>
             ))}

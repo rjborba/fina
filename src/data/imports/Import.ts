@@ -1,3 +1,3 @@
-import { Database } from "@/database.types";
+import type { Database } from '@/database.types';
 
-export type Import = Database["public"]["Tables"]["imports"];
+export type Import = Database['public']['Tables']['imports'];

@@ -1,41 +1,33 @@
-import dayjs from "dayjs";
-import { useAtom } from "jotai";
-import Papa, { ParseResult } from "papaparse";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import dayjs from 'dayjs';
+import { useAtom } from 'jotai';
+import Papa, { type ParseResult } from 'papaparse';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useImportsMutation } from "@/data/imports/useImportsMutation";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
-import { ImportAtom } from "@/preview/FieldMapAtom";
-import { FieldMapTable } from "@/preview/FIeldMapTable";
-import { rawEntriesToTransactions } from "@/preview/rawEntriesToTransactions";
-import { RawDataTable } from "@/RawDataTable";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ImportList } from "./ImportList";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+} from '@/components/ui/select';
+import { useBankAccounts } from '@/data/bankAccounts/useBankAccounts';
+import { useImportsMutation } from '@/data/imports/useImportsMutation';
+import { useTransactionMutation } from '@/data/transactions/useTransactionsMutation';
+import { ImportAtom } from '@/preview/FieldMapAtom';
+import { FieldMapTable } from '@/preview/FIeldMapTable';
+import { rawEntriesToTransactions } from '@/preview/rawEntriesToTransactions';
+import { RawDataTable } from '@/RawDataTable';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ImportList } from './ImportList';
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
 
 const currentDate = dayjs();
 const year = currentDate.year();
 const month = currentDate.month();
 
 //  TODO improve
-const yearOptions = [
-  year - 3,
-  year - 2,
-  year - 1,
-  year,
-  year + 1,
-  year + 2,
-  year + 3,
-];
+const yearOptions = [year - 3, year - 2, year - 1, year, year + 1, year + 2, year + 3];
 
 // TODO: This needs to be refactored
 export const Import = () => {
@@ -55,7 +47,7 @@ export const Import = () => {
   // TODO: Do it outside render
   const [selectedYear, setSelectedYear] = useState<string>(year.toString());
   const [selectedMonth, setSelectedMonth] = useState<string>(month.toString());
-  const isAccountCredit = selectedAccount?.type === "credit";
+  const isAccountCredit = selectedAccount?.type === 'credit';
 
   const getCreditDueDate = () => {
     let d = dayjs();
@@ -77,7 +69,7 @@ export const Import = () => {
           onSubmit={async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target as HTMLFormElement);
-            const csvFile = formData.get("csvFile") as File;
+            const csvFile = formData.get('csvFile') as File;
 
             const content = await csvFile.text();
 
@@ -87,7 +79,7 @@ export const Import = () => {
             });
 
             if (!parsed.data?.length) {
-              throw new Error("No data found in the CSV file");
+              throw new Error('No data found in the CSV file');
             }
 
             setImportedEntries(parsed);
@@ -174,16 +166,14 @@ export const Import = () => {
           </>
         ) : null}
 
-        <FieldMapTable
-          rawData={importedEntries?.data}
-          rawFields={importedEntries?.meta.fields}
-        />
+        <FieldMapTable rawData={importedEntries?.data} rawFields={importedEntries?.meta.fields} />
 
         <Button
           className="mt-4"
           onClick={async () => {
             // TODO: Use Edge Supabase Edge function to make it in a single transaction
             const res = await addImport({ fileName: String(Date.now()) });
+            // biome-ignore lint/style/noNonNullAssertion: TODO we need to handle this better
             const importId = res?.data![0]?.id;
 
             const data = rawEntriesToTransactions({
@@ -191,9 +181,7 @@ export const Import = () => {
               importFieldMap: importAtom.fieldMap,
               accountId: importAtom.accountId,
               invertValue: importAtom.parserConfig.invertValueField,
-              creditDueDate: isAccountCredit
-                ? getCreditDueDate().toISOString()
-                : undefined,
+              creditDueDate: isAccountCredit ? getCreditDueDate().toISOString() : undefined,
               importId,
             });
 

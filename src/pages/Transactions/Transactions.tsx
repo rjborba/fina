@@ -1,25 +1,23 @@
-import { FC, useState, Suspense, lazy } from "react";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useTransactions } from "@/data/transactions/useTransactions";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
-import { Separator } from "@/components/ui/separator";
-import { TransactionsFilter } from "@/components/transactions/TransactionsFilter";
-import { TransactionsHeader } from "@/components/transactions/TransactionsHeader";
-import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom";
-import { useAtom } from "jotai";
-import { TransactionsTableProps } from "@/components/transactions/TransactionsTable";
+import { type FC, useState, Suspense, lazy } from 'react';
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
+import { useTransactions } from '@/data/transactions/useTransactions';
+import { useTransactionMutation } from '@/data/transactions/useTransactionsMutation';
+import { Separator } from '@/components/ui/separator';
+import { TransactionsFilter } from '@/components/transactions/TransactionsFilter';
+import { TransactionsHeader } from '@/components/transactions/TransactionsHeader';
+import { transactionFilterAtom } from '@/data/transactions/TransactionFilterAtom';
+import { useAtom } from 'jotai';
+import type { TransactionsTableProps } from '@/components/transactions/TransactionsTable';
 
 const TransactionsTable = lazy(() =>
-  import("@/components/transactions/TransactionsTable").then((module) => ({
+  import('@/components/transactions/TransactionsTable').then((module) => ({
     default: module.default as FC<TransactionsTableProps>,
   }))
 );
 
 export const Transactions: FC = () => {
-  const {
-    updateMutation: updateTransaction,
-    removeMutation: removeTransaction,
-  } = useTransactionMutation();
+  const { updateMutation: updateTransaction, removeMutation: removeTransaction } =
+    useTransactionMutation();
 
   const { selectedGroup } = useActiveGroup();
 
@@ -35,11 +33,11 @@ export const Transactions: FC = () => {
     isLoading,
     isError,
     refetch,
-    isRefetching
+    isRefetching,
   } = useTransactions({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
-    groupdId: selectedGroup?.id?.toString() || "",
+    groupdId: selectedGroup?.id?.toString() || '',
     startDate: filterProps.startDate,
     endDate: filterProps.endDate,
     search: filterProps.partialDescription || undefined,

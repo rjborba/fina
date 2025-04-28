@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { useImports } from "@/data/imports/useImports";
-import { useImportsMutation } from "@/data/imports/useImportsMutation";
-import { FC } from "react";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+import { Button } from '@/components/ui/button';
+import { useImports } from '@/data/imports/useImports';
+import { useImportsMutation } from '@/data/imports/useImportsMutation';
+import type { FC } from 'react';
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
 export const ImportList: FC = () => {
   const { selectedGroup } = useActiveGroup();
   const { data: importsData } = useImports({

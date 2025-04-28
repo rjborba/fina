@@ -1,29 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Group } from "@/data/groups/Groups";
-import { useGroups } from "@/data/groups/useGroups";
-import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-} from "react";
+import type { Group } from '@/data/groups/Groups';
+import { useGroups } from '@/data/groups/useGroups';
+import { createContext, useContext, useState, type ReactNode, useEffect } from 'react';
 
 interface ActiveGroupContextType {
-  selectedGroup: Group["Row"] | undefined;
-  groups: Group["Row"][];
-  setSelectedGroup: (group: Group["Row"]) => void;
+  selectedGroup: Group['Row'] | undefined;
+  groups: Group['Row'][];
+  setSelectedGroup: (group: Group['Row']) => void;
 }
 
-const ActiveGroupContext = createContext<ActiveGroupContextType | undefined>(
-  undefined
-);
+const ActiveGroupContext = createContext<ActiveGroupContextType | undefined>(undefined);
 
 export function ActiveGroupProvider({ children }: { children: ReactNode }) {
   const { data: groups } = useGroups();
-  const [selectedGroup, setSelectedGroup] = useState<Group["Row"] | undefined>(
-    undefined
-  );
+  const [selectedGroup, setSelectedGroup] = useState<Group['Row'] | undefined>(undefined);
 
   useEffect(() => {
     if (!groups) {
@@ -40,9 +30,7 @@ export function ActiveGroupProvider({ children }: { children: ReactNode }) {
   }, [groups, selectedGroup]);
 
   return (
-    <ActiveGroupContext.Provider
-      value={{ selectedGroup, groups: groups || [], setSelectedGroup }}
-    >
+    <ActiveGroupContext.Provider value={{ selectedGroup, groups: groups || [], setSelectedGroup }}>
       {children}
     </ActiveGroupContext.Provider>
   );
@@ -51,9 +39,7 @@ export function ActiveGroupProvider({ children }: { children: ReactNode }) {
 export function useActiveGroup() {
   const context = useContext(ActiveGroupContext);
   if (context === undefined) {
-    throw new Error(
-      "useActiveGroup must be used within an ActiveGroupProvider"
-    );
+    throw new Error('useActiveGroup must be used within an ActiveGroupProvider');
   }
   return context;
 }

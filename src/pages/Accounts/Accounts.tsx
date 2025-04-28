@@ -1,16 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useAccountsMutation } from "@/data/bankAccounts/useBankAccountsMutation";
-import { FC, useEffect, useState } from "react";
+} from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { useBankAccounts } from '@/data/bankAccounts/useBankAccounts';
+import { useAccountsMutation } from '@/data/bankAccounts/useBankAccountsMutation';
+import { type FC, useEffect, useState } from 'react';
 import {
   Form,
   FormControl,
@@ -18,9 +18,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { BankAccount } from "@/data/bankAccounts/BankAccount";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/form';
+import type { BankAccount } from '@/data/bankAccounts/BankAccount';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -30,10 +30,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from '@/components/ui/alert-dialog';
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
+import { useUsersPerGroup } from '@/data/usersPerGroup/usersPerGroup';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type FormData = {
   accountName: string;
@@ -58,8 +58,8 @@ const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
+            This action cannot be undone. This will permanently delete your account and remove your
+            data from our servers.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -70,11 +70,11 @@ const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
               setIsLoading(true);
               removeAccount(id)
                 .then(() => {
-                  toast({ title: "Successfully removed" });
+                  toast({ title: 'Successfully removed' });
                   setOpen(false);
                 })
                 .catch((e) => {
-                  toast({ title: "Something went wrong" });
+                  toast({ title: 'Something went wrong' });
                   console.error(e);
                 })
                 .finally(() => {
@@ -104,10 +104,10 @@ export const Accounts: FC = () => {
 
   const form = useForm<FormData>({
     defaultValues: {
-      accountName: "",
-      accountType: "checkout",
-      dueDate: "",
-      user_id: "",
+      accountName: '',
+      accountType: 'checkout',
+      dueDate: '',
+      user_id: '',
     },
   });
 
@@ -116,21 +116,25 @@ export const Accounts: FC = () => {
       return;
     }
 
-    form.setValue("user_id", usersPerGroup[0].user_id!);
+    if (!usersPerGroup[0].user_id) {
+      throw new Error('No user found');
+    }
+
+    form.setValue('user_id', usersPerGroup[0].user_id);
   }, [form, usersPerGroup]);
 
-  const accountType = form.watch("accountType");
+  const accountType = form.watch('accountType');
 
   const onSubmit = async (data: FormData) => {
     if (!selectedGroup?.id) {
-      throw new Error("No group selected");
+      throw new Error('No group selected');
     }
 
     if (!data.user_id) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
-    const addAccountPayload: BankAccount["Insert"] = {
+    const addAccountPayload: BankAccount['Insert'] = {
       name: data.accountName,
       type: data.accountType,
       group_id: selectedGroup?.id,
@@ -138,10 +142,8 @@ export const Accounts: FC = () => {
       // TODO
     };
 
-    if (accountType === "credit") {
-      const dueDateAsFormattedString = new Date(
-        data.dueDate.toString()
-      ).toISOString();
+    if (accountType === 'credit') {
+      const dueDateAsFormattedString = new Date(data.dueDate.toString()).toISOString();
 
       addAccountPayload.due_date = dueDateAsFormattedString;
     }
@@ -149,11 +151,11 @@ export const Accounts: FC = () => {
     setIsLoading(true);
     addAccount(addAccountPayload)
       .then(() => {
-        toast({ title: "Successfully added" });
+        toast({ title: 'Successfully added' });
         form.reset();
       })
       .catch((e) => {
-        toast({ title: "Something went wrong" });
+        toast({ title: 'Something went wrong' });
         console.error(e);
       })
       .finally(() => {
@@ -177,12 +179,8 @@ export const Accounts: FC = () => {
                     className="flex items-center justify-between p-3 border rounded-lg"
                   >
                     <div className="flex gap-2 items-center">
-                      <span className="text-sm text-muted-foreground">
-                        #{bankAccountsData.id}
-                      </span>
-                      <span className="font-medium">
-                        {bankAccountsData.name}
-                      </span>
+                      <span className="text-sm text-muted-foreground">#{bankAccountsData.id}</span>
+                      <span className="font-medium">{bankAccountsData.name}</span>
                       <span className="text-sm text-muted-foreground">
                         ({bankAccountsData.type})
                       </span>
@@ -192,9 +190,7 @@ export const Accounts: FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center text-sm text-muted-foreground">
-                No accounts found
-              </div>
+              <div className="text-center text-sm text-muted-foreground">No accounts found</div>
             )}
           </CardContent>
         </Card>
@@ -205,10 +201,7 @@ export const Accounts: FC = () => {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="accountName"
@@ -238,10 +231,7 @@ export const Accounts: FC = () => {
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-[180px]">
-                            <SelectValue
-                              onBlur={field.onBlur}
-                              ref={field.ref}
-                            />
+                            <SelectValue onBlur={field.onBlur} ref={field.ref} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="checkout">Checkout</SelectItem>
@@ -268,17 +258,12 @@ export const Accounts: FC = () => {
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-[180px]">
-                            <SelectValue
-                              onBlur={field.onBlur}
-                              ref={field.ref}
-                            />
+                            <SelectValue onBlur={field.onBlur} ref={field.ref} />
                           </SelectTrigger>
                           <SelectContent>
                             {usersPerGroup?.map((groupUser) => (
-                              <SelectItem
-                                key={groupUser.email}
-                                value={groupUser.user_id!}
-                              >
+                              // biome-ignore lint/style/noNonNullAssertion: this should be fine here
+                              <SelectItem key={groupUser.email} value={groupUser.user_id!}>
                                 {groupUser.email}
                               </SelectItem>
                             ))}
@@ -290,7 +275,7 @@ export const Accounts: FC = () => {
                   )}
                 />
 
-                {accountType === "credit" && (
+                {accountType === 'credit' && (
                   <FormField
                     control={form.control}
                     name="dueDate"

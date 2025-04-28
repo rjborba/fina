@@ -1,23 +1,17 @@
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
-import { useGroupsMutation } from "@/data/groups/useGroupsMutation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { toast } from "@/hooks/use-toast";
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
+import { useUsersPerGroup } from '@/data/usersPerGroup/usersPerGroup';
+import { useGroupsMutation } from '@/data/groups/useGroupsMutation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { toast } from '@/hooks/use-toast';
 
 const groupFormSchema = z.object({
-  name: z.string().min(1, "Group name is required"),
+  name: z.string().min(1, 'Group name is required'),
 });
 
 type GroupFormValues = z.infer<typeof groupFormSchema>;
@@ -32,7 +26,7 @@ export function Settings() {
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: {
-      name: "",
+      name: '',
     },
   });
 
@@ -43,14 +37,14 @@ export function Settings() {
       });
       form.reset();
       toast({
-        title: "Group created",
-        description: "The new group has been created successfully.",
+        title: 'Group created',
+        description: 'The new group has been created successfully.',
       });
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to create group. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create group. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -69,9 +63,7 @@ export function Settings() {
               <li key={user.user_id}>
                 <div className="flex flex-col px-4 py-2 rounded-md bg-muted">
                   <div className="font-medium">{user.email}</div>
-                  <div className="text-sm text-muted-foreground">
-                    #{user.user_id}
-                  </div>
+                  <div className="text-sm text-muted-foreground">#{user.user_id}</div>
                 </div>
               </li>
             ))}

@@ -1,16 +1,17 @@
-import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom";
-import { cn } from "@/lib/utils";
-import { useAtom } from "jotai";
-import { FC, useEffect, useState } from "react";
+import { transactionFilterAtom } from '@/data/transactions/TransactionFilterAtom';
+import { cn } from '@/lib/utils';
+import { useAtom } from 'jotai';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
 
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useCategories } from "@/data/categories/useCategories";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useDebounce } from "@/components/ui/multipleselector";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "../ui/skeleton";
+import { useActiveGroup } from '@/contexts/ActiveGroupContext';
+import { useCategories } from '@/data/categories/useCategories';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useDebounce } from '@/components/ui/multipleselector';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '../ui/skeleton';
 
 interface TransactionsFilterProps {
   isOpen: boolean;
@@ -18,37 +19,34 @@ interface TransactionsFilterProps {
 
 export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom);
-  const [description, setDescription] = useState(
-    filterProps.partialDescription
-  );
+  const [description, setDescription] = useState(filterProps.partialDescription);
   const debouncedDescription = useDebounce(description, 200);
 
   const { selectedGroup } = useActiveGroup();
-  const { data: categoriesData, isLoading: isCategoriesLoading } =
-    useCategories({
-      groupId: selectedGroup?.id?.toString(),
-    });
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({
+    groupId: selectedGroup?.id?.toString(),
+  });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We want to update the filter props when the debounced description changes
   useEffect(() => {
     setFilterProps({
       ...filterProps,
       partialDescription: debouncedDescription,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedDescription]);
+  }, [setFilterProps, debouncedDescription]);
 
   return (
     <div
       className={cn(
-        "bg-background border-l sticky right-0 top-0 h-screen transition-all duration-300 overflow-hidden w-[400px] z-20",
+        'bg-background border-l sticky right-0 top-0 h-screen transition-all duration-300 overflow-hidden w-[400px] z-20',
         {
-          "w-0": !isOpen,
+          'w-0': !isOpen,
         }
       )}
     >
       <div
-        className={cn("p-4 transition-all duration-300", {
-          "opacity-0": !isOpen,
+        className={cn('p-4 transition-all duration-300', {
+          'opacity-0': !isOpen,
         })}
       >
         <div className="flex items-center gap-2">
@@ -83,23 +81,15 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
                 ) : (
                   <>
                     {categoriesData?.map((category) => (
-                      <div
-                        className="items-top flex space-x-2"
-                        key={category.id}
-                      >
+                      <div className="items-top flex space-x-2" key={category.id}>
                         <Checkbox
                           id={`category-${category.id}`}
-                          checked={filterProps.categoriesId.includes(
-                            category.id
-                          )}
+                          checked={filterProps.categoriesId.includes(category.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
                               setFilterProps({
                                 ...filterProps,
-                                categoriesId: [
-                                  ...filterProps.categoriesId,
-                                  category.id,
-                                ],
+                                categoriesId: [...filterProps.categoriesId, category.id],
                               });
                             } else {
                               setFilterProps({
@@ -143,7 +133,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
                       />
                       <div className="grid gap-1.5 leading-none cursor-pointer">
                         <label
-                          htmlFor={"category-none"}
+                          htmlFor={'category-none'}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                           None

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FC } from "react";
+import type { FC } from 'react';
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "./components/ui/table";
-import { ParseResult } from "papaparse";
+} from './components/ui/table';
+import type { ParseResult } from 'papaparse';
 
 export const RawDataTable: FC<{
   rawImportedData?: ParseResult<unknown>;
@@ -32,15 +32,13 @@ export const RawDataTable: FC<{
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data?.slice(0, 5).map((row: any, rowIndex) => {
+          {data?.slice(0, 5).map((row: unknown, rowIndex: number) => {
             return (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable for static data
               <TableRow key={rowIndex}>
-                {Object.values(row).map((value, index) => {
-                  return (
-                    <TableCell key={`${index}-${rowIndex}`}>
-                      {value as string}
-                    </TableCell>
-                  );
+                {Object.values(row as Record<string, unknown>).map((value, index) => {
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable for static data
+                  return <TableCell key={`${index}-${rowIndex}`}>{value as string}</TableCell>;
                 })}
               </TableRow>
             );

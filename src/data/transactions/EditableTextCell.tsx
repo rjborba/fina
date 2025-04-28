@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
-import { FC, useEffect, useRef, useState, KeyboardEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { cn } from '@/lib/utils';
+import { Check, X } from 'lucide-react';
+import { type FC, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
 
 interface EditableTextProps {
   value: string;
@@ -11,11 +11,7 @@ interface EditableTextProps {
   className?: string;
 }
 
-export const EditableText: FC<EditableTextProps> = ({
-  value,
-  onChange,
-  className,
-}) => {
+export const EditableText: FC<EditableTextProps> = ({ value, onChange, className }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +29,7 @@ export const EditableText: FC<EditableTextProps> = ({
   const handleAccept = () => {
     if (editValue !== value) {
       onChange(editValue).catch(() => {
-        toast({ title: "Something went wrong", variant: "destructive" });
+        toast({ title: 'Something went wrong', variant: 'destructive' });
         setEditValue(value);
       });
     }
@@ -46,10 +42,10 @@ export const EditableText: FC<EditableTextProps> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleAccept();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       handleReject();
     }
@@ -58,13 +54,15 @@ export const EditableText: FC<EditableTextProps> = ({
   if (!isEditing) {
     return (
       <div
-        className={cn(
-          "cursor-pointer hover:bg-accent/50 p-2 rounded",
-          className
-        )}
+        className={cn('cursor-pointer hover:bg-accent/50 p-2 rounded', className)}
         onClick={() => setIsEditing(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            setIsEditing(true);
+          }
+        }}
       >
-        {editValue || "-"}
+        {editValue || '-'}
       </div>
     );
   }
@@ -79,20 +77,10 @@ export const EditableText: FC<EditableTextProps> = ({
         onBlur={handleAccept}
         className="h-8"
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleAccept}
-        className="h-8 w-8"
-      >
+      <Button asChild variant="ghost" size="icon" onClick={handleAccept} className="h-8 w-8">
         <Check className="h-4 w-4" />
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleReject}
-        className="h-8 w-8"
-      >
+      <Button asChild variant="ghost" size="icon" onClick={handleReject} className="h-8 w-8">
         <X className="h-4 w-4" />
       </Button>
     </div>

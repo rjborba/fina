@@ -1,14 +1,9 @@
-import { FC, useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import { SelectValue } from "@radix-ui/react-select";
-import { toast } from "@/hooks/use-toast";
+import { type FC, useEffect, useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { SelectValue } from '@radix-ui/react-select';
+import { toast } from '@/hooks/use-toast';
 
-const NONE_CATEGORY_ID = "none" as const;
+const NONE_CATEGORY_ID = 'none' as const;
 
 interface EditableSelectProps {
   transactionId: number;
@@ -17,16 +12,12 @@ interface EditableSelectProps {
   onChange: (value: number | null) => Promise<unknown>;
 }
 
-export const EditableSelect: FC<EditableSelectProps> = ({
-  value,
-  categories,
-  onChange,
-}) => {
+export const EditableSelect: FC<EditableSelectProps> = ({ value, categories, onChange }) => {
   const [internalValue, setInternalValue] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedCategory = categories.find((cat) => cat.id === value);
-  const displayText = selectedCategory?.name || "-";
+  const displayText = selectedCategory?.name || '-';
 
   useEffect(() => {
     setInternalValue(value);
@@ -34,8 +25,16 @@ export const EditableSelect: FC<EditableSelectProps> = ({
 
   return (
     <div
+      // biome-ignore lint/a11y/useSemanticElements: Button can be be used as child of a table cell
+      role="button"
       className="cursor-pointer hover:underline"
       onClick={() => setIsOpen(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          setIsOpen(true);
+        }
+      }}
+      tabIndex={0}
     >
       {isOpen ? (
         <Select
@@ -43,13 +42,12 @@ export const EditableSelect: FC<EditableSelectProps> = ({
           onOpenChange={setIsOpen}
           value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
           onValueChange={(newValue) => {
-            const normalizedNewValue =
-              newValue === NONE_CATEGORY_ID ? null : Number(newValue);
+            const normalizedNewValue = newValue === NONE_CATEGORY_ID ? null : Number(newValue);
 
             setInternalValue(normalizedNewValue);
 
             onChange(normalizedNewValue).catch(() => {
-              toast({ title: "Something went wrong", variant: "destructive" });
+              toast({ title: 'Something went wrong', variant: 'destructive' });
               setInternalValue(value);
             });
           }}
@@ -61,7 +59,7 @@ export const EditableSelect: FC<EditableSelectProps> = ({
             {categories?.map((category) => {
               return (
                 <SelectItem key={category.id} value={String(category.id)}>
-                  {category.name || "-"}
+                  {category.name || '-'}
                 </SelectItem>
               );
             })}

@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
+import { useQuery } from '@tanstack/react-query';
+import supabase from '@/supabaseClient';
 
 type UseCategoriesProps = {
   groupId?: string;
@@ -8,13 +8,17 @@ type UseCategoriesProps = {
 export const useCategories = ({ groupId }: UseCategoriesProps) => {
   return useQuery({
     enabled: groupId !== undefined,
-    queryKey: ["categories", groupId],
+    queryKey: ['categories', groupId],
     queryFn: async () => {
+      if (!groupId) {
+        throw new Error('GroupId is required');
+      }
+
       const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("group_id", groupId!)
-        .order("id", { ascending: true });
+        .from('categories')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('id', { ascending: true });
 
       if (error) {
         throw error;

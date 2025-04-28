@@ -1,30 +1,22 @@
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   transactionFilterAtom,
-  TransactionFilterType,
-} from "@/data/transactions/TransactionFilterAtom";
-import dayjs from "dayjs";
-import { useAtom } from "jotai";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { FC, useEffect, useState } from "react";
-import { DateRange } from "react-day-picker";
-
+  type TransactionFilterType,
+} from '@/data/transactions/TransactionFilterAtom';
+import dayjs from 'dayjs';
+import { useAtom } from 'jotai';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import type { FC } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import type { DateRange } from 'react-day-picker';
 
 function checkIfFullMonth(startDate: Date, endDate: Date) {
-  const startDayjs = dayjs(startDate)
-  const endDayjs = dayjs(endDate)
+  const startDayjs = dayjs(startDate);
+  const endDayjs = dayjs(endDate);
 
-  return (
-    (startDayjs.date() === 1 &&
-      endDayjs.date() === startDayjs.endOf("month").date()
-    )
-  )
+  return startDayjs.date() === 1 && endDayjs.date() === startDayjs.endOf('month').date();
 }
 export const TransactionsDateFilter: FC = () => {
   const [{ startDate, endDate }, setFilterProps] = useAtom(transactionFilterAtom);
@@ -42,29 +34,34 @@ export const TransactionsDateFilter: FC = () => {
         setFirstVisibleMonth(pendingDate?.from);
       }, 200);
     }
-  }, [isPopoverOpen]);
+  }, [isPopoverOpen, pendingDate?.from]);
 
   const isFullMonth = checkIfFullMonth(startDate, endDate);
-  const startDayjs = dayjs(startDate)
-  const endDayjs = dayjs(endDate)
+  const startDayjs = dayjs(startDate);
+  const endDayjs = dayjs(endDate);
 
-  function setFilterPropsDates(startDate: Date, endDate: Date) {
-    setFilterProps((old: TransactionFilterType) => ({
-      ...old,
-      startDate: startDate,
-      endDate: endDate,
-    }));
-  }
+  const setFilterPropsDates = useCallback(
+    (startDate: Date, endDate: Date) => {
+      setFilterProps((old: TransactionFilterType) => ({
+        ...old,
+        startDate: startDate,
+        endDate: endDate,
+      }));
+    },
+    [setFilterProps]
+  );
 
   // Keeps the pending date in sync with the filter props
   useEffect(() => {
     setFilterPropsDates(startDate, endDate);
-  }, [startDate, endDate]);
+  }, [setFilterPropsDates, startDate, endDate]);
 
   const handleConfirm = () => {
-    if (pendingDate?.from && pendingDate?.to) {
-      setFilterPropsDates(pendingDate.from!, pendingDate.to!);
+    if (!pendingDate?.from || !pendingDate?.to) {
+      return;
     }
+
+    setFilterPropsDates(pendingDate.from, pendingDate.to);
     setIsPopoverOpen(false);
   };
 
@@ -75,10 +72,13 @@ export const TransactionsDateFilter: FC = () => {
 
   const setCurrentMonth = () => {
     const today = dayjs();
-    setPendingDate(old => ({ ...old, from: today.startOf("month").toDate(), to: today.endOf("month").toDate() }))
-    setFirstVisibleMonth(today.startOf("month").toDate());
+    setPendingDate((old) => ({
+      ...old,
+      from: today.startOf('month').toDate(),
+      to: today.endOf('month').toDate(),
+    }));
+    setFirstVisibleMonth(today.startOf('month').toDate());
   };
-
 
   return (
     <div className="flex items-center gap-2">
@@ -87,18 +87,16 @@ export const TransactionsDateFilter: FC = () => {
         size="icon"
         onClick={() => {
           if (isFullMonth) {
-            const baseDate = dayjs(startDate).subtract(1, "month");
-            setFilterProps((old: TransactionFilterType) => ({
-              ...old,
-              startDate: baseDate.startOf("month").toDate(),
-              endDate: baseDate.endOf("month").toDate(),
-            }));
+            const baseDate = dayjs(startDate).subtract(1, 'month');
+            setFilterPropsDates(
+              baseDate.startOf('month').toDate(),
+              baseDate.endOf('month').toDate()
+            );
           } else {
-            setFilterProps((old: TransactionFilterType) => ({
-              ...old,
-              startDate: dayjs(startDate).subtract(1, "month").toDate(),
-              endDate: dayjs(endDate).subtract(1, "month").toDate(),
-            }));
+            setFilterPropsDates(
+              dayjs(startDate).subtract(1, 'month').toDate(),
+              dayjs(endDate).subtract(1, 'month').toDate()
+            );
           }
         }}
       >
@@ -111,31 +109,19 @@ export const TransactionsDateFilter: FC = () => {
               {!isFullMonth ? (
                 <div className="flex gap-2 items-center">
                   <div className="flex items-center justify-center flex-col gap-0">
-                    <div className="text-sm">
-                      {startDayjs.format("DD MMMM")}{" "}
-                    </div>
-                    <div className="text-xs">
-                      {startDayjs.format("YYYY")}
-                    </div>
+                    <div className="text-sm">{startDayjs.format('DD MMMM')} </div>
+                    <div className="text-xs">{startDayjs.format('YYYY')}</div>
                   </div>
                   <div>-</div>
                   <div className="flex items-center justify-center flex-col gap-0">
-                    <div className="text-sm">
-                      {endDayjs.format("DD MMMM")}
-                    </div>
-                    <div className="text-xs">
-                      {endDayjs.format("YYYY")}
-                    </div>
+                    <div className="text-sm">{endDayjs.format('DD MMMM')}</div>
+                    <div className="text-xs">{endDayjs.format('YYYY')}</div>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center flex-col gap-0">
-                  <div className="text-sm">
-                    {endDayjs.format("MMMM")}
-                  </div>
-                  <div className="text-xs">
-                    {endDayjs.format("YYYY")}
-                  </div>
+                  <div className="text-sm">{endDayjs.format('MMMM')}</div>
+                  <div className="text-xs">{endDayjs.format('YYYY')}</div>
                 </div>
               )}
             </div>
@@ -144,9 +130,9 @@ export const TransactionsDateFilter: FC = () => {
         <PopoverContent
           className="w-auto p-0"
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === 'Enter') {
               handleConfirm();
-            } else if (e.key === "Escape") {
+            } else if (e.key === 'Escape') {
               handleCancel();
             }
           }}
@@ -164,12 +150,7 @@ export const TransactionsDateFilter: FC = () => {
             />
             <div className="flex justify-between gap-2 p-2 border-t">
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={setCurrentMonth}
-                  className="text-xs"
-                >
+                <Button variant="ghost" size="sm" onClick={setCurrentMonth} className="text-xs">
                   Current Month
                 </Button>
               </div>
@@ -191,10 +172,16 @@ export const TransactionsDateFilter: FC = () => {
         size="icon"
         onClick={() => {
           if (isFullMonth) {
-            const baseDate = startDayjs.add(1, "month");
-            setFilterPropsDates(baseDate.startOf("month").toDate(), baseDate.endOf("month").toDate());
+            const baseDate = startDayjs.add(1, 'month');
+            setFilterPropsDates(
+              baseDate.startOf('month').toDate(),
+              baseDate.endOf('month').toDate()
+            );
           } else {
-            setFilterPropsDates(startDayjs.add(1, "month").toDate(), endDayjs.add(1, "month").toDate());
+            setFilterPropsDates(
+              startDayjs.add(1, 'month').toDate(),
+              endDayjs.add(1, 'month').toDate()
+            );
           }
         }}
       >

@@ -1,4 +1,4 @@
-import MultipleSelector from "@/components/ui/multipleselector";
+import MultipleSelector from '@/components/ui/multipleselector';
 import {
   Table,
   TableBody,
@@ -6,13 +6,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { FC, Fragment, useMemo } from "react";
-import { EXPECTED_HEADERS } from "./constant";
-import { useAtom } from "jotai";
-import { ImportAtom } from "./FieldMapAtom";
-import { rawEntriesToTransactions } from "./rawEntriesToTransactions";
-import { Transaction } from "@/data/transactions/Transaction";
+} from '@/components/ui/table';
+import { type FC, Fragment, useMemo } from 'react';
+import { EXPECTED_HEADERS } from './constant';
+import { useAtom } from 'jotai';
+import { ImportAtom } from './FieldMapAtom';
+import { rawEntriesToTransactions } from './rawEntriesToTransactions';
+import type { Transaction } from '@/data/transactions/Transaction';
 
 export const FieldMapTable: FC<{
   rawData?: object[];
@@ -20,8 +20,7 @@ export const FieldMapTable: FC<{
 }> = ({ rawData = [], rawFields = [] }) => {
   const [importAtom, setImportAtom] = useAtom(ImportAtom);
 
-  const fieldMapOptions =
-    rawFields.map((rawField) => ({ label: rawField, value: rawField })) || [];
+  const fieldMapOptions = rawFields.map((rawField) => ({ label: rawField, value: rawField })) || [];
 
   const previewData = useMemo(() => {
     return rawEntriesToTransactions({
@@ -70,22 +69,18 @@ export const FieldMapTable: FC<{
           {Object.values(importAtom.fieldMap).some(
             (value) => value !== null || importAtom.accountId
           )
-            ? previewData?.map((row, rowIndex) => {
+            ? previewData?.map((row) => {
                 return (
-                  <TableRow key={rowIndex}>
+                  <TableRow key={row.id}>
                     {EXPECTED_HEADERS.map((column) => (
                       <Fragment key={column}>
                         <TableCell key={column}>
                           {(() => {
-                            return column === "installment"
-                              ? row["installment_current"]
-                                ? row["installment_current"] +
-                                  "/" +
-                                  row["installment_total"]
-                                : ""
-                              : row[
-                                  column as keyof Partial<Transaction["Row"]>
-                                ];
+                            return column === 'installment'
+                              ? row.installment_current
+                                ? `${row.installment_current}/${row.installment_total}`
+                                : ''
+                              : row[column as keyof Partial<Transaction['Row']>];
                           })()}
                         </TableCell>
                       </Fragment>

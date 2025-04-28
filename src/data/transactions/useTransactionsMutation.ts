@@ -1,23 +1,21 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
-import { Transaction } from "./Transaction";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import supabase from '@/supabaseClient';
+import type { Transaction } from './Transaction';
 
 export const useTransactionMutation = () => {
   const queryClient = useQueryClient();
 
   const addMutation = useMutation({
-    mutationFn: async (transactions: Transaction["Insert"][]) => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .insert(transactions);
+    mutationFn: async (transactions: Transaction['Insert'][]) => {
+      const { data, error } = await supabase.from('transactions').insert(transactions);
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 
@@ -27,15 +25,16 @@ export const useTransactionMutation = () => {
       transaction,
     }: {
       id: number;
-      transaction: Transaction["Update"];
+      transaction: Transaction['Update'];
     }) => {
       const transactionNormalized = { ...transaction };
+      // biome-ignore lint/performance/noDelete: this should be fine here
       delete transactionNormalized.id;
 
       const { data, error } = await supabase
-        .from("transactions")
+        .from('transactions')
         .update(transactionNormalized)
-        .eq("id", id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -46,16 +45,16 @@ export const useTransactionMutation = () => {
       return data;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: async (id: number) => {
       const { data, error } = await supabase
-        .from("transactions")
+        .from('transactions')
         .update({ removed: true })
-        .eq("id", id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -63,7 +62,7 @@ export const useTransactionMutation = () => {
       return data;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 

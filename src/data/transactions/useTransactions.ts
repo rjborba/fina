@@ -1,17 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 import {
   fetchTransactions,
-  FetchTransactionsOptions,
-  FetchTransactionsResult,
-} from "./fetchTransactions";
+  type FetchTransactionsOptions,
+  type FetchTransactionsResult,
+} from './fetchTransactions';
 
-export const useTransactions = (
-  fetchTransactionsOptions: FetchTransactionsOptions
-) => {
+export const useTransactions = (fetchTransactionsOptions: FetchTransactionsOptions) => {
   return useQuery<FetchTransactionsResult>({
     enabled: !!fetchTransactionsOptions.groupdId,
     queryKey: [
-      "transactions",
+      'transactions',
       { groupId: fetchTransactionsOptions.groupdId },
       {
         page: fetchTransactionsOptions.page,

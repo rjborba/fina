@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import supabase from "../supabaseClient";
-import { AuthContext } from "./AuthContext";
+import { useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
+import supabase from '../supabaseClient';
+import { AuthContext } from './AuthContext';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider: 'google',
       options: {
         redirectTo: `${window.location.origin}`,
       },
@@ -57,9 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, signUp, signIn, signInWithGoogle, signOut }}
-    >
+    <AuthContext.Provider value={{ user, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

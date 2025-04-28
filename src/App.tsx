@@ -1,40 +1,38 @@
-import { lazy, Suspense } from "react";
-import Login from "./components/Login";
-import { Sidebar } from "./components/Sidebar";
-import { Route, Routes, Outlet, Navigate } from "react-router";
-import { Toaster } from "./components/ui/toaster";
-import { AuthProvider } from "./contexts/AuthProvider";
-import { AuthGuard } from "./components/AuthGuard";
-import { useAuth } from "./hooks/useAuth";
-import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
-import { WalletMinimal } from "lucide-react";
+import { lazy, Suspense } from 'react';
+import Login from './components/Login';
+import { Sidebar } from './components/Sidebar';
+import { Route, Routes, Outlet, Navigate } from 'react-router';
+import { Toaster } from './components/ui/toaster';
+import { AuthProvider } from './contexts/AuthProvider';
+import { AuthGuard } from './components/AuthGuard';
+import { useAuth } from './hooks/useAuth';
+import { ActiveGroupProvider } from './contexts/ActiveGroupContext';
+import { WalletMinimal } from 'lucide-react';
 
 // Lazy load components with named exports and better chunking
-const Home = lazy(() =>
-  import("./Home").then((module) => ({ default: module.default }))
-);
+const Home = lazy(() => import('./Home').then((module) => ({ default: module.default })));
 const Transactions = lazy(() =>
-  import("./pages/Transactions/Transactions").then((module) => ({
+  import('./pages/Transactions/Transactions').then((module) => ({
     default: module.Transactions,
   }))
 );
 const Accounts = lazy(() =>
-  import("./pages/Accounts/Accounts").then((module) => ({
+  import('./pages/Accounts/Accounts').then((module) => ({
     default: module.Accounts,
   }))
 );
 const Categories = lazy(() =>
-  import("./pages/Categories/Categories").then((module) => ({
+  import('./pages/Categories/Categories').then((module) => ({
     default: module.Categories,
   }))
 );
 const Import = lazy(() =>
-  import("./pages/Imports/Import").then((module) => ({
+  import('./pages/Imports/Import').then((module) => ({
     default: module.Import,
   }))
 );
 const Settings = lazy(() =>
-  import("./pages/Settings/Settings").then((module) => ({
+  import('./pages/Settings/Settings').then((module) => ({
     default: module.Settings,
   }))
 );

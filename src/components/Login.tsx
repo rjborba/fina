@@ -1,22 +1,22 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useAuth } from "@/hooks/useAuth";
-import { Navigate } from "react-router";
-import { FcGoogle } from "react-icons/fc";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router';
+import { FcGoogle } from 'react-icons/fc';
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const signupSchema = loginSchema.extend({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -34,9 +34,9 @@ export default function Login() {
   } = useForm<SignupFormData>({
     resolver: zodResolver(isSignUp ? signupSchema : loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      name: "",
+      email: '',
+      password: '',
+      name: '',
     },
   });
 
@@ -54,7 +54,7 @@ export default function Login() {
         await signIn(data.email, data.password);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
@@ -69,7 +69,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center">
-            {isSignUp ? "Create your account" : "Sign in to your account"}
+            {isSignUp ? 'Create your account' : 'Sign in to your account'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,44 +83,36 @@ export default function Login() {
             {isSignUp && (
               <div className="space-y-2">
                 <Input
-                  {...register("name")}
+                  {...register('name')}
                   placeholder="Name"
-                  aria-invalid={errors.name ? "true" : "false"}
+                  aria-invalid={errors.name ? 'true' : 'false'}
                 />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
+                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
               </div>
             )}
 
             <div className="space-y-2">
               <Input
-                {...register("email")}
+                {...register('email')}
                 type="email"
                 placeholder="Email address"
-                aria-invalid={errors.email ? "true" : "false"}
+                aria-invalid={errors.email ? 'true' : 'false'}
               />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Input
-                {...register("password")}
+                {...register('password')}
                 type="password"
                 placeholder="Password"
-                aria-invalid={errors.password ? "true" : "false"}
+                aria-invalid={errors.password ? 'true' : 'false'}
               />
-              {errors.password && (
-                <p className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
-              )}
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSignUp ? "Sign up" : "Sign in"}
+              {isSignUp ? 'Sign up' : 'Sign in'}
             </Button>
 
             <div className="relative">
@@ -128,9 +120,7 @@ export default function Login() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">
-                  Or continue with
-                </span>
+                <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
               </div>
             </div>
 
@@ -147,9 +137,7 @@ export default function Login() {
 
           <div className="mt-4 text-center">
             <Button variant="link" onClick={toggleMode}>
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </Button>
           </div>
         </CardContent>

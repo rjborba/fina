@@ -1,17 +1,17 @@
-import { Transaction } from "@/data/transactions/Transaction";
-import { dayjs } from "@/dayjs";
-import { ImportFieldMap } from "./FieldMapAtom";
+import type { Transaction } from '@/data/transactions/Transaction';
+import { dayjs } from '@/dayjs';
+import type { ImportFieldMap } from './FieldMapAtom';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: Acceptable here
 const extractText = (row: any, keysOrKey: string | string[]) => {
   if (Array.isArray(keysOrKey)) {
     return keysOrKey.reduce((acc, current) => {
-      const text = acc.length ? acc + " - " + row[current] : acc + row[current];
+      const text = acc.length ? `${acc} - ${row[current]}` : `${acc}${row[current]}`;
       return text;
-    }, "");
-  } else {
-    return row[keysOrKey];
+    }, '');
   }
+
+  return row[keysOrKey];
 };
 
 export type rawsEntriesToTransactionsProps = {
@@ -37,13 +37,13 @@ export const rawEntriesToTransactions = ({
 
   const digitRegex = /^\d+\/\d+$/;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return rawData.map((row: any): Transaction["Insert"] => {
+  // biome-ignore lint/suspicious/noExplicitAny: Acceptable here
+  return rawData.map((row: any): Transaction['Insert'] => {
     if (!accountId) {
-      throw new Error("Account ID is required");
+      throw new Error('Account ID is required');
     }
 
-    const parsedRow: Transaction["Insert"] = {
+    const parsedRow: Transaction['Insert'] = {
       bankaccount_id: Number(accountId),
       date: null,
       description: null,
@@ -54,18 +54,18 @@ export const rawEntriesToTransactions = ({
       import_id: null,
     };
 
-    if (typeof row !== "object" || row === null) {
-      throw new Error("Invalid datas");
+    if (typeof row !== 'object' || row === null) {
+      throw new Error('Invalid datas');
     }
 
     if (importFieldMap.date) {
       const text = extractText(row, importFieldMap.date);
-      const formatedDate = dayjs(text, "DD/MM/YYYY");
+      const formatedDate = dayjs(text, 'DD/MM/YYYY');
 
       if (formatedDate.isValid()) {
         parsedRow.date = formatedDate.toISOString();
       } else {
-        parsedRow.date = "Invalid Date";
+        parsedRow.date = 'Invalid Date';
       }
     }
 
@@ -74,20 +74,15 @@ export const rawEntriesToTransactions = ({
     }
 
     if (importFieldMap.installment) {
-      const installmentString = String(
-        extractText(row, importFieldMap.installment)
-      );
+      const installmentString = String(extractText(row, importFieldMap.installment));
 
       if (digitRegex.test(installmentString)) {
-        const slashIndex = installmentString.indexOf("/");
+        const slashIndex = installmentString.indexOf('/');
 
         const installmentCurrentString = installmentString.slice(0, slashIndex);
         const installmentTotalString = installmentString.slice(slashIndex + 1);
 
-        if (
-          !Number.isNaN(installmentCurrentString) ||
-          !Number.isNaN(installmentTotalString)
-        ) {
+        if (!Number.isNaN(installmentCurrentString) || !Number.isNaN(installmentTotalString)) {
           const installmentCurrent = Number(installmentCurrentString);
           const installmentTotal = Number(installmentTotalString);
 

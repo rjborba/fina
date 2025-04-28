@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom } from 'jotai';
 
 export type ImportFieldMap = {
   date: string | string[] | null;
@@ -17,11 +17,11 @@ const importFieldMapDefault: ImportFieldMap = {
 // export const FieldMapAtom = atom<ImportFieldMap>(importFieldMapDefault);
 
 export const ImportAtom = atom({
-  accountId: "",
+  accountId: '',
   fieldMap: importFieldMapDefault,
   parserConfig: {
-    separator: ";",
-    decimalSeparator: ".",
+    separator: ';',
+    decimalSeparator: '.',
     invertValueField: false,
   },
 });
