@@ -53,13 +53,13 @@ export const fetchTransactions = async ({
 
   if (startDate) {
     query = query.or(
-      `credit_due_date.gte.${formattedStartDate},and(credit_due_date.is.null,date.gte.${formattedStartDate})`
+      `to_be_considered_at.gte.${formattedStartDate},and(to_be_considered_at.is.null,date.gte.${formattedStartDate})`
     );
   }
 
   if (endDate) {
     query = query.or(
-      `credit_due_date.lte.${formattedEndDate},and(credit_due_date.is.null,date.lte.${formattedEndDate})`
+      `to_be_considered_at.lte.${formattedEndDate},and(to_be_considered_at.is.null,date.lte.${formattedEndDate})`
     );
   }
 

@@ -104,20 +104,20 @@ export type Database = {
       imports: {
         Row: {
           created_at: string
-          fileName: string | null
-          group_id: number | null
+          fileName: string
+          group_id: number
           id: number
         }
         Insert: {
           created_at?: string
-          fileName?: string | null
-          group_id?: number | null
+          fileName: string
+          group_id: number
           id?: number
         }
         Update: {
           created_at?: string
-          fileName?: string | null
-          group_id?: number | null
+          fileName?: string
+          group_id?: number
           id?: number
         }
         Relationships: [
@@ -138,13 +138,14 @@ export type Database = {
           credit_due_date: string | null
           date: string | null
           description: string | null
-          group_id: number | null
+          group_id: number
           id: number
           import_id: number | null
           installment_current: number | null
           installment_total: number | null
           observation: string | null
           removed: boolean | null
+          to_be_considered_at: string | null
           value: number | null
         }
         Insert: {
@@ -154,13 +155,14 @@ export type Database = {
           credit_due_date?: string | null
           date?: string | null
           description?: string | null
-          group_id?: number | null
+          group_id: number
           id?: number
           import_id?: number | null
           installment_current?: number | null
           installment_total?: number | null
           observation?: string | null
           removed?: boolean | null
+          to_be_considered_at?: string | null
           value?: number | null
         }
         Update: {
@@ -170,13 +172,14 @@ export type Database = {
           credit_due_date?: string | null
           date?: string | null
           description?: string | null
-          group_id?: number | null
+          group_id?: number
           id?: number
           import_id?: number | null
           installment_current?: number | null
           installment_total?: number | null
           observation?: string | null
           removed?: boolean | null
+          to_be_considered_at?: string | null
           value?: number | null
         }
         Relationships: [

@@ -21,6 +21,8 @@ export type rawsEntriesToTransactionsProps = {
   invertValue?: boolean;
   creditDueDate?: string;
   importId?: number;
+  groupId: number;
+  toBeConsideredAt?: string;
 };
 
 export const rawEntriesToTransactions = ({
@@ -30,6 +32,8 @@ export const rawEntriesToTransactions = ({
   invertValue,
   creditDueDate,
   importId,
+  groupId,
+  toBeConsideredAt,
 }: rawsEntriesToTransactionsProps) => {
   if (!rawData) {
     return [];
@@ -45,6 +49,8 @@ export const rawEntriesToTransactions = ({
 
     const parsedRow: Transaction["Insert"] = {
       bankaccount_id: Number(accountId),
+      group_id: groupId,
+      to_be_considered_at: toBeConsideredAt,
       date: null,
       description: null,
       installment_current: null,

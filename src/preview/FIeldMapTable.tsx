@@ -8,16 +8,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { FC, Fragment, useMemo } from "react";
-import { EXPECTED_HEADERS } from "./constant";
+import { EXPECTED_HEADERS_CREDIT } from "./constant";
 import { useAtom } from "jotai";
-import { ImportAtom } from "./FieldMapAtom";
+import { ImportAtom, ImportFieldMap } from "./FieldMapAtom";
 import { rawEntriesToTransactions } from "./rawEntriesToTransactions";
 import { Transaction } from "@/data/transactions/Transaction";
 
 export const FieldMapTable: FC<{
   rawData?: object[];
   rawFields?: string[];
-}> = ({ rawData = [], rawFields = [] }) => {
+  groupId: number;
+  expectedHeaders: string[];
+}> = ({ rawData = [], rawFields = [], groupId, expectedHeaders }) => {
   const [importAtom, setImportAtom] = useAtom(ImportAtom);
 
   const fieldMapOptions =
@@ -29,21 +31,22 @@ export const FieldMapTable: FC<{
       importFieldMap: importAtom.fieldMap,
       accountId: importAtom.accountId,
       invertValue: importAtom.parserConfig.invertValueField,
+      groupId,
     });
-  }, [importAtom, rawData]);
+  }, [importAtom, rawData, groupId]);
 
   return (
     <div className="min-h-[200px]">
       <Table>
         <TableHeader>
           <TableRow>
-            {EXPECTED_HEADERS.map((column) => (
+            {expectedHeaders.map((column: string) => (
               <TableHead key={column}>{column}</TableHead>
             ))}
           </TableRow>
 
           <TableRow>
-            {EXPECTED_HEADERS.map((column) => (
+            {expectedHeaders.map((column: string) => (
               <TableHead key={column}>
                 <MultipleSelector
                   options={fieldMapOptions}
@@ -51,11 +54,12 @@ export const FieldMapTable: FC<{
                     setImportAtom((oldImportData) => {
                       const oldFieldMap = oldImportData.fieldMap;
                       if (selectedValues.length) {
-                        oldFieldMap[column] = selectedValues.map(
-                          (currentValue) => currentValue.value
-                        );
+                        oldFieldMap[column as keyof ImportFieldMap] =
+                          selectedValues.map(
+                            (currentValue) => currentValue.value
+                          );
                       } else {
-                        oldFieldMap[column] = null;
+                        oldFieldMap[column as keyof ImportFieldMap] = null;
                       }
 
                       return { ...oldImportData };
@@ -73,7 +77,7 @@ export const FieldMapTable: FC<{
             ? previewData?.map((row, rowIndex) => {
                 return (
                   <TableRow key={rowIndex}>
-                    {EXPECTED_HEADERS.map((column) => (
+                    {EXPECTED_HEADERS_CREDIT.map((column) => (
                       <Fragment key={column}>
                         <TableCell key={column}>
                           {(() => {
