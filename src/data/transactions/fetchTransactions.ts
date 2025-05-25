@@ -48,7 +48,10 @@ export const fetchTransactions = async ({
     )
     .eq("removed", false)
     .eq("group_id", groupdId)
-    .order("date", { ascending: true })
+    .order("calculated_date", {
+      ascending: false,
+      nullsFirst: false,
+    })
     .order("id", { ascending: true });
 
   if (startDate) {

@@ -12,7 +12,7 @@ import {
   Settings,
   ChevronDown,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserProfile } from "./UserProfile";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import useLocalStorageState from "@/hooks/useLocalStorageState";
 
 interface NavigationItem {
   path: string;
@@ -40,13 +41,13 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     path: "/transactions",
     label: "Transactions",
     icon: <List className="size-4" />,
-    subItems: [
-      {
-        path: "/transactions/categorization",
-        label: "Categorization",
-        icon: <Tag className="size-4" />,
-      },
-    ],
+    // subItems: [
+    //   {
+    //     path: "/transactions/categorization",
+    //     label: "Categorization",
+    //     icon: <Tag className="size-4" />,
+    //   },
+    // ],
   },
   {
     path: "/bank-accounts",
@@ -82,7 +83,10 @@ const getGroupInitials = (name: string | null | undefined) => {
 };
 
 export function Sidebar() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorageState(
+    "isSidebarCollapsed",
+    false
+  );
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const location = useLocation();
   const navigate = useNavigate();

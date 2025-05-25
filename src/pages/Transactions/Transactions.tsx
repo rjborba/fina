@@ -8,6 +8,7 @@ import { TransactionsHeader } from "@/components/transactions/TransactionsHeader
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom";
 import { useAtom } from "jotai";
 import { TransactionsTableProps } from "@/components/transactions/TransactionsTable";
+import useLocalStorageState from "@/hooks/useLocalStorageState";
 
 const TransactionsTable = lazy(() =>
   import("@/components/transactions/TransactionsTable").then((module) => ({
@@ -44,7 +45,10 @@ export const Transactions: FC = () => {
     categoryIdList: filterProps.categoriesId,
   });
 
-  const [isFilterOpen, setIsFilterOpen] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useLocalStorageState<boolean>(
+    "transactionsFilterOpen",
+    true
+  );
 
   return (
     <div className="flex">
@@ -77,7 +81,10 @@ export const Transactions: FC = () => {
           />
         </Suspense>
       </div>
-      <TransactionsFilter isOpen={isFilterOpen} />
+      <TransactionsFilter
+        isOpen={isFilterOpen}
+        onFilterToggle={setIsFilterOpen}
+      />
     </div>
   );
 };

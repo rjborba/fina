@@ -11,12 +11,18 @@ import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/components/ui/multipleselector";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "../ui/skeleton";
+import { Button } from "../ui/button";
+import { Filter } from "lucide-react";
 
 interface TransactionsFilterProps {
   isOpen: boolean;
+  onFilterToggle: (value: boolean) => void;
 }
 
-export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
+export const TransactionsFilter: FC<TransactionsFilterProps> = ({
+  isOpen,
+  onFilterToggle,
+}) => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom);
   const [description, setDescription] = useState(
     filterProps.partialDescription
@@ -38,22 +44,32 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
   }, [debouncedDescription]);
 
   return (
-    <div
-      className={cn(
-        "bg-background border-l sticky right-0 top-0 h-screen transition-all duration-300 overflow-hidden w-[400px] z-20",
-        {
-          "w-0": !isOpen,
-        }
-      )}
-    >
+    <>
       <div
-        className={cn("p-4 transition-all duration-300", {
-          "opacity-0": !isOpen,
-        })}
+        onClick={() => onFilterToggle(false)}
+        className={cn(
+          "fixed bg-black/40 z-30 inset-0 cursor-pointer xl:hidden block xl:pointer-events-auto ",
+          {
+            "opacity-100 pointer-events-auto": isOpen,
+            "opacity-0 pointer-events-none": !isOpen,
+          }
+        )}
+      ></div>
+      <div
+        className={cn(
+          "bg-background fixed xl:sticky right-0 top-0 h-screen z-50 p-4 border-l cursor-auto transition-all duration-300 w-[200px]",
+          {
+            hidden: !isOpen,
+          }
+        )}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-medium">Filter</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" onClick={() => onFilterToggle(false)}>
+            <Filter />
+          </Button>
+          <span className="text-sm font-medium">Filter</span>
         </div>
+
         <div className="flex flex-col gap-2 pt-4">
           <div>
             <Label>Description</Label>
@@ -157,6 +173,6 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({ isOpen }) => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };

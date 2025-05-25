@@ -5,15 +5,23 @@ import { EditableText } from "@/data/transactions/EditableTextCell";
 import { Transaction } from "@/data/transactions/Transaction";
 import { cn } from "@/lib/utils";
 import {
-  ColumnDef,
+  createColumnHelper,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   Row,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import dayjs from "dayjs";
-import { Frown, Trash } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Frown,
+  LucideCreditCard,
+  Trash,
+} from "lucide-react";
 import { FC, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -42,6 +50,8 @@ export interface TransactionsTableProps {
   onDeleteTransaction: (id: number) => Promise<void>;
 }
 
+const columnHelper = createColumnHelper<Transaction["Row"]>();
+
 const TransactionsTable: FC<TransactionsTableProps> = ({
   data,
   totalCount,
@@ -54,6 +64,13 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const { selectedGroup } = useActiveGroup();
+
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "date",
+      desc: true,
+    },
+  ]);
 
   const { data: categoriesData } = useCategories({
     groupId: selectedGroup?.id?.toString(),
@@ -68,53 +85,73 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     );
   }, [categoriesData]);
 
-  const columns = useMemo<ColumnDef<Transaction["Row"]>[]>(
+  const columns = useMemo(
     () => [
-      {
-        accessorKey: "date",
-        cell: ({ row }) => {
-          return <div>{dayjs(row.original.date).format("DD/MM/YYYY")}</div>;
-        },
-        header: "Date",
-      },
-      {
-        accessorKey: "credit_due_date",
-        cell: ({ row }) => {
-          if (!row.original.credit_due_date) {
-            return "-";
-          }
-
+      columnHelper.accessor("calculated_date", {
+        id: "date",
+        header: ({ column }) => {
           return (
-            <div>
-              {dayjs(row.original.credit_due_date).format("DD/MM/YYYY")}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-0"
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            >
+              Date
+              {column.getIsSorted() === "asc" && (
+                <ArrowDown className="ml-1 h-1 w-1" />
+              )}
+              {column.getIsSorted() === "desc" && (
+                <ArrowUp className="ml-1 h-1 w-1" />
+              )}
+            </Button>
+          );
+        },
+        cell: (info) => {
+          return dayjs(info.getValue()).format("DD/MM/YYYY");
+        },
+      }),
+      columnHelper.accessor("description", {
+        id: "description",
+        header: "Description",
+        cell: ({ row }) => {
+          return (
+            <div className="flex items-center gap-1">
+              <div>{row.original.description}</div>
+              {!!row.original.credit_due_date && (
+                <LucideCreditCard className="h-3 w-3 text-muted-foreground" />
+              )}
             </div>
           );
         },
-        header: "Credit Due Date",
-      },
-      {
-        accessorKey: "description",
-        header: "Description",
-      },
-      {
-        accessorKey: "installment",
-        cell: ({ row }) => {
-          if (!row.original.installment_total) {
-            return "-";
+      }),
+      // Installments
+      columnHelper.accessor(
+        (row) => {
+          if (!row.installment_current || !row.installment_total) {
+            return "";
           }
 
-          return (
-            <div>{`${row.original.installment_current}/${row.original.installment_total}`}</div>
-          );
+          return `${row.installment_current}/${row.installment_total}`;
         },
-        header: "Installment",
-      },
-      {
-        accessorKey: "value",
+        {
+          id: "installment",
+        }
+      ),
+      columnHelper.accessor("value", {
+        id: "value",
         header: "Value",
-      },
-      {
-        accessorKey: "categoryName",
+        cell: ({ row }) => {
+          if (!row.original.value) {
+            return "";
+          }
+
+          return <div>R$ {row.original.value.toFixed(2)}</div>;
+        },
+      }),
+      columnHelper.accessor("category_id", {
         header: "Category",
         cell: ({ row }) => {
           return (
@@ -136,9 +173,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
             </div>
           );
         },
-      },
-      {
-        accessorKey: "observation",
+      }),
+      columnHelper.accessor("observation", {
+        id: "observation",
+        header: "Observation",
         cell: ({ row }) => {
           return (
             <div
@@ -157,9 +195,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
             </div>
           );
         },
-        header: "Observation",
-      },
-      {
+      }),
+      // Actions
+      columnHelper.display({
+        id: "actions",
         header: "Actions",
         cell: ({ row }) => {
           return (
@@ -175,7 +214,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
             />
           );
         },
-      },
+      }),
     ],
     [categories, onUpdateTransaction, onDeleteTransaction]
   );
@@ -186,7 +225,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     rowCount: totalCount,
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
     state: {
+      sorting: sorting,
       pagination: {
         pageIndex,
         pageSize,
@@ -217,7 +259,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
 
   const RenderTable = () => {
     return (
-      <Table>
+      <Table className="text-xs">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
@@ -254,6 +296,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
+                      className="py-0"
                       onClick={() => {
                         setSelectedTransactionIndex(virtualRow.index);
                         setIsTransactionsDetailsModalOpen(true);
@@ -325,13 +368,14 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     <div className="flex relative" ref={tableContainerRef}>
       <div className={cn("p-4 flex-1 transition-all duration-300")}>
         {RenderContent()}
-        {selectedTransactionIndex && (
-          <TransactionDetailsModal
-            transaction={data![selectedTransactionIndex]}
-            open={isTransactionsDetailsModalOpen}
-            onOpenChange={setIsTransactionsDetailsModalOpen}
-          />
-        )}
+        {selectedTransactionIndex !== undefined &&
+          selectedTransactionIndex !== null && (
+            <TransactionDetailsModal
+              transaction={data![selectedTransactionIndex]}
+              open={isTransactionsDetailsModalOpen}
+              onOpenChange={setIsTransactionsDetailsModalOpen}
+            />
+          )}
       </div>
     </div>
   );

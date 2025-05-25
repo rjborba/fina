@@ -133,6 +133,7 @@ export type Database = {
       transactions: {
         Row: {
           bankaccount_id: number
+          calculated_date: string | null
           category_id: number | null
           created_at: string
           credit_due_date: string | null
@@ -150,6 +151,7 @@ export type Database = {
         }
         Insert: {
           bankaccount_id: number
+          calculated_date?: string | null
           category_id?: number | null
           created_at?: string
           credit_due_date?: string | null
@@ -167,6 +169,7 @@ export type Database = {
         }
         Update: {
           bankaccount_id?: number
+          calculated_date?: string | null
           category_id?: number | null
           created_at?: string
           credit_due_date?: string | null

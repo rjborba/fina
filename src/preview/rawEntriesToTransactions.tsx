@@ -52,6 +52,7 @@ export const rawEntriesToTransactions = ({
       group_id: groupId,
       to_be_considered_at: toBeConsideredAt,
       date: null,
+      calculated_date: null,
       description: null,
       installment_current: null,
       installment_total: null,
@@ -70,6 +71,7 @@ export const rawEntriesToTransactions = ({
 
       if (formatedDate.isValid()) {
         parsedRow.date = formatedDate.toISOString();
+        parsedRow.calculated_date = formatedDate.toISOString();
       } else {
         parsedRow.date = "Invalid Date";
       }
@@ -110,6 +112,20 @@ export const rawEntriesToTransactions = ({
           parsedRow.installment_total = -1;
         }
       }
+    }
+
+    // Calculated data
+    if (
+      parsedRow.installment_current &&
+      parsedRow.installment_current > 0 &&
+      parsedRow.date
+    ) {
+      const dateWithInstallment = dayjs(parsedRow.date).add(
+        parsedRow.installment_current - 1,
+        "month"
+      );
+
+      parsedRow.calculated_date = dateWithInstallment.toISOString();
     }
 
     if (importFieldMap.value) {

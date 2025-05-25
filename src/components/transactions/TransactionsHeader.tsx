@@ -3,6 +3,7 @@ import { FC } from "react";
 import { Filter } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter";
+import { cn } from "@/lib/utils";
 
 interface TransactionsHeaderProps {
   isFilterOpen: boolean;
@@ -22,7 +23,10 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
 
       <Toggle
         aria-label="Toggle italic"
-        pressed={isFilterOpen}
+        className={cn({
+          "transition-all duration-300": true,
+          "opacity-0 pointer-events-none": isFilterOpen,
+        })}
         onClick={() => onFilterToggle(!isFilterOpen)}
       >
         <Filter className="h-4 w-4" />
