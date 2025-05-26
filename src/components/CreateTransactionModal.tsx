@@ -109,6 +109,10 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         (account) => account.id.toString() === data.bankaccount_id
       );
 
+      if (!data.group_id) {
+        throw new Error("Group ID is required");
+      }
+
       const transactionData: Transaction["Insert"] = {
         date: data.date || null,
         credit_due_date:
@@ -124,7 +128,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         installment_total: data.installment_total
           ? parseInt(data.installment_total)
           : null,
-        group_id: data.group_id || null,
+        group_id: data.group_id,
       };
 
       await addMutation.mutateAsync([transactionData]);
