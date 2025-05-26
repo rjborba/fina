@@ -118,10 +118,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         header: "Description",
         cell: ({ row }) => {
           return (
-            <div className="flex items-center gap-1">
-              <div>{row.original.description}</div>
+            <div className="">
+              <span>{row.original.description}</span>{" "}
               {!!row.original.credit_due_date && (
-                <LucideCreditCard className="h-3 w-3 text-muted-foreground" />
+                <LucideCreditCard className="h-3 w-3 text-muted-foreground inline" />
               )}
             </div>
           );

@@ -7,7 +7,7 @@ type UseCategoriesProps = {
 
 export const useCategories = ({ groupId }: UseCategoriesProps) => {
   return useQuery({
-    enabled: groupId !== undefined,
+    enabled: !!groupId,
     queryKey: ["categories", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
