@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { TransactionDetailsModal } from "./TransactionDetailsModal";
 import { Skeleton } from "../ui/skeleton";
+import React from "react";
 
 export interface TransactionsTableProps {
   data?: Transaction["Row"][] | null;
@@ -51,6 +52,41 @@ export interface TransactionsTableProps {
 }
 
 const columnHelper = createColumnHelper<Transaction["Row"]>();
+
+// Memoized TableRow to prevent unnecessary re-renders
+const MemoizedTableRow = React.memo(TableRow);
+
+import { useAtom } from "jotai";
+import { openSelectIdAtom } from "./OpenSelectAtom";
+
+const CategoryCell: React.FC<{
+  row: Row<Transaction["Row"]>;
+  categories: { id: number; name: string }[];
+  onUpdateTransaction: TransactionsTableProps["onUpdateTransaction"];
+}> = ({ row, categories, onUpdateTransaction }) => {
+  const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom);
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <EditableSelect
+        value={row.original.category_id}
+        categories={categories}
+        open={openSelectId === row.original.id}
+        onOpenChange={(open) => {
+          if (open) {
+            setOpenSelectId(row.original.id);
+          } else {
+            setOpenSelectId(null);
+          }
+        }}
+        onChange={(value) => {
+          setOpenSelectId(null);
+          return onUpdateTransaction(row.original.id, { category_id: value });
+        }}
+      />
+    </div>
+  );
+};
 
 const TransactionsTable: FC<TransactionsTableProps> = ({
   data,
@@ -155,24 +191,37 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         header: "Category",
         cell: ({ row }) => {
           return (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <EditableSelect
-                value={row.original.category_id}
-                categories={categories}
-                transactionId={row.original.id}
-                onChange={(value) => {
-                  return onUpdateTransaction(row.original.id, {
-                    category_id: value,
-                  });
-                }}
-              />
-            </div>
+            <CategoryCell
+              row={row}
+              categories={categories}
+              onUpdateTransaction={onUpdateTransaction}
+            />
           );
         },
+        // const { openSelectId, setOpenSelectId } = useEditableSelectOpen();
+        // return (
+        //   <div
+        //     onClick={(e) => {
+        //       e.stopPropagation();
+        //     }}
+        //   >
+        //     <EditableSelect
+        //       value={row.original.category_id}
+        //       categories={categories}
+        //       transactionId={row.original.id}
+        //       open={openSelectId === row.original.id}
+        //       onOpen={() => setOpenSelectId(row.original.id)}
+        //       onClose={() => setOpenSelectId(null)}
+        //       onChange={(value) => {
+        //         setOpenSelectId(null);
+        //         return onUpdateTransaction(row.original.id, {
+        //           category_id: value,
+        //         });
+        //       }}
+        //     />
+        //   </div>
+        //   );
+        // },
       }),
       columnHelper.accessor("observation", {
         id: "observation",
@@ -262,7 +311,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
       <Table className="text-xs">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <MemoizedTableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead key={header.id} style={{ width: header.getSize() }}>
                   {header.isPlaceholder
@@ -273,7 +322,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                       )}
                 </TableHead>
               ))}
-            </TableRow>
+            </MemoizedTableRow>
           ))}
         </TableHeader>
         <TableBody className={`h-[${rowVirtualizer.getTotalSize()}px]`}>
@@ -283,7 +332,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               const row = rows[virtualRow.index] as Row<Transaction["Row"]>;
 
               return (
-                <TableRow
+                <MemoizedTableRow
                   key={row.id}
                   className="cursor-pointer"
                   style={{
@@ -308,7 +357,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                       )}
                     </TableCell>
                   ))}
-                </TableRow>
+                </MemoizedTableRow>
               );
             })}
         </TableBody>

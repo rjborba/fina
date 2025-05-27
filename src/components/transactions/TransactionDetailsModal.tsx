@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 interface TransactionDetailsModalProps {
@@ -24,6 +25,9 @@ export function TransactionDetailsModal({
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Transaction Details</DialogTitle>
+          <DialogDescription>
+            Detailed information about the selected transaction
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

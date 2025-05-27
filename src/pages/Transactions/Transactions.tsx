@@ -53,13 +53,6 @@ export const Transactions: FC = () => {
     groupId: selectedGroup?.id?.toString() || "",
   });
 
-  const categoryAsMap = categories?.reduce((map, category) => {
-    map[category.id] = category.name;
-    return map;
-  }, {} as Record<string, string>);
-
-  console.log(categoryAsMap);
-
   const [isFilterOpen, setIsFilterOpen] = useLocalStorageState<boolean>(
     "transactionsFilterOpen",
     true

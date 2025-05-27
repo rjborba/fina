@@ -11,9 +11,10 @@ import { toast } from "@/hooks/use-toast";
 const NONE_CATEGORY_ID = "none" as const;
 
 interface EditableSelectProps {
-  transactionId: number;
   value: number | null;
   categories: { id: number; name: string | null }[];
+  open: boolean;
+  onOpenChange: (number: boolean) => void;
   onChange: (value: number | null) => Promise<unknown>;
 }
 
@@ -21,11 +22,12 @@ export const EditableSelect: FC<EditableSelectProps> = ({
   value,
   categories,
   onChange,
+  open,
+  onOpenChange,
 }) => {
   const [internalValue, setInternalValue] = useState(value);
-  const [isOpen, setIsOpen] = useState(false);
 
-  const selectedCategory = categories.find((cat) => cat.id === value);
+  const selectedCategory = categories.find((cat) => cat.id === internalValue);
   const displayText = selectedCategory?.name || "-";
 
   useEffect(() => {
@@ -33,14 +35,11 @@ export const EditableSelect: FC<EditableSelectProps> = ({
   }, [value]);
 
   return (
-    <div
-      className="cursor-pointer hover:underline"
-      onClick={() => setIsOpen(true)}
-    >
-      {isOpen ? (
+    <div>
+      {open ? (
         <Select
-          open={isOpen}
-          onOpenChange={setIsOpen}
+          open={open}
+          onOpenChange={onOpenChange}
           value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
           onValueChange={(newValue) => {
             const normalizedNewValue =
@@ -69,7 +68,14 @@ export const EditableSelect: FC<EditableSelectProps> = ({
           </SelectContent>
         </Select>
       ) : (
-        <span className="">{displayText}</span>
+        <button
+          className="flex w-full h-[36px] cursor-pointer hover:underline bg-muted/30 px-4 items-center"
+          onClick={() => {
+            onOpenChange(true);
+          }}
+        >
+          <span>{displayText}</span>
+        </button>
       )}
     </div>
   );

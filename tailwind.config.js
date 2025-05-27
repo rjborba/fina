@@ -1,4 +1,7 @@
 /** @type {import('tailwindcss').Config} */
+
+import { fontFamily } from "tailwindcss/defaultTheme";
+
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
@@ -8,6 +11,11 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        // Override Tailwind’s default `font-mono`
+        mono: ['"Courier New"', "Courier", ...fontFamily.mono],
+        // (Keep other families untouched unless you want to override them too)
       },
       colors: {
         background: "hsl(var(--background))",

@@ -45,8 +45,52 @@ export const useTransactionMutation = () => {
 
       return data;
     },
+    onMutate: async ({ id, transaction: updatedTransactionFields }) => {
+      await queryClient.cancelQueries({
+        queryKey: ["transactions"],
+        exact: false,
+      });
+
+      const previous = queryClient.getQueriesData<{
+        data: Transaction["Row"][];
+      }>({
+        queryKey: ["transactions"],
+        exact: false,
+      });
+
+      queryClient.setQueriesData<{
+        data: Transaction["Row"][];
+        totalCount: number;
+      }>({ queryKey: ["transactions"], exact: false }, (old) => {
+        if (!old) {
+          return { data: [], totalCount: 0 };
+        }
+
+        const oldTransactions = old.data;
+
+        return {
+          data: oldTransactions.map((item) =>
+            item.id === id ? { ...item, ...updatedTransactionFields } : item
+          ),
+          totalCount: old.totalCount,
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Do I really need to invalidate the query if we've got a success mutation?
+      // queryClient.invalidateQueries({
+      //   queryKey: ["transactions"],
+      //   exact: false,
+      // });
     },
   });
 
