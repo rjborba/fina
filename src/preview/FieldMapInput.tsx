@@ -87,7 +87,7 @@ export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
               break;
           }
         }}
-        className={`pr-2 h-10 outline-none w-full peer`}
+        className={`pr-2 h-10 outline-hidden w-full peer`}
         style={{ paddingLeft: chipsWrapperWidth + 8 }}
       />
       <div id="chipsWrapper" className="absolute flex gap-1">
@@ -97,7 +97,7 @@ export const FieldMapInput: FC<{ rawFieldsList: string[] }> = ({
       </div>
       {filteredOptions.length ? (
         <div
-          className="px-1 min-w-[100px] bg-white border border-1 border-black z-50 hidden peer-focus:block"
+          className="px-1 min-w-[100px] bg-white border border border-black z-50 hidden peer-focus:block"
           style={{
             position: "absolute",
             left: chipsWrapperWidth + 8,
