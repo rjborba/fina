@@ -423,6 +423,29 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               transaction={data![selectedTransactionIndex]}
               open={isTransactionsDetailsModalOpen}
               onOpenChange={setIsTransactionsDetailsModalOpen}
+              totalTransactions={data?.length || 0}
+              currentTransactionIndex={selectedTransactionIndex}
+              onNextTransaction={() => {
+                if (selectedTransactionIndex === null) {
+                  return;
+                }
+
+                setSelectedTransactionIndex(
+                  Math.min(
+                    data?.length ? data?.length - 1 : 0,
+                    selectedTransactionIndex + 1
+                  )
+                );
+              }}
+              onPreviousTransaction={() => {
+                if (selectedTransactionIndex === null) {
+                  return;
+                }
+
+                setSelectedTransactionIndex(
+                  Math.max(0, selectedTransactionIndex - 1)
+                );
+              }}
             />
           )}
       </div>

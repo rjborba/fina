@@ -1,5 +1,12 @@
 import { Transaction } from "@/data/transactions/Transaction";
 import { dayjs } from "@/dayjs";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
+import { useCategories } from "@/data/categories/useCategories";
+import { BankAccount } from "@/data/bankAccounts/BankAccount";
+import { Category } from "@/data/categories/Category";
+import { Badge } from "@/components/ui/badge";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -8,25 +15,167 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
+import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 
 interface TransactionDetailsModalProps {
   transaction: Transaction["Row"];
+  onNextTransaction: () => void;
+  onPreviousTransaction: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  totalTransactions: number;
+  currentTransactionIndex: number;
 }
 
 export function TransactionDetailsModal({
   transaction,
   open,
   onOpenChange,
+  onNextTransaction,
+  onPreviousTransaction,
+  totalTransactions,
+  currentTransactionIndex,
 }: TransactionDetailsModalProps) {
+  const { selectedGroup } = useActiveGroup();
+  const { data: bankAccountsData } = useBankAccounts({
+    groupId: selectedGroup?.id?.toString(),
+  });
+  const { updateMutation } = useTransactionMutation();
+  const { data: categoriesData } = useCategories({
+    groupId: selectedGroup?.id?.toString(),
+  });
+  const previousButtonRef = useRef<HTMLButtonElement>(null);
+
+  const [highlightNextButton, setHighlightNextButton] = useState(false);
+  const [highlightPreviousButton, setHighlightPreviousButton] = useState(false);
+
+  const highlightNextRef = useRef<NodeJS.Timeout | null>(null);
+  const highlightPreviousRef = useRef<NodeJS.Timeout | null>(null);
+
+  const hasNextTransaction = currentTransactionIndex < totalTransactions - 1;
+  const hasPreviousTransaction = currentTransactionIndex > 0;
+
+  const accountsMapById = React.useMemo(() => {
+    if (!bankAccountsData) return {};
+    return bankAccountsData.reduce(
+      (
+        acc: Record<number, BankAccount["Row"]>,
+        current: BankAccount["Row"]
+      ) => {
+        acc[current.id] = current;
+        return acc;
+      },
+      {}
+    );
+  }, [bankAccountsData]);
+
+  const categoriesMapById = React.useMemo(() => {
+    if (!categoriesData) return {};
+    return categoriesData.reduce(
+      (acc: Record<number, Category["Row"]>, current: Category["Row"]) => {
+        acc[current.id] = current;
+        return acc;
+      },
+      {}
+    );
+  }, [categoriesData]);
+
+  const handleCategorySelect = useCallback(
+    async (categoryId: number | null) => {
+      if (!transaction) return;
+
+      await updateMutation.mutateAsync({
+        id: transaction.id,
+        transaction: { category_id: categoryId },
+      });
+    },
+    [transaction, updateMutation]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!categoriesData || !transaction) return;
+
+      // Number keys for categories (1-9)
+      if (e.key >= "0" && e.key <= "9") {
+        if (e.key === "0") {
+          handleCategorySelect(null);
+          return;
+        }
+
+        const index = parseInt(e.key) - 1;
+        if (index < categoriesData.length) {
+          const category = categoriesData[index];
+          handleCategorySelect(category.id);
+        }
+      }
+
+      // Space to skip
+      if (e.key === " ") {
+        handleCategorySelect(null);
+      }
+
+      // Arrow keys for navigation
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        if (!hasPreviousTransaction) return;
+
+        if (highlightPreviousRef.current) {
+          clearTimeout(highlightPreviousRef.current);
+        }
+
+        e.preventDefault();
+        onPreviousTransaction();
+        setHighlightPreviousButton(true);
+        highlightPreviousRef.current = setTimeout(() => {
+          setHighlightPreviousButton(false);
+        }, 300);
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        if (!hasNextTransaction) return;
+
+        if (highlightNextRef.current) {
+          clearTimeout(highlightNextRef.current);
+        }
+
+        e.preventDefault();
+        onNextTransaction();
+        setHighlightNextButton(true);
+        highlightNextRef.current = setTimeout(() => {
+          setHighlightNextButton(false);
+        }, 300);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    categoriesData,
+    handleCategorySelect,
+    hasNextTransaction,
+    hasPreviousTransaction,
+    onNextTransaction,
+    onPreviousTransaction,
+    transaction,
+  ]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Transaction Details</DialogTitle>
-          <DialogDescription>
-            Detailed information about the selected transaction
+          <DialogTitle className="flex justify-between items-center pr-6 text-3xl">
+            {transaction.description}
+
+            <div className="text-sm text-muted-foreground">
+              {currentTransactionIndex + 1} / {totalTransactions}
+            </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Detailed information about the transaction {transaction.description}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -53,27 +202,17 @@ export function TransactionDetailsModal({
                   : "-"}
               </div>
             </div>
-            <div className="col-span-2">
-              <div className="text-sm font-medium text-muted-foreground">
-                Description
-              </div>
-              <div className="text-lg font-medium">
-                {transaction.description || "-"}
-                {transaction.installment_current &&
-                  transaction.installment_total && (
-                    <span className="text-sm text-muted-foreground ml-2">
-                      ({transaction.installment_current}/
-                      {transaction.installment_total})
-                    </span>
-                  )}
-              </div>
-            </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">
                 Account
               </div>
               <div>
-                {/* {accountsMapById[transaction.bankaccount_id]?.name || "-"} */}
+                {accountsMapById[transaction.bankaccount_id]?.name || "-"}
+                {accountsMapById[transaction.bankaccount_id]?.type && (
+                  <Badge variant="outline" className="ml-2">
+                    {accountsMapById[transaction.bankaccount_id]?.type}
+                  </Badge>
+                )}
               </div>
             </div>
             <div>
@@ -103,28 +242,91 @@ export function TransactionDetailsModal({
                   : "-"}
               </div>
             </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">
+                Category
+              </div>
+              <div>
+                {transaction.category_id &&
+                categoriesMapById[transaction.category_id] ? (
+                  <Badge variant="secondary">
+                    {categoriesMapById[transaction.category_id]?.name}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">-</Badge>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mt-4">
             <div className="text-sm font-medium text-muted-foreground mb-4">
               Categories
             </div>
-            {/* <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {categoriesData?.map((category, index) => (
-                <button
+                <Button
                   key={category.id}
-                  className={`flex items-center gap-2 p-2 border rounded-lg hover:bg-accent ${
-                    transaction.category_id === category.id
-                      ? "bg-accent border-primary"
-                      : ""
-                  }`}
-                  onClick={() => handleCategorySelect(category.id)}
+                  variant="outline"
+                  className={cn("flex items-center justify-start gap-2 px-2", {
+                    "bg-accent border-primary":
+                      transaction.category_id === category.id,
+                  })}
                 >
                   <Badge variant="secondary">{index + 1}</Badge>
-                  <span>{category.name || "-"}</span>
-                </button>
+                  <span className="text-xs">{category.name || "-"}</span>
+                </Button>
               ))}
-            </div> */}
+
+              <Button
+                variant="outline"
+                className={cn("flex items-center justify-start gap-2 px-2")}
+              >
+                <Badge variant="secondary">0</Badge>
+                <span className="text-xs">None</span>
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-between">
+            <Button
+              ref={previousButtonRef}
+              variant="ghost"
+              className={cn("transition-all transition-duration-200", {
+                "bg-muted border-primary outline outline-black/80":
+                  highlightPreviousButton,
+              })}
+              disabled={!hasPreviousTransaction}
+              onClick={onPreviousTransaction}
+            >
+              <span>Previous</span>
+              <div className="flex gap-1 text-xs">
+                <Badge variant="secondary">
+                  <ArrowUp className="w-3 h-3" />
+                </Badge>
+                <Badge variant="secondary">
+                  <ArrowLeft className="w-3 h-3" />
+                </Badge>
+              </div>
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn("transition-all transition-duration-200", {
+                "bg-muted border-primary outline outline-black/80":
+                  highlightNextButton,
+              })}
+              disabled={!hasNextTransaction}
+              onClick={onNextTransaction}
+            >
+              <span>Next</span>
+              <div className="flex gap-1 text-xs">
+                <Badge variant="secondary">
+                  <ArrowDown className="w-3 h-3" />
+                </Badge>
+                <Badge variant="secondary">
+                  <ArrowRight className="w-3 h-3" />
+                </Badge>
+              </div>
+            </Button>
           </div>
         </div>
       </DialogContent>
