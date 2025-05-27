@@ -14,7 +14,7 @@ export const useImports = ({ groupId }: UseImportsProps) => {
         .from("imports")
         .select("*")
         .order("id", { ascending: true })
-        .eq("group_id", groupId!);
+        .eq("group_id", Number(groupId));
 
       if (error) {
         throw error;

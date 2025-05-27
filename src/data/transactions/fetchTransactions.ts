@@ -47,7 +47,7 @@ export const fetchTransactions = async ({
       { count: "exact" }
     )
     .eq("removed", false)
-    .eq("group_id", groupdId)
+    .eq("group_id", Number(groupdId))
     .order("calculated_date", {
       ascending: false,
       nullsFirst: false,

@@ -13,7 +13,7 @@ export const useCategories = ({ groupId }: UseCategoriesProps) => {
       const { data, error } = await supabase
         .from("categories")
         .select("*")
-        .eq("group_id", groupId!)
+        .eq("group_id", Number(groupId))
         .order("id", { ascending: true });
 
       if (error) {

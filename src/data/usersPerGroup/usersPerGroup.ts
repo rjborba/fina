@@ -18,7 +18,7 @@ export const useUsersPerGroup = ({ groupId }: UseUsersPerGroupProps) => {
       const { data, error } = await supabase
         .from("users_per_group")
         .select("*")
-        .eq("group_id", groupId!);
+        .eq("group_id", Number(groupId));
 
       if (error) {
         throw error;

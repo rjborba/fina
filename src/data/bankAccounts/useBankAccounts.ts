@@ -13,7 +13,7 @@ export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
       const { data, error } = await supabase
         .from("bankaccounts")
         .select("*")
-        .eq("group_id", groupId!)
+        .eq("group_id", Number(groupId))
         .order("id", { ascending: true });
 
       if (error) {
