@@ -292,8 +292,7 @@ export function TransactionDetailsModal({
               ref={previousButtonRef}
               variant="ghost"
               className={cn("transition-all transition-duration-200", {
-                "bg-muted border-primary outline-solid outline-black/80":
-                  highlightPreviousButton,
+                "bg-accent": highlightPreviousButton,
               })}
               disabled={!hasPreviousTransaction}
               onClick={onPreviousTransaction}
@@ -311,8 +310,7 @@ export function TransactionDetailsModal({
             <Button
               variant="ghost"
               className={cn("transition-all transition-duration-200", {
-                "bg-muted border-primary outline-solid outline-black/80":
-                  highlightNextButton,
+                "bg-accent": highlightNextButton,
               })}
               disabled={!hasNextTransaction}
               onClick={onNextTransaction}
