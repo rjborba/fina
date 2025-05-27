@@ -8,6 +8,7 @@ import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import "./index.css";
 import { indexedDBStorage } from "./data/indexedDBStorage.ts";
+import { ThemeProvider } from "./components/ThemeProvider.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,8 +35,10 @@ createRoot(document.getElementById("root")!).render(
       persistOptions={{ persister, maxAge: 1000 * 60 * 60 }}
     >
       <BrowserRouter>
-        <App />
-        <ReactQueryDevtools initialIsOpen={false} />
+        <ThemeProvider defaultTheme="system" storageKey="fina-ui-theme">
+          <App />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </ThemeProvider>
       </BrowserRouter>
     </PersistQueryClientProvider>
   </StrictMode>

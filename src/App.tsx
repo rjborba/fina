@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import Login from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
 import { Route, Routes, Outlet, Navigate } from "react-router";
@@ -8,6 +8,7 @@ import { AuthGuard } from "./components/AuthGuard";
 import { useAuth } from "./hooks/useAuth";
 import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
 import { WalletMinimal } from "lucide-react";
+import useLocalStorageState from "./hooks/useLocalStorageState";
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
@@ -46,6 +47,16 @@ const Settings = lazy(() =>
 
 function AppContent() {
   const { user } = useAuth();
+  const [isDarkMode] = useLocalStorageState("theme-dark", false);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [isDarkMode]);
 
   if (user === undefined) {
     return null;

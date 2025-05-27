@@ -11,6 +11,9 @@ import {
   Import,
   Settings,
   ChevronDown,
+  Sun,
+  Moon,
+  MonitorCog,
 } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -27,6 +30,8 @@ import {
 import { UserProfile } from "./UserProfile";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import useLocalStorageState from "@/hooks/useLocalStorageState";
+import React from "react";
+import { useTheme } from "./ThemeProvider";
 
 interface NavigationItem {
   path: string;
@@ -87,6 +92,9 @@ export function Sidebar() {
     "isSidebarCollapsed",
     false
   );
+  const [isDarkMode] = useLocalStorageState("theme-dark", false);
+  const { setTheme } = useTheme();
+
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,7 +122,7 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "flex flex-col h-screen border-r bg-background transition-all duration-300 sticky top-0",
+        "flex flex-col h-screen border-r bg-sidebar transition-all duration-300 sticky top-0",
         isSidebarCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -247,7 +255,21 @@ export function Sidebar() {
             )}
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuLabel>Config</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setTheme("light")}>
+              <Sun className={cn("size-2", !isDarkMode && "text-yellow-200")} />{" "}
+              Light
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")}>
+              <Moon className={cn("size-2", isDarkMode && "text-blue-400")} />{" "}
+              Dark
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("system")}>
+              <MonitorCog className="size-2" />
+              System
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 size-4" />
