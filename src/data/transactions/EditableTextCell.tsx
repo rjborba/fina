@@ -58,10 +58,7 @@ export const EditableText: FC<EditableTextProps> = ({
   if (!isEditing) {
     return (
       <div
-        className={cn(
-          "cursor-pointer hover:bg-accent/50 p-2 rounded",
-          className
-        )}
+        className={cn("cursor-pointer hover:bg-accent/50 p-2", className)}
         onClick={() => setIsEditing(true)}
       >
         {editValue || "-"}

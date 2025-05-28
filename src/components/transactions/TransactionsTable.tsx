@@ -22,7 +22,7 @@ import {
   LucideCreditCard,
   Trash,
 } from "lucide-react";
-import { FC, useMemo, useRef, useState } from "react";
+import { FC, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
@@ -58,6 +58,7 @@ const MemoizedTableRow = React.memo(TableRow);
 
 import { useAtom } from "jotai";
 import { openSelectIdAtom } from "./OpenSelectAtom";
+import { CreateTransactionModal } from "../CreateTransactionModal";
 
 const CategoryCell: React.FC<{
   row: Row<Transaction["Row"]>;
@@ -101,6 +102,9 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const { selectedGroup } = useActiveGroup();
 
+  const [openCreateTransactionModal, setOpenCreateTransactionModal] =
+    useState(false);
+
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: "date",
@@ -120,6 +124,30 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
       })) || []
     );
   }, [categoriesData]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in any form element
+      if (
+        e.target instanceof HTMLElement &&
+        e.target.closest('input, textarea, select, [role="combobox"]')
+      ) {
+        return;
+      }
+
+      if (e.key === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        // Only open the modal, don't toggle
+        if (!openCreateTransactionModal) {
+          setOpenCreateTransactionModal(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -448,6 +476,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               }}
             />
           )}
+        <CreateTransactionModal
+          open={openCreateTransactionModal}
+          onOpenChange={setOpenCreateTransactionModal}
+        />
       </div>
     </div>
   );

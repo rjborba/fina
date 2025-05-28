@@ -69,7 +69,7 @@ export const EditableSelect: FC<EditableSelectProps> = ({
         </Select>
       ) : (
         <button
-          className="flex w-full h-[36px] cursor-pointer hover:underline bg-muted/30 px-4 items-center"
+          className="flex w-full py-2 cursor-pointer hover:bg-accent/50 px-4 items-center"
           onClick={() => {
             onOpenChange(true);
           }}

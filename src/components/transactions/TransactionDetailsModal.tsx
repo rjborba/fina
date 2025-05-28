@@ -47,7 +47,6 @@ export function TransactionDetailsModal({
   const { data: categoriesData } = useCategories({
     groupId: selectedGroup?.id?.toString(),
   });
-  const previousButtonRef = useRef<HTMLButtonElement>(null);
 
   const [highlightNextButton, setHighlightNextButton] = useState(false);
   const [highlightPreviousButton, setHighlightPreviousButton] = useState(false);
@@ -116,6 +115,7 @@ export function TransactionDetailsModal({
       // Space to skip
       if (e.key === " ") {
         handleCategorySelect(null);
+        e.preventDefault();
       }
 
       // Arrow keys for navigation
@@ -266,14 +266,20 @@ export function TransactionDetailsModal({
             <div className="grid grid-cols-3 gap-2">
               {categoriesData?.map((category, index) => (
                 <Button
-                  key={category.id}
+                  key={`${category.id}-${transaction.category_id}`}
                   variant="outline"
-                  className={cn("flex items-center justify-start gap-2 px-2", {
-                    "bg-accent border-primary":
-                      transaction.category_id === category.id,
-                  })}
+                  className="bg-accent"
+                  // className={cn(
+                  //   "flex items-center justify-start gap-2 px-2 bg-accent"
+                  //   // {
+                  //   //   "bg-red-600 border-primary":
+                  //   //     transaction.category_id == category.id,
+                  //   // }
+                  // )}
                 >
                   <Badge variant="secondary">{index + 1}</Badge>
+                  <span className="text-xs">{category.id}</span>
+                  <span className="text-xs">{transaction.category_id}</span>
                   <span className="text-xs">{category.name || "-"}</span>
                 </Button>
               ))}
@@ -289,7 +295,6 @@ export function TransactionDetailsModal({
           </div>
           <div className="flex justify-between">
             <Button
-              ref={previousButtonRef}
               variant="ghost"
               className={cn("transition-all transition-duration-200", {
                 "bg-accent": highlightPreviousButton,

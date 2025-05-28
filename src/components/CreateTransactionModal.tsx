@@ -1,10 +1,9 @@
-import { FC, useEffect, useRef, useState } from "react";
+import { FC } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +21,11 @@ import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
 import { useCategories } from "@/data/categories/useCategories";
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { toast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
 import { Transaction } from "@/data/transactions/Transaction";
 
 interface CreateTransactionModalProps {
   onOpenChange?: (open: boolean) => void;
+  open?: boolean;
 }
 
 type FormData = {
@@ -42,7 +41,8 @@ type FormData = {
 };
 
 export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
-  onOpenChange,
+  open,
+  onOpenChange = () => {},
 }) => {
   const { selectedGroup } = useActiveGroup();
   const { data: bankAccounts } = useBankAccounts({
@@ -52,8 +52,6 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     groupId: selectedGroup?.id?.toString(),
   });
   const { addMutation } = useTransactionMutation();
-  const dialogTriggerRef = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
 
   const isCreditCardAccount = (accountId: string) => {
     const account = bankAccounts?.find(
@@ -61,33 +59,6 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     );
     return account?.type === "credit";
   };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in any form element
-      if (
-        e.target instanceof HTMLElement &&
-        e.target.closest('input, textarea, select, [role="combobox"]')
-      ) {
-        return;
-      }
-
-      if (e.key === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        // Only open the modal, don't toggle
-        if (
-          !dialogTriggerRef.current
-            ?.getAttribute("data-state")
-            ?.includes("open")
-        ) {
-          dialogTriggerRef.current?.click();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -136,7 +107,6 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         title: "Transaction created successfully",
       });
       form.reset();
-      setOpen(false);
       onOpenChange?.(false);
     } catch (error) {
       console.error("Failed to create transaction:", error);
@@ -151,16 +121,9 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     <Dialog
       open={open}
       onOpenChange={(newOpen) => {
-        setOpen(newOpen);
-        onOpenChange?.(newOpen);
+        onOpenChange(newOpen);
       }}
     >
-      <DialogTrigger asChild>
-        <Button ref={dialogTriggerRef}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Transaction
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Transaction</DialogTitle>
