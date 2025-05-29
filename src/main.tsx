@@ -7,8 +7,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import "./index.css";
-import { indexedDBStorage } from "./data/indexedDBStorage.ts";
-import { ThemeProvider } from "./components/ThemeProvider.tsx";
+import { indexedDBStorage } from "@/data/IndexedDBStorage";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
