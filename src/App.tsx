@@ -9,7 +9,7 @@ import { useAuth } from "./hooks/useAuth";
 import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
 import { WalletMinimal } from "lucide-react";
 import useLocalStorageState from "./hooks/useLocalStorageState";
-import { SidebarProvider } from "./components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
@@ -71,6 +71,9 @@ function AppContent() {
           <AuthGuard>
             <SidebarProvider>
               <Sidebar />
+              <div className="md:hidden">
+                <SidebarTrigger />
+              </div>
               <main className="flex-1">
                 <Suspense
                   fallback={

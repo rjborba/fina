@@ -1,4 +1,3 @@
-// src/indexedDBStorage.ts
 import { openDB, deleteDB, IDBPDatabase } from "idb";
 
 const DB_NAME = "fina-indexed-db";
