@@ -9,6 +9,7 @@ import { useAuth } from "./hooks/useAuth";
 import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
 import { WalletMinimal } from "lucide-react";
 import useLocalStorageState from "./hooks/useLocalStorageState";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
@@ -68,9 +69,9 @@ function AppContent() {
       <Route
         element={
           <AuthGuard>
-            <div className="flex">
+            <SidebarProvider>
               <Sidebar />
-              <div className="flex-1">
+              <main className="flex-1">
                 <Suspense
                   fallback={
                     <div className="flex items-center justify-center h-screen">
@@ -80,8 +81,8 @@ function AppContent() {
                 >
                   <Outlet />
                 </Suspense>
-              </div>
-            </div>
+              </main>
+            </SidebarProvider>
           </AuthGuard>
         }
       >

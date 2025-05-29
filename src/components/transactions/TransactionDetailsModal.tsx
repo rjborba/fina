@@ -127,12 +127,14 @@ export function TransactionDetailsModal({
         }
 
         e.preventDefault();
+        e.stopPropagation();
         onPreviousTransaction();
         setHighlightPreviousButton(true);
         highlightPreviousRef.current = setTimeout(() => {
           setHighlightPreviousButton(false);
         }, 300);
       }
+
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         if (!hasNextTransaction) return;
 
@@ -141,6 +143,7 @@ export function TransactionDetailsModal({
         }
 
         e.preventDefault();
+        e.stopPropagation();
         onNextTransaction();
         setHighlightNextButton(true);
         highlightNextRef.current = setTimeout(() => {
@@ -165,7 +168,10 @@ export function TransactionDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl outline-none"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center pr-6 text-3xl">
             {transaction.description}
@@ -266,20 +272,18 @@ export function TransactionDetailsModal({
             <div className="grid grid-cols-3 gap-2">
               {categoriesData?.map((category, index) => (
                 <Button
-                  key={`${category.id}-${transaction.category_id}`}
-                  variant="outline"
-                  className="bg-accent"
-                  // className={cn(
-                  //   "flex items-center justify-start gap-2 px-2 bg-accent"
-                  //   // {
-                  //   //   "bg-red-600 border-primary":
-                  //   //     transaction.category_id == category.id,
-                  //   // }
-                  // )}
+                  key={`${category.id}`}
+                  onClick={() => handleCategorySelect(category.id)}
+                  variant={
+                    transaction.category_id == category.id
+                      ? "default"
+                      : "outline"
+                  }
+                  className={
+                    "flex items-center justify-start gap-2 px-2 transition-all"
+                  }
                 >
                   <Badge variant="secondary">{index + 1}</Badge>
-                  <span className="text-xs">{category.id}</span>
-                  <span className="text-xs">{transaction.category_id}</span>
                   <span className="text-xs">{category.name || "-"}</span>
                 </Button>
               ))}
@@ -287,6 +291,7 @@ export function TransactionDetailsModal({
               <Button
                 variant="outline"
                 className={cn("flex items-center justify-start gap-2 px-2")}
+                onClick={() => handleCategorySelect(null)}
               >
                 <Badge variant="secondary">0</Badge>
                 <span className="text-xs">None</span>

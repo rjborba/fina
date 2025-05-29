@@ -317,14 +317,14 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
 
   const rowVirtualizer = useVirtualizer({
     count: data?.length || 0,
-    estimateSize: () => 33,
+    estimateSize: () => 36,
     getScrollElement: () => tableContainerRef.current,
     measureElement:
       typeof window !== "undefined" &&
       navigator.userAgent.indexOf("Firefox") === -1
         ? (element) => element?.getBoundingClientRect().height
         : undefined,
-    overscan: 5,
+    overscan: 15,
   });
 
   const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] =
@@ -353,7 +353,12 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
             </MemoizedTableRow>
           ))}
         </TableHeader>
-        <TableBody className={`h-[${rowVirtualizer.getTotalSize()}px]`}>
+        <TableBody
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
+            position: "relative", //needed for absolute positioning of rows
+          }}
+        >
           {rowVirtualizer
             .getVirtualItems()
             .map((virtualRow, virtualRowIndex) => {
