@@ -21,7 +21,7 @@ import { useTransactionMutation } from "@/data/transactions/useTransactionsMutat
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 
 interface TransactionDetailsModalProps {
-  transaction: Transaction["Row"];
+  transaction: Transaction["Row"] | null;
   onNextTransaction: () => void;
   onPreviousTransaction: () => void;
   open: boolean;
@@ -87,7 +87,7 @@ export function TransactionDetailsModal({
       if (!transaction) return;
 
       await updateMutation.mutateAsync({
-        id: transaction.id,
+        id: transaction?.id,
         transaction: { category_id: categoryId },
       });
     },
@@ -166,6 +166,10 @@ export function TransactionDetailsModal({
     transaction,
   ]);
 
+  const accountData = transaction
+    ? accountsMapById[transaction.bankaccount_id]
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -174,14 +178,15 @@ export function TransactionDetailsModal({
       >
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center pr-6 text-3xl">
-            {transaction.description}
+            {transaction?.description}
 
             <div className="text-sm text-muted-foreground">
               {currentTransactionIndex + 1} / {totalTransactions}
             </div>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Detailed information about the transaction {transaction.description}
+            Detailed information about the transaction{" "}
+            {transaction?.description}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -191,8 +196,8 @@ export function TransactionDetailsModal({
                 Date
               </div>
               <div>
-                {transaction.date
-                  ? dayjs(transaction.date).format("dddd, DD/MM/YYYY")
+                {transaction?.date
+                  ? dayjs(transaction?.date).format("dddd, DD/MM/YYYY")
                   : "-"}
               </div>
             </div>
@@ -201,8 +206,8 @@ export function TransactionDetailsModal({
                 Due Date
               </div>
               <div>
-                {transaction.credit_due_date
-                  ? dayjs(transaction.credit_due_date).format(
+                {transaction?.credit_due_date
+                  ? dayjs(transaction?.credit_due_date).format(
                       "dddd, DD/MM/YYYY"
                     )
                   : "-"}
@@ -213,10 +218,10 @@ export function TransactionDetailsModal({
                 Account
               </div>
               <div>
-                {accountsMapById[transaction.bankaccount_id]?.name || "-"}
-                {accountsMapById[transaction.bankaccount_id]?.type && (
+                {accountData?.name || "-"}
+                {accountData?.type && (
                   <Badge variant="outline" className="ml-2">
-                    {accountsMapById[transaction.bankaccount_id]?.type}
+                    {accountData?.type}
                   </Badge>
                 )}
               </div>
@@ -227,13 +232,13 @@ export function TransactionDetailsModal({
               </div>
               <div
                 className={`text-xl font-bold ${
-                  transaction.value && transaction.value < 0
+                  transaction?.value && transaction?.value < 0
                     ? "text-green-500"
                     : "text-red-500"
                 }`}
               >
-                {transaction.value
-                  ? `R$ ${(-transaction.value).toFixed(2)}`
+                {transaction?.value
+                  ? `R$ ${(-transaction?.value).toFixed(2)}`
                   : "-"}
               </div>
             </div>
@@ -242,9 +247,9 @@ export function TransactionDetailsModal({
                 Installment
               </div>
               <div>
-                {transaction.installment_current &&
-                transaction.installment_total
-                  ? `${transaction.installment_current}/${transaction.installment_total}`
+                {transaction?.installment_current &&
+                transaction?.installment_total
+                  ? `${transaction?.installment_current}/${transaction?.installment_total}`
                   : "-"}
               </div>
             </div>
@@ -253,10 +258,10 @@ export function TransactionDetailsModal({
                 Category
               </div>
               <div>
-                {transaction.category_id &&
-                categoriesMapById[transaction.category_id] ? (
+                {transaction?.category_id &&
+                categoriesMapById[transaction?.category_id] ? (
                   <Badge variant="secondary">
-                    {categoriesMapById[transaction.category_id]?.name}
+                    {categoriesMapById[transaction?.category_id]?.name}
                   </Badge>
                 ) : (
                   <Badge variant="outline">-</Badge>
@@ -275,7 +280,7 @@ export function TransactionDetailsModal({
                   key={`${category.id}`}
                   onClick={() => handleCategorySelect(category.id)}
                   variant={
-                    transaction.category_id == category.id
+                    transaction?.category_id == category.id
                       ? "default"
                       : "outline"
                   }

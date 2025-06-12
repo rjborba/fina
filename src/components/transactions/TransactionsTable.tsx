@@ -453,7 +453,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         {selectedTransactionIndex !== undefined &&
           selectedTransactionIndex !== null && (
             <TransactionDetailsModal
-              transaction={data![selectedTransactionIndex]}
+              transaction={data ? data[selectedTransactionIndex] : null}
               open={isTransactionsDetailsModalOpen}
               onOpenChange={setIsTransactionsDetailsModalOpen}
               totalTransactions={data?.length || 0}
