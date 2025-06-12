@@ -1,13 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { Group } from "@/data/groups/Groups";
 import { useGroups } from "@/data/groups/useGroups";
-import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-} from "react";
+import useLocalStorageState from "@/hooks/useLocalStorageState";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 
 interface ActiveGroupContextType {
   selectedGroup: Group["Row"] | undefined;
@@ -21,9 +16,9 @@ const ActiveGroupContext = createContext<ActiveGroupContextType | undefined>(
 
 export function ActiveGroupProvider({ children }: { children: ReactNode }) {
   const { data: groups } = useGroups();
-  const [selectedGroup, setSelectedGroup] = useState<Group["Row"] | undefined>(
-    undefined
-  );
+  const [selectedGroup, setSelectedGroup] = useLocalStorageState<
+    Group["Row"] | undefined
+  >("selectedGroup", undefined);
 
   useEffect(() => {
     if (!groups) {
@@ -37,7 +32,7 @@ export function ActiveGroupProvider({ children }: { children: ReactNode }) {
     if (groups.length > 0) {
       setSelectedGroup(groups[0]);
     }
-  }, [groups, selectedGroup]);
+  }, [groups, selectedGroup, setSelectedGroup]);
 
   return (
     <ActiveGroupContext.Provider

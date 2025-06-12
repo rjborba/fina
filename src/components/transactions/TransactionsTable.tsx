@@ -410,16 +410,16 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
   const RenderLoading = () => {
     return (
       <div className="flex flex-col gap-4">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 12 }).map((_, index) => (
           <div key={index} className="flex gap-2">
-            <Skeleton className="w-1/12 h-12" />
-            <Skeleton className="w-1/12 h-12" />
-            <Skeleton className="w-4/12 h-12" />
-            <Skeleton className="w-1/12 h-12" />
-            <Skeleton className="w-1/12 h-12" />
-            <Skeleton className="w-1/12 h-12" />
-            <Skeleton className="w-2/12 h-12" />
-            <Skeleton className="w-1/12 h-12" />
+            <Skeleton className="w-1/12 h-8" />
+            <Skeleton className="w-4/12 h-8" />
+            <Skeleton className="w-1/12 h-8" />
+            <Skeleton className="w-1/12 h-8" />
+            <Skeleton className="w-1/12 h-8" />
+            <Skeleton className="w-2/12 h-8" />
+            <Skeleton className="w-1/12 h-8" />
+            <Skeleton className="w-1/12 h-8" />
           </div>
         ))}
       </div>
