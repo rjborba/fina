@@ -38,8 +38,6 @@ export function GroupDetails() {
     return <div>Error. No group</div>;
   }
 
-  console.log(invites);
-
   return (
     <div className="p-4 w-full space-y-4">
       <h3 className="text-2xl font-bold">Settings</h3>
