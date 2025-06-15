@@ -48,8 +48,8 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     icon: <Import className="size-4" />,
   },
   {
-    path: "/group-settings",
-    title: "Group Settings",
+    path: "/settings",
+    title: "Settings",
     icon: <Settings className="size-4" />,
   },
 ];

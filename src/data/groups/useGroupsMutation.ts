@@ -10,17 +10,18 @@ export const useGroupsMutation = () => {
   const addGroup = useMutation({
     mutationFn: async (group: Group["Insert"]) => {
       if (!user?.id) throw new Error("User not authenticated");
+      const { data: userData } = await supabase.auth.getUser();
 
       // First create the group
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
-        .insert(group)
+        .insert({ ...group, creator_id: userData.user?.id })
         .select()
         .single();
 
       if (groupError) throw groupError;
 
-      // Then add the user to the group
+      // Then add the user to the group. Should be a transaction.
       const { error: userGroupError } = await supabase
         .from("user_group")
         .insert({
@@ -37,5 +38,14 @@ export const useGroupsMutation = () => {
     },
   });
 
-  return { addGroup };
+  const removeGroup = useMutation({
+    mutationFn: async (groupId: Group["Row"]["id"]) => {
+      await supabase.from("groups").delete().eq("id", groupId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+    },
+  });
+
+  return { addGroup, removeGroup };
 };

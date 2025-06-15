@@ -45,6 +45,11 @@ const Settings = lazy(() =>
     default: module.Settings,
   }))
 );
+const GroupDetails = lazy(() =>
+  import("./pages/Groups/GroupDetails/GroupDetails").then((module) => ({
+    default: module.GroupDetails,
+  }))
+);
 
 function AppContent() {
   const { user } = useAuth();
@@ -98,7 +103,8 @@ function AppContent() {
         <Route path="/bank-accounts" element={<Accounts />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/imports" element={<Import />} />
-        <Route path="/group-settings" element={<Settings />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/group-details/:groupId" element={<GroupDetails />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

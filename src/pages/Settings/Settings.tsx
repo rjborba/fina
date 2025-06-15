@@ -1,8 +1,4 @@
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
-import { useGroupsMutation } from "@/data/groups/useGroupsMutation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -11,10 +7,14 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext";
+import { useGroupsMutation } from "@/data/groups/useGroupsMutation";
+import { toast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router";
 import * as z from "zod";
-import { toast } from "@/hooks/use-toast";
 
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required"),
@@ -23,10 +23,7 @@ const groupFormSchema = z.object({
 type GroupFormValues = z.infer<typeof groupFormSchema>;
 
 export function Settings() {
-  const { selectedGroup, groups } = useActiveGroup();
-  const { data: usersPerGroup } = useUsersPerGroup({
-    groupId: selectedGroup?.id?.toString(),
-  });
+  const { groups } = useActiveGroup();
   const { addGroup } = useGroupsMutation();
 
   const form = useForm<GroupFormValues>({
@@ -61,26 +58,6 @@ export function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {usersPerGroup?.map((user) => (
-              <li key={user.user_id}>
-                <div className="flex flex-col px-4 py-2 rounded-md bg-muted">
-                  <div className="font-medium">{user.email}</div>
-                  <div className="text-sm text-muted-foreground">
-                    #{user.user_id}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Groups</CardTitle>
         </CardHeader>
         <CardContent>
@@ -104,13 +81,17 @@ export function Settings() {
             </form>
           </Form>
 
-          <div className="mt-6 space-y-2">
+          <ul className="mt-6 space-y-1">
+            <h3 className="text-lg font-bold">Groups</h3>
             {groups?.map((group) => (
-              <div key={group.id} className="px-4 py-2 rounded-md bg-muted">
-                {group.name}
-              </div>
+              <li
+                key={group.id}
+                className="px-4 py-2 rounded-md bg-muted underline"
+              >
+                <Link to={`/group-details/${group.id}`}>{group.name}</Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </CardContent>
       </Card>
     </div>

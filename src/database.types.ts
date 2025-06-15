@@ -86,20 +86,31 @@ export type Database = {
       groups: {
         Row: {
           created_at: string
+          creator_id: string | null
           id: number
           name: string | null
         }
         Insert: {
           created_at?: string
+          creator_id?: string | null
           id?: number
           name?: string | null
         }
         Update: {
           created_at?: string
+          creator_id?: string | null
           id?: number
           name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "groups_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       imports: {
         Row: {
@@ -125,6 +136,38 @@ export type Database = {
             foreignKeyName: "imports_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          created_at: string
+          email: string
+          group_id: number
+          id: number
+          pending: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          group_id: number
+          id?: number
+          pending: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          group_id?: number
+          id?: number
+          pending?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
             referencedRelation: "groups"
             referencedColumns: ["id"]
           },
@@ -309,7 +352,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      is_my_group: {
+        Args: { g_id: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
