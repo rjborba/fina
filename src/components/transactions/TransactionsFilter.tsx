@@ -57,9 +57,9 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
       ></div>
       <div
         className={cn(
-          "bg-background fixed xl:sticky right-0 top-0 h-screen z-50 border-l cursor-auto transition-all duration-300 w-[200px]",
+          "bg-background fixed xl:sticky right-0 top-0 h-screen z-50 border-l cursor-auto transition-all duration-300 w-[200px] overflow-hidden",
           {
-            "w-0 overflow-hidden": !isOpen,
+            "w-0": !isOpen,
           }
         )}
       >
