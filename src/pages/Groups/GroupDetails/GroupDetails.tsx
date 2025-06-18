@@ -64,7 +64,13 @@ export function GroupDetails() {
                 <div className="font-medium">{invite.email} (Pending)</div>
                 <ConfirmationDialog
                   trigger={
-                    <Button size="icon" variant="ghost">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        removeInvite.mutateAsync(invite.id);
+                      }}
+                    >
                       <Trash />
                     </Button>
                   }
@@ -98,7 +104,6 @@ export function GroupDetails() {
                   .mutateAsync({
                     email: inviteEmail,
                     group_id: Number(groupId),
-                    pending: true,
                   })
                   .then(() => {
                     setInviteEmail("");

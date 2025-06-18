@@ -6,21 +6,26 @@ export const useInvitesMutation = () => {
   const queryClient = useQueryClient();
 
   const addInvite = useMutation({
-    mutationFn: async (invite: Invites["Insert"]) => {
-      const { data: inviteData, error: insertInviteError } = await supabase
-        .from("invites")
-        .insert(invite)
-        .select()
-        .single();
+    mutationFn: async (
+      invite: Pick<Invites["Insert"], "email" | "group_id">,
+    ) => {
+      const { data, error } = await supabase.functions.invoke("send-invite", {
+        body: {
+          email: invite.email,
+          group_id: invite.group_id,
+        },
+      });
 
-      if (insertInviteError) throw insertInviteError;
+      if (error) {
+        throw error;
+      }
+      if (!data?.inviteInserted) {
+        throw new Error(data?.message || "Failed to create invite");
+      }
 
       queryClient.invalidateQueries({ queryKey: ["invites"] });
-
-      return inviteData;
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      return data;
     },
   });
 
