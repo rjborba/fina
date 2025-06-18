@@ -64,13 +64,7 @@ export function GroupDetails() {
                 <div className="font-medium">{invite.email} (Pending)</div>
                 <ConfirmationDialog
                   trigger={
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        removeInvite.mutateAsync(invite.id);
-                      }}
-                    >
+                    <Button size="icon" variant="ghost">
                       <Trash />
                     </Button>
                   }

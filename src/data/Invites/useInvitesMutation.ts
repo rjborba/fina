@@ -19,13 +19,18 @@ export const useInvitesMutation = () => {
       if (error) {
         throw error;
       }
-      if (!data?.inviteInserted) {
-        throw new Error(data?.message || "Failed to create invite");
+
+      const parsedData = JSON.parse(data);
+
+      if (!parsedData?.inviteInserted) {
+        throw new Error(parsedData?.message || "Failed to create invite");
       }
 
+      return data;
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["invites"] });
       queryClient.invalidateQueries({ queryKey: ["groups"] });
-      return data;
     },
   });
 

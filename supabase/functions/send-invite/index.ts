@@ -7,6 +7,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // Import Supabase client for Deno
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -25,15 +26,15 @@ const defaultResponse = ({
 }) => {
   return new Response(JSON.stringify({ emailSent, inviteInserted, message }), {
     status,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
-    },
+    headers: corsHeaders,
   });
 };
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   // if (req.method !== "POST") {
   //   return defaultResponse({
   //     message: "Method not allowed",
@@ -44,14 +45,14 @@ Deno.serve(async (req) => {
   // }
 
   // Get JWT from Authorization header
-  const authHeader = req.headers.get("Authorization");
-  const jwt = authHeader?.replace(/^Bearer /, "");
-  if (!jwt) {
-    return new Response(
-      JSON.stringify({ error: "Missing Authorization header" }),
-      { status: 401 },
-    );
-  }
+  // const authHeader = req.headers.get("Authorization");
+  // const jwt = authHeader?.replace(/^Bearer /, "");
+  // if (!jwt) {
+  //   return new Response(
+  //     JSON.stringify({ error: "Missing Authorization header" }),
+  //     { status: 401 },
+  //   );
+  // }
 
   let payload;
   try {
@@ -77,8 +78,9 @@ Deno.serve(async (req) => {
 
   // Create Supabase client with JWT for RLS
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { persistSession: false },
+    global: {
+      headers: { Authorization: req.headers.get("Authorization")! },
+    },
   });
 
   const { data: group, error: groupError } = await supabase
@@ -125,7 +127,7 @@ Deno.serve(async (req) => {
       subject: `You have been invited to ${group.name} on Fina`,
       html: `
       <div>
-        <p>You have been invited to join group ${group_id}.</p>
+        <p>You have been invited to join group ${group.name}.</p>
         <p>Click <a href="https://fina.rjborba.com/invite/${group.id}">here</a> to accept the invite.</p>
       </div>`,
     }),
