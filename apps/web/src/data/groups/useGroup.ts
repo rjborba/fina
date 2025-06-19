@@ -1,23 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
-import { useAuth } from "@/hooks/useAuth";
 
-export const useInvites = (groupId: number) => {
-  const { user } = useAuth();
-
+export const useGroupById = (groupId: number) => {
   return useQuery({
-    queryKey: ["invites", user?.id],
+    queryKey: ["group_by_id", groupId],
     queryFn: async () => {
-      if (!user?.id) return [];
-
       const { data, error } = await supabase
-        .from("invites")
+        .from("groups")
         .select(
           `
           *
-        `
+        `,
         )
-        .eq("group_id", groupId);
+        .eq("id", groupId)
+        .single();
 
       if (error) {
         throw error;

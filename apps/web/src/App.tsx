@@ -10,6 +10,7 @@ import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
 import { WalletMinimal } from "lucide-react";
 import useLocalStorageState from "./hooks/useLocalStorageState";
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
+import Invites from "./pages/Invites/Invites";
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
@@ -105,6 +106,7 @@ function AppContent() {
         <Route path="/imports" element={<Import />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/group-details/:groupId" element={<GroupDetails />} />
+        <Route path="/invites" element={<Invites />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
