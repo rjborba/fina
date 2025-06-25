@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  fetchTransactions,
+  // fetchTransactions,
   FetchTransactionsOptions,
   FetchTransactionsResult,
 } from "./fetchTransactions";
+import { fetchTransactionsRest } from "./fetchTransactionsNest";
 
 export const useTransactions = (
   fetchTransactionsOptions: FetchTransactionsOptions
 ) => {
+  console.log("useTransactions...");
   return useQuery<FetchTransactionsResult>({
     enabled: !!fetchTransactionsOptions.groupdId,
     queryKey: [
@@ -21,6 +23,6 @@ export const useTransactions = (
       fetchTransactionsOptions.accountIdList,
       fetchTransactionsOptions.search,
     ],
-    queryFn: () => fetchTransactions(fetchTransactionsOptions),
+    queryFn: () => fetchTransactionsRest(fetchTransactionsOptions),
   });
 };

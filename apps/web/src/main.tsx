@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // keep 1 day
-      staleTime: 1000 * 60 * 5, // fresh for 5 minutes
+      staleTime: 1, // fresh for 5 minutes
       retry: (failureCount) => onlineManager.isOnline() && failureCount < 3,
       refetchOnWindowFocus: false,
     },
