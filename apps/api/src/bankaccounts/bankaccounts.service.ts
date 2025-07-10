@@ -1,26 +1,38 @@
+import { CreateBankaccountInputDto } from '@fina/types';
 import { Injectable } from '@nestjs/common';
-// import { CreateBankaccountDto } from './dto/create-bankaccount.dto';
-// import { UpdateBankaccountDto } from './dto/update-bankaccount.dto';
+import { Bankaccounts } from './entities/bankaccount.entity';
+import { Groups } from 'src/groups/entities/group.entity';
+import { Users } from 'src/users/entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class BankaccountsService {
-  // create(createBankaccountDto: CreateBankaccountDto) {
-  //   return 'This action adds a new bankaccount';
-  // }
+  constructor(
+    @InjectRepository(Bankaccounts)
+    private readonly bankaccountRepository: Repository<Bankaccounts>,
+  ) {}
 
-  findAll() {
-    return `This action returns all bankaccounts`;
+  create(createBankaccountDto: CreateBankaccountInputDto) {
+    const bankaccountEntity = new Bankaccounts({
+      name: createBankaccountDto.name,
+      type: createBankaccountDto.type,
+      dueDate: createBankaccountDto.dueDate || null,
+      group: { id: createBankaccountDto.groupId } as Groups,
+      user: { id: createBankaccountDto.userId } as Users,
+    });
+
+    return this.bankaccountRepository.save(bankaccountEntity);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} bankaccount`;
+  findAll(groupId: string) {
+    return this.bankaccountRepository.find({
+      where: { group: { id: groupId } },
+      relations: ['group', 'user'],
+    });
   }
 
-  // update(id: number, updateBankaccountDto: UpdateBankaccountDto) {
-  //   return `This action updates a #${id} bankaccount`;
-  // }
-
-  remove(id: number) {
-    return `This action removes a #${id} bankaccount`;
+  remove(id: string) {
+    return this.bankaccountRepository.delete(id);
   }
 }

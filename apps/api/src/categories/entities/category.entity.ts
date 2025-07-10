@@ -9,10 +9,11 @@ import {
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
+import { Category } from '@fina/types';
 
 @Index('categories_pkey', ['id'], { unique: true })
 @Entity('categories', { schema: 'public' })
-export class Categories {
+export class Categories implements Category {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 

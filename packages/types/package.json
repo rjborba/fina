@@ -1,0 +1,29 @@
+{
+  "name": "@fina/types",
+  "version": "1.0.0",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "rootDir": "src",
+  "exports": {
+    ".": {
+      "require": "./dist/src/index.js",
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "nestjs-zod": "^4.3.1",
+    "zod": "^3.25.75"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

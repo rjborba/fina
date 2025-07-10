@@ -7,11 +7,12 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
+import { Invite } from '@fina/types';
 
 @Index('invites_email_key', ['email'], { unique: true })
 @Index('invites_pkey', ['id'], { unique: true })
 @Entity('invites', { schema: 'public' })
-export class Invites {
+export class Invites implements Invite {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 

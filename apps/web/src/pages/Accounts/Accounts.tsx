@@ -19,7 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BankAccount } from "@/data/bankAccounts/BankAccount";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -34,6 +33,7 @@ import {
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreateBankaccountInputDto } from "@fina/types";
 
 type FormData = {
   accountName: string;
@@ -42,7 +42,7 @@ type FormData = {
   user_id: string;
 };
 
-const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
+const RemoveConfirmDialog: FC<{ id: string }> = ({ id }) => {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const { removeAccount } = useAccountsMutation();
@@ -68,7 +68,7 @@ const RemoveConfirmDialog: FC<{ id: number }> = ({ id }) => {
             disabled={isLoading}
             onClick={async () => {
               setIsLoading(true);
-              removeAccount(id)
+              removeAccount(id.toString())
                 .then(() => {
                   toast({ title: "Successfully removed" });
                   setOpen(false);
@@ -130,20 +130,16 @@ export const Accounts: FC = () => {
       throw new Error("User not found");
     }
 
-    const addAccountPayload: BankAccount["Insert"] = {
+    const addAccountPayload: CreateBankaccountInputDto = {
       name: data.accountName,
       type: data.accountType,
-      group_id: selectedGroup?.id,
-      user_id: data.user_id,
-      // TODO
+      groupId: selectedGroup?.id.toString(),
+      userId: data.user_id,
+      dueDate: accountType === "credit" ? new Date(data.dueDate) : null,
     };
 
     if (accountType === "credit") {
-      const dueDateAsFormattedString = new Date(
-        data.dueDate.toString()
-      ).toISOString();
-
-      addAccountPayload.due_date = dueDateAsFormattedString;
+      addAccountPayload.dueDate = new Date(data.dueDate);
     }
 
     setIsLoading(true);

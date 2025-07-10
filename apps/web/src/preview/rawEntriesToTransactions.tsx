@@ -1,6 +1,6 @@
-import { Transaction } from "@/data/transactions/Transaction";
 import { dayjs } from "@/dayjs";
 import { ImportFieldMap } from "./FieldMapAtom";
+import { CreateTransactionInputDtoType } from "@fina/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const extractText = (row: any, keysOrKey: string | string[]) => {
@@ -42,23 +42,23 @@ export const rawEntriesToTransactions = ({
   const digitRegex = /^\d+\/\d+$/;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return rawData.map((row: any): Transaction["Insert"] => {
+  return rawData.map((row: any): CreateTransactionInputDtoType => {
     if (!accountId) {
       throw new Error("Account ID is required");
     }
 
-    const parsedRow: Transaction["Insert"] = {
-      bankaccount_id: Number(accountId),
-      group_id: groupId,
-      to_be_considered_at: toBeConsideredAt,
+    const parsedRow: CreateTransactionInputDtoType = {
+      bankaccountId: accountId,
+      groupId: groupId.toString(),
+      toBeConsideredAt: toBeConsideredAt,
       date: null,
-      calculated_date: null,
+      calculatedDate: null,
       description: null,
-      installment_current: null,
-      installment_total: null,
+      installmentCurrent: null,
+      installmentTotal: null,
       value: null,
-      credit_due_date: null,
-      import_id: null,
+      creditDueDate: null,
+      importId: null,
     };
 
     if (typeof row !== "object" || row === null) {
@@ -70,10 +70,10 @@ export const rawEntriesToTransactions = ({
       const formatedDate = dayjs(text, "DD/MM/YYYY");
 
       if (formatedDate.isValid()) {
-        parsedRow.date = formatedDate.toISOString();
-        parsedRow.calculated_date = formatedDate.toISOString();
+        parsedRow.date = formatedDate.toDate();
+        parsedRow.calculatedDate = formatedDate.toDate();
       } else {
-        parsedRow.date = "Invalid Date";
+        throw new Error("Invalid Date");
       }
     }
 
@@ -104,28 +104,28 @@ export const rawEntriesToTransactions = ({
             installmentTotal > 0 &&
             installmentTotal >= installmentCurrent
           ) {
-            parsedRow.installment_current = installmentCurrent;
-            parsedRow.installment_total = installmentTotal;
+            parsedRow.installmentCurrent = installmentCurrent.toString();
+            parsedRow.installmentTotal = installmentTotal;
           }
         } else {
-          parsedRow.installment_current = -1;
-          parsedRow.installment_total = -1;
+          parsedRow.installmentCurrent = "-1";
+          parsedRow.installmentTotal = -1;
         }
       }
     }
 
     // Calculated data
     if (
-      parsedRow.installment_current &&
-      parsedRow.installment_current > 0 &&
+      parsedRow.installmentCurrent &&
+      Number(parsedRow.installmentCurrent) > 0 &&
       parsedRow.date
     ) {
       const dateWithInstallment = dayjs(parsedRow.date).add(
-        parsedRow.installment_current - 1,
+        Number(parsedRow.installmentCurrent) - 1,
         "month"
       );
 
-      parsedRow.calculated_date = dateWithInstallment.toISOString();
+      parsedRow.calculatedDate = dateWithInstallment.toDate();
     }
 
     if (importFieldMap.value) {
@@ -138,11 +138,11 @@ export const rawEntriesToTransactions = ({
     }
 
     if (creditDueDate) {
-      parsedRow.credit_due_date = creditDueDate;
+      parsedRow.creditDueDate = creditDueDate;
     }
 
     if (importId) {
-      parsedRow.import_id = importId;
+      parsedRow.importId = importId.toString();
     }
 
     return parsedRow;

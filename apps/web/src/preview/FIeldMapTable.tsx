@@ -12,7 +12,7 @@ import { EXPECTED_HEADERS_CREDIT } from "./constant";
 import { useAtom } from "jotai";
 import { ImportAtom, ImportFieldMap } from "./FieldMapAtom";
 import { rawEntriesToTransactions } from "./rawEntriesToTransactions";
-import { Transaction } from "@/data/transactions/Transaction";
+import { CreateTransactionInputDtoType } from "@fina/types";
 
 export const FieldMapTable: FC<{
   rawData?: object[];
@@ -82,14 +82,21 @@ export const FieldMapTable: FC<{
                         <TableCell key={column}>
                           {(() => {
                             return column === "installment"
-                              ? row["installment_current"]
-                                ? row["installment_current"] +
+                              ? row.installmentCurrent
+                                ? row.installmentCurrent +
                                   "/" +
-                                  row["installment_total"]
+                                  row.installmentTotal
                                 : ""
-                              : row[
-                                  column as keyof Partial<Transaction["Row"]>
-                                ];
+                              : (() => {
+                                  const value = (
+                                    row as CreateTransactionInputDtoType
+                                  )[
+                                    column as keyof CreateTransactionInputDtoType
+                                  ];
+                                  return value instanceof Date
+                                    ? value.toLocaleDateString()
+                                    : value;
+                                })();
                           })()}
                         </TableCell>
                       </Fragment>

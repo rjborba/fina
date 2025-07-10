@@ -11,24 +11,27 @@ import { toast } from "@/hooks/use-toast";
 const NONE_CATEGORY_ID = "none" as const;
 
 interface EditableSelectProps {
-  value: number | null;
-  categories: { id: number; name: string | null }[];
+  value: string | null;
+  options: { id: string; name: string | null }[];
   open: boolean;
   onOpenChange: (number: boolean) => void;
-  onChange: (value: number | null) => Promise<unknown>;
+  onChange: (value: string | null) => Promise<unknown>;
 }
 
 export const EditableSelect: FC<EditableSelectProps> = ({
   value,
-  categories,
+  options,
   onChange,
   open,
   onOpenChange,
 }) => {
   const [internalValue, setInternalValue] = useState(value);
 
-  const selectedCategory = categories.find((cat) => cat.id === internalValue);
-  const displayText = selectedCategory?.name || "-";
+  const selectedOption = options.find(
+    (option) => String(option.id) === String(internalValue)
+  );
+
+  const displayText = selectedOption?.name || "-";
 
   useEffect(() => {
     setInternalValue(value);
@@ -43,7 +46,7 @@ export const EditableSelect: FC<EditableSelectProps> = ({
           value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
           onValueChange={(newValue) => {
             const normalizedNewValue =
-              newValue === NONE_CATEGORY_ID ? null : Number(newValue);
+              newValue === NONE_CATEGORY_ID ? null : newValue;
 
             setInternalValue(normalizedNewValue);
 
@@ -57,10 +60,10 @@ export const EditableSelect: FC<EditableSelectProps> = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {categories?.map((category) => {
+            {options?.map((option) => {
               return (
-                <SelectItem key={category.id} value={String(category.id)}>
-                  {category.name || "-"}
+                <SelectItem key={option.id} value={String(option.id)}>
+                  {option.name || "-"}
                 </SelectItem>
               );
             })}

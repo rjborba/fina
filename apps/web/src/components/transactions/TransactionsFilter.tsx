@@ -122,7 +122,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                                 setFilterProps({
                                   ...filterProps,
                                   categoriesId: filterProps.categoriesId.filter(
-                                    (id: number) => id !== category.id
+                                    (id: string) => id !== category.id
                                   ),
                                 });
                               }

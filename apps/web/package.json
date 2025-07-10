@@ -10,11 +10,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "prepare": "husky",
-    "check-types": "pnpm lint"
+    "check-types": "tsc --build --noEmit",
+    "lint:all": "pnpm lint && pnpm check-types"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint"
+      "eslint --cache"
     ]
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.9",
     "@uidotdev/usehooks": "^2.4.1",
+    "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.0",
@@ -86,6 +88,7 @@
     "tailwindcss": "^4.1.7",
     "typescript": "~5.6.3",
     "typescript-eslint": "^8.32.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "@fina/types": "workspace:*"
   }
 }

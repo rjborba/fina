@@ -1,10 +1,7 @@
-import { Transaction } from "@/data/transactions/Transaction";
 import { dayjs } from "@/dayjs";
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
 import { useCategories } from "@/data/categories/useCategories";
-import { BankAccount } from "@/data/bankAccounts/BankAccount";
-import { Category } from "@/data/categories/Category";
 import { Badge } from "@/components/ui/badge";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -19,9 +16,10 @@ import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
+import { Bankaccount, Category, Transaction } from "@fina/types";
 
 interface TransactionDetailsModalProps {
-  transaction: Transaction["Row"] | null;
+  transaction: Transaction | null;
   onNextTransaction: () => void;
   onPreviousTransaction: () => void;
   open: boolean;
@@ -60,10 +58,7 @@ export function TransactionDetailsModal({
   const accountsMapById = React.useMemo(() => {
     if (!bankAccountsData) return {};
     return bankAccountsData.reduce(
-      (
-        acc: Record<number, BankAccount["Row"]>,
-        current: BankAccount["Row"]
-      ) => {
+      (acc: Record<string, Bankaccount>, current: Bankaccount) => {
         acc[current.id] = current;
         return acc;
       },
@@ -74,7 +69,7 @@ export function TransactionDetailsModal({
   const categoriesMapById = React.useMemo(() => {
     if (!categoriesData) return {};
     return categoriesData.reduce(
-      (acc: Record<number, Category["Row"]>, current: Category["Row"]) => {
+      (acc: Record<string, Category>, current: Category) => {
         acc[current.id] = current;
         return acc;
       },
@@ -83,12 +78,12 @@ export function TransactionDetailsModal({
   }, [categoriesData]);
 
   const handleCategorySelect = useCallback(
-    async (categoryId: number | null) => {
+    async (categoryId: string | null) => {
       if (!transaction) return;
 
       await updateMutation.mutateAsync({
         id: transaction?.id,
-        transaction: { category_id: categoryId },
+        transaction: { categoryId: categoryId?.toString() },
       });
     },
     [transaction, updateMutation]
@@ -167,7 +162,7 @@ export function TransactionDetailsModal({
   ]);
 
   const accountData = transaction
-    ? accountsMapById[transaction.bankaccount_id]
+    ? accountsMapById[parseInt(transaction.bankaccount.id)]
     : null;
 
   return (
@@ -206,10 +201,8 @@ export function TransactionDetailsModal({
                 Due Date
               </div>
               <div>
-                {transaction?.credit_due_date
-                  ? dayjs(transaction?.credit_due_date).format(
-                      "dddd, DD/MM/YYYY"
-                    )
+                {transaction?.creditDueDate
+                  ? dayjs(transaction?.creditDueDate).format("dddd, DD/MM/YYYY")
                   : "-"}
               </div>
             </div>
@@ -247,9 +240,9 @@ export function TransactionDetailsModal({
                 Installment
               </div>
               <div>
-                {transaction?.installment_current &&
-                transaction?.installment_total
-                  ? `${transaction?.installment_current}/${transaction?.installment_total}`
+                {transaction?.installmentCurrent &&
+                transaction?.installmentTotal
+                  ? `${transaction?.installmentCurrent}/${transaction?.installmentTotal}`
                   : "-"}
               </div>
             </div>
@@ -258,10 +251,10 @@ export function TransactionDetailsModal({
                 Category
               </div>
               <div>
-                {transaction?.category_id &&
-                categoriesMapById[transaction?.category_id] ? (
+                {transaction?.category?.id &&
+                categoriesMapById[transaction?.category.id] ? (
                   <Badge variant="secondary">
-                    {categoriesMapById[transaction?.category_id]?.name}
+                    {categoriesMapById[transaction?.category.id]?.name}
                   </Badge>
                 ) : (
                   <Badge variant="outline">-</Badge>
@@ -280,7 +273,7 @@ export function TransactionDetailsModal({
                   key={`${category.id}`}
                   onClick={() => handleCategorySelect(category.id)}
                   variant={
-                    transaction?.category_id == category.id
+                    transaction?.category?.id == category.id
                       ? "default"
                       : "outline"
                   }

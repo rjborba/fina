@@ -1,26 +1,43 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Categories } from './entities/category.entity';
+import { Repository } from 'typeorm';
+import { CreateCategoryInputDtoType } from '@fina/types';
+import { Groups } from 'src/groups/entities/group.entity';
 // import { CreateCategoryDto } from './dto/create-category.dto';
 // import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
-  // create(createCategoryDto: CreateCategoryDto) {
-  //   return 'This action adds a new category';
-  // }
+  constructor(
+    @InjectRepository(Categories)
+    private readonly categoryRepository: Repository<Categories>,
+  ) {}
 
-  findAll() {
-    return `This action returns all categories`;
+  create(createCategoryDto: CreateCategoryInputDtoType) {
+    const categoryEntity = new Categories({
+      name: createCategoryDto.name,
+      group: { id: createCategoryDto.groupId } as Groups,
+    });
+
+    return this.categoryRepository.save(categoryEntity);
+  }
+
+  findAll(groupId: string) {
+    return this.categoryRepository.find({
+      where: { group: { id: groupId } },
+    });
   }
 
   findOne(id: number) {
     return `This action returns a #${id} category`;
   }
 
-  // update(id: number, updateCategoryDto: UpdateCategoryDto) {
-  //   return `This action updates a #${id} category`;
-  // }
+  update() {
+    throw new Error('Not implemented');
+  }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  remove(id: string) {
+    return this.categoryRepository.delete(id);
   }
 }

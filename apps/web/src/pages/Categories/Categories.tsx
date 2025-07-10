@@ -42,7 +42,7 @@ export const Categories: FC = () => {
 
     await addCategory({
       name: values.categoryName,
-      group_id: selectedGroup.id,
+      groupId: selectedGroup.id.toString(),
     });
     form.reset();
   };

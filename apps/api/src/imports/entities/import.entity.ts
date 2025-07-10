@@ -9,10 +9,11 @@ import {
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
+import { Import } from '@fina/types';
 
 @Index('imports_pkey', ['id'], { unique: true })
 @Entity('imports', { schema: 'public' })
-export class Imports {
+export class Imports implements Import {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 

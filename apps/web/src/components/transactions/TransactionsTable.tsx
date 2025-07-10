@@ -2,7 +2,6 @@ import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { useCategories } from "@/data/categories/useCategories";
 import { EditableSelect } from "@/data/transactions/EditableSelectCell";
 import { EditableText } from "@/data/transactions/EditableTextCell";
-import { Transaction } from "@/data/transactions/Transaction";
 import { cn } from "@/lib/utils";
 import {
   createColumnHelper,
@@ -38,20 +37,20 @@ import { Skeleton } from "../ui/skeleton";
 import React from "react";
 
 export interface TransactionsTableProps {
-  data?: Transaction["Row"][] | null;
+  data?: Transaction[] | null;
   totalCount: number;
   pageIndex: number;
   pageSize: number;
   isLoading: boolean;
   isError: boolean;
   onUpdateTransaction: (
-    id: number,
-    transaction: Partial<Transaction["Row"]>
+    id: string,
+    transaction: Partial<Transaction>
   ) => Promise<void>;
-  onDeleteTransaction: (id: number) => Promise<void>;
+  onDeleteTransaction: (id: string) => Promise<void>;
 }
 
-const columnHelper = createColumnHelper<Transaction["Row"]>();
+const columnHelper = createColumnHelper<Transaction>();
 
 // Memoized TableRow to prevent unnecessary re-renders
 const MemoizedTableRow = React.memo(TableRow);
@@ -59,10 +58,11 @@ const MemoizedTableRow = React.memo(TableRow);
 import { useAtom } from "jotai";
 import { openSelectIdAtom } from "./OpenSelectAtom";
 import { CreateTransactionModal } from "../CreateTransactionModal";
+import { Transaction } from "@fina/types";
 
 const CategoryCell: React.FC<{
-  row: Row<Transaction["Row"]>;
-  categories: { id: number; name: string }[];
+  row: Row<Transaction>;
+  categories: { id: string; name: string }[];
   onUpdateTransaction: TransactionsTableProps["onUpdateTransaction"];
 }> = ({ row, categories, onUpdateTransaction }) => {
   const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom);
@@ -70,8 +70,8 @@ const CategoryCell: React.FC<{
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <EditableSelect
-        value={row.original.category_id}
-        categories={categories}
+        value={row.original.category?.id || null}
+        options={categories}
         open={openSelectId === row.original.id}
         onOpenChange={(open) => {
           if (open) {
@@ -82,7 +82,13 @@ const CategoryCell: React.FC<{
         }}
         onChange={(value) => {
           setOpenSelectId(null);
-          return onUpdateTransaction(row.original.id, { category_id: value });
+
+          if (!row.original.category) {
+            throw new Error("Category not found");
+          }
+          return onUpdateTransaction(row.original.id, {
+            category: { ...row.original.category, id: value! },
+          });
         }}
       />
     </div>
@@ -151,7 +157,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("calculated_date", {
+      columnHelper.accessor("calculatedDate", {
         id: "date",
         header: ({ column }) => {
           return (
@@ -184,7 +190,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           return (
             <div className="">
               <span>{row.original.description}</span>{" "}
-              {!!row.original.credit_due_date && (
+              {!!row.original.creditDueDate && (
                 <LucideCreditCard className="h-3 w-3 text-muted-foreground inline" />
               )}
             </div>
@@ -194,11 +200,11 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
       // Installments
       columnHelper.accessor(
         (row) => {
-          if (!row.installment_current || !row.installment_total) {
+          if (!row.installmentCurrent || !row.installmentTotal) {
             return "";
           }
 
-          return `${row.installment_current}/${row.installment_total}`;
+          return `${row.installmentCurrent}/${row.installmentTotal}`;
         },
         {
           id: "installment",
@@ -215,7 +221,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           return <div>R$ {row.original.value.toFixed(2)}</div>;
         },
       }),
-      columnHelper.accessor("category_id", {
+      columnHelper.accessor("category", {
         header: "Category",
         cell: ({ row }) => {
           return (
@@ -362,7 +368,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           {rowVirtualizer
             .getVirtualItems()
             .map((virtualRow, virtualRowIndex) => {
-              const row = rows[virtualRow.index] as Row<Transaction["Row"]>;
+              const row = rows[virtualRow.index] as Row<Transaction>;
 
               return (
                 <MemoizedTableRow

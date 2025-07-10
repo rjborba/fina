@@ -42,7 +42,7 @@ export const Transactions: FC = () => {
   } = useTransactions({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
-    groupdId: selectedGroup?.id?.toString() || "",
+    groupId: selectedGroup?.id?.toString() || "-1",
     startDate: filterProps.startDate,
     endDate: filterProps.endDate,
     search: filterProps.partialDescription || undefined,
@@ -82,11 +82,11 @@ export const Transactions: FC = () => {
       sum.expense += transaction.value;
     }
 
-    if (transaction.category_id) {
-      if (sumCategories[transaction.category_id]) {
-        sumCategories[transaction.category_id] += transaction.value;
+    if (transaction.category?.id) {
+      if (sumCategories[transaction.category.id]) {
+        sumCategories[transaction.category.id] += transaction.value;
       } else {
-        sumCategories[transaction.category_id] = transaction.value;
+        sumCategories[transaction.category.id] = transaction.value;
       }
     }
   }
@@ -110,14 +110,23 @@ export const Transactions: FC = () => {
             }
           >
             <TransactionsTable
-              data={transactionsData?.data}
+              data={transactionsData?.data || []}
               isLoading={isLoading}
               isError={isError}
               totalCount={transactionsData?.totalCount || 0}
               pageIndex={pagination.pageIndex}
               pageSize={pagination.pageSize}
               onUpdateTransaction={async (id, transaction) => {
-                updateTransaction.mutateAsync({ id, transaction });
+                updateTransaction.mutateAsync({
+                  id,
+                  transaction: {
+                    ...transaction,
+                    categoryId: transaction.category?.id,
+                    bankaccountId: transaction.bankaccount?.id,
+                    groupId: transaction.group?.id,
+                    importId: transaction.import?.id,
+                  },
+                });
               }}
               onDeleteTransaction={async (id) => {
                 removeTransaction.mutateAsync(id);

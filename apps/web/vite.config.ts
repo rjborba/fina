@@ -10,7 +10,21 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ["@fina/types", "nestjs-zod", "zod"],
+    esbuildOptions: {
+      target: "es2020",
+    },
+  },
+  server: {
+    fs: {
+      strict: false,
+    },
+  },
   build: {
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {

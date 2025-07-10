@@ -14,10 +14,11 @@ import { Imports } from '../../imports/entities/import.entity';
 import { Invites } from '../../invites/entities/invite.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
 import { UserGroup } from '../../user-groups/entities/user-group.entity';
+import { Group } from '@fina/types';
 
 @Index('group_pkey', ['id'], { unique: true })
 @Entity('groups', { schema: 'public' })
-export class Groups {
+export class Groups implements Group {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 

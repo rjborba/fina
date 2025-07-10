@@ -1,17 +1,27 @@
 import { useQueryClient } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
-import { Category } from "./Category";
+
+import {
+  CreateCategoryInputDtoType,
+  CreateCategoryOutputDtoType,
+  RemoveCategoryOutputDtoType,
+} from "@fina/types";
+import { FinaAPIFetcher } from "../FinaAPIFetcher";
 
 export const useCategoriesMutation = () => {
   const queryClient = useQueryClient();
 
-  const addCategory = async (category: Category["Insert"]) => {
-    await supabase.from("categories").insert(category);
+  const addCategory = async (category: CreateCategoryInputDtoType) => {
+    await FinaAPIFetcher.post<CreateCategoryOutputDtoType>(
+      "categories",
+      category
+    );
     queryClient.invalidateQueries({ queryKey: ["categories"] });
   };
 
-  const removeCategory = async (id: number) => {
-    await supabase.from("categories").delete().eq("id", id);
+  const removeCategory = async (id: string) => {
+    await FinaAPIFetcher.delete<RemoveCategoryOutputDtoType>(
+      `categories/${id}`
+    );
     queryClient.invalidateQueries({ queryKey: ["categories"] });
   };
 

@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
+
+import { QueryCategoryOutputDtoType } from "@fina/types";
+import { FinaAPIFetcher } from "../FinaAPIFetcher";
 
 type UseCategoriesProps = {
   groupId?: string;
@@ -10,17 +12,14 @@ export const useCategories = ({ groupId }: UseCategoriesProps) => {
     enabled: !!groupId,
     queryKey: ["categories", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("group_id", Number(groupId))
-        .order("id", { ascending: true });
+      const response = await FinaAPIFetcher.get<QueryCategoryOutputDtoType>(
+        `categories`,
+        {
+          groupId,
+        }
+      );
 
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      return response.data;
     },
   });
 };

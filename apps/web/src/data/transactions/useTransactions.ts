@@ -1,28 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
+
 import {
-  // fetchTransactions,
-  FetchTransactionsOptions,
-  FetchTransactionsResult,
-} from "./fetchTransactions";
-import { fetchTransactionsRest } from "./fetchTransactionsNest";
+  QueryTransactionInputDto,
+  QueryTransactionOutputDtoType,
+} from "@fina/types";
+import { fetchTransactions } from "./fetchTransactions";
 
 export const useTransactions = (
-  fetchTransactionsOptions: FetchTransactionsOptions
+  fetchTransactionsOptions: QueryTransactionInputDto
 ) => {
-  console.log("useTransactions...");
-  return useQuery<FetchTransactionsResult>({
-    enabled: !!fetchTransactionsOptions.groupdId,
+  return useQuery<QueryTransactionOutputDtoType>({
+    enabled: !!fetchTransactionsOptions.groupId,
     queryKey: [
       "transactions",
       fetchTransactionsOptions.page,
       fetchTransactionsOptions.pageSize,
-      fetchTransactionsOptions.groupdId,
+      fetchTransactionsOptions.groupId,
       fetchTransactionsOptions.startDate,
       fetchTransactionsOptions.endDate,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
       fetchTransactionsOptions.search,
     ],
-    queryFn: () => fetchTransactionsRest(fetchTransactionsOptions),
+    queryFn: () => fetchTransactions(fetchTransactionsOptions),
   });
 };

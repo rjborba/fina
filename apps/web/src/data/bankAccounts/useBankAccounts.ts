@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
+import { FinaAPIFetcher } from "../FinaAPIFetcher";
+import { QueryBankaccountOutputDto } from "@fina/types";
 
 type UseBankAccountsProps = {
   groupId?: string;
@@ -10,17 +11,14 @@ export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
     enabled: groupId !== undefined,
     queryKey: ["bankaccounts", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bankaccounts")
-        .select("*")
-        .eq("group_id", Number(groupId))
-        .order("id", { ascending: true });
+      const response = await FinaAPIFetcher.get<QueryBankaccountOutputDto>(
+        `bankaccounts`,
+        {
+          groupId,
+        }
+      );
 
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      return response.data;
     },
   });
 };

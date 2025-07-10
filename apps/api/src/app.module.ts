@@ -19,8 +19,9 @@ import { InvitesModule } from './invites/invites.module';
 import { ImportsModule } from './imports/imports.module';
 import { UsersModule } from './users/users.module';
 import { SupabaseAuthGuard } from './supabase-auth.guard';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ZodValidationPipe } from 'nestjs-zod';
 
 @Module({
   imports: [
@@ -61,6 +62,10 @@ import { ConfigModule } from '@nestjs/config';
     {
       provide: APP_GUARD,
       useClass: SupabaseAuthGuard,
+    },
+    {
+      provide: APP_PIPE,
+      useClass: ZodValidationPipe,
     },
   ],
 })

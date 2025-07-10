@@ -1,17 +1,29 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
-import { Transaction } from "./Transaction";
+import {
+  CreateTransactionInputDtoType,
+  CreateTransactionOutputDto,
+  Transaction,
+  UpdateTransactionInputDtoSchema,
+  UpdateTransactionInputDtoType,
+} from "@fina/types";
+import { FinaAPIFetcher } from "../FinaAPIFetcher";
 
 export const useTransactionMutation = () => {
   const queryClient = useQueryClient();
 
   const addMutation = useMutation({
-    mutationFn: async (transactions: Transaction["Insert"][]) => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .insert(transactions);
-      if (error) throw error;
-      return data;
+    retry: 0,
+    mutationFn: async (
+      transactionOrTransactions:
+        | CreateTransactionInputDtoType
+        | CreateTransactionInputDtoType[]
+    ) => {
+      const response = await FinaAPIFetcher.post<
+        CreateTransactionOutputDto | CreateTransactionOutputDto[]
+      >(`transactions`, transactionOrTransactions);
+
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -22,28 +34,26 @@ export const useTransactionMutation = () => {
   });
 
   const updateMutation = useMutation({
+    retry: 0,
     mutationFn: async ({
       id,
       transaction,
     }: {
-      id: number;
-      transaction: Transaction["Update"];
+      id: string;
+      transaction: UpdateTransactionInputDtoType;
     }) => {
-      const transactionNormalized = { ...transaction };
-      delete transactionNormalized.id;
+      const validated = UpdateTransactionInputDtoSchema.safeParse(transaction);
 
-      const { data, error } = await supabase
-        .from("transactions")
-        .update(transactionNormalized)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
+      if (!validated.success) {
+        throw new Error("Invalid transaction update");
       }
 
-      return data;
+      const response = await FinaAPIFetcher.patch<Transaction>(
+        `transactions/${id}`,
+        transaction
+      );
+
+      return response.data;
     },
     onMutate: async ({ id, transaction: updatedTransactionFields }) => {
       await queryClient.cancelQueries({
@@ -52,14 +62,14 @@ export const useTransactionMutation = () => {
       });
 
       const previous = queryClient.getQueriesData<{
-        data: Transaction["Row"][];
+        data: Transaction[];
       }>({
         queryKey: ["transactions"],
         exact: false,
       });
 
       queryClient.setQueriesData<{
-        data: Transaction["Row"][];
+        data: Transaction[];
         totalCount: number;
       }>({ queryKey: ["transactions"], exact: false }, (old) => {
         if (!old) {
@@ -95,11 +105,12 @@ export const useTransactionMutation = () => {
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (id: number) => {
+    retry: 0,
+    mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from("transactions")
         .update({ removed: true })
-        .eq("id", id)
+        .eq("id", Number(id))
         .select()
         .single();
 

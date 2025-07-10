@@ -8,10 +8,11 @@ import {
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
 import { Users } from '../../users/entities/user.entity';
+import { UserGroup as UserGroupType } from '@fina/types';
 
 @Index('account_group_pkey', ['id'], { unique: true })
 @Entity('user_group', { schema: 'public' })
-export class UserGroup {
+export class UserGroup implements UserGroupType {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 

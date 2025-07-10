@@ -21,7 +21,7 @@ import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
 import { useCategories } from "@/data/categories/useCategories";
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { toast } from "@/hooks/use-toast";
-import { Transaction } from "@/data/transactions/Transaction";
+import { CreateTransactionInputDtoType } from "@fina/types";
 
 interface CreateTransactionModalProps {
   onOpenChange?: (open: boolean) => void;
@@ -84,25 +84,25 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         throw new Error("Group ID is required");
       }
 
-      const transactionData: Transaction["Insert"] = {
-        date: data.date || null,
-        credit_due_date:
-          selectedAccount?.type === "credit" ? selectedAccount.due_date : null,
-        description: data.description || null,
+      const transactionData: CreateTransactionInputDtoType = {
+        date: data.date ? new Date(data.date) : null,
+        creditDueDate:
+          selectedAccount?.type === "credit" ? selectedAccount.dueDate : null,
+        description: data.description,
         value: data.value ? parseFloat(data.value) : null,
-        category_id: data.category_id ? parseInt(data.category_id) : null,
+        categoryId: data.category_id ? data.category_id : null,
         observation: data.observation || null,
-        bankaccount_id: parseInt(data.bankaccount_id),
-        installment_current: data.installment_current
-          ? parseInt(data.installment_current)
+        bankaccountId: data.bankaccount_id,
+        installmentCurrent: data.installment_current
+          ? data.installment_current
           : null,
-        installment_total: data.installment_total
+        installmentTotal: data.installment_total
           ? parseInt(data.installment_total)
           : null,
-        group_id: data.group_id,
+        groupId: data.group_id.toString(),
       };
 
-      await addMutation.mutateAsync([transactionData]);
+      await addMutation.mutateAsync(transactionData);
       toast({
         title: "Transaction created successfully",
       });

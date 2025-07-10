@@ -2,10 +2,11 @@ import { Column, Entity, Index, OneToMany } from 'typeorm';
 import { Bankaccounts } from '../../bankaccounts/entities/bankaccount.entity';
 import { Groups } from '../../groups/entities/group.entity';
 import { UserGroup } from '../../user-groups/entities/user-group.entity';
+import { User } from '@fina/types';
 
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users', { schema: 'public' })
-export class Users {
+export class Users implements User {
   @Column('uuid', { primary: true, name: 'id' })
   id: string;
 
@@ -22,7 +23,7 @@ export class Users {
   email: string | null;
 
   @Column('jsonb', { name: 'meta_data', nullable: true })
-  metaData: object | null;
+  metaData: Record<string, unknown> | null;
 
   @Column('text', { name: 'avatar', nullable: true })
   avatar: string | null;

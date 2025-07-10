@@ -10,10 +10,11 @@ import { Bankaccounts } from '../../bankaccounts/entities/bankaccount.entity';
 import { Categories } from '../../categories/entities/category.entity';
 import { Groups } from '../../groups/entities/group.entity';
 import { Imports } from '../../imports/entities/import.entity';
+import { Transaction } from '@fina/types';
 
 @Index('transactions_pkey', ['id'], { unique: true })
 @Entity('transactions', { schema: 'public' })
-export class Transactions {
+export class Transactions implements Transaction {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -33,29 +34,29 @@ export class Transactions {
   date: Date | null;
 
   @Column('integer', { name: 'installment_total', nullable: true })
-  installmentTotal: number | null;
+  installmentTotal?: number | null;
 
   @Column('bigint', { name: 'installment_current', nullable: true })
-  installmentCurrent: string | null;
+  installmentCurrent?: string | null;
 
   @Column('date', { name: 'credit_due_date', nullable: true })
-  creditDueDate: string | null;
+  creditDueDate?: string | null;
 
   @Column('text', { name: 'observation', nullable: true })
-  observation: string | null;
+  observation?: string | null;
 
   @Column('boolean', {
     name: 'removed',
     nullable: true,
     default: () => 'false',
   })
-  removed: boolean | null;
+  removed?: boolean | null;
 
   @Column('date', { name: 'to_be_considered_at', nullable: true })
-  toBeConsideredAt: string | null;
+  toBeConsideredAt?: string | null;
 
   @Column('date', { name: 'calculated_date', nullable: true })
-  calculatedDate: string | null;
+  calculatedDate?: Date | null;
 
   @ManyToOne(() => Bankaccounts, (bankaccounts) => bankaccounts.transactions, {
     onDelete: 'CASCADE',
@@ -66,7 +67,7 @@ export class Transactions {
 
   @ManyToOne(() => Categories, (categories) => categories.transactions)
   @JoinColumn([{ name: 'category_id', referencedColumnName: 'id' }])
-  category: Categories;
+  category?: Categories | null;
 
   @ManyToOne(() => Groups, (groups) => groups.transactions)
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
@@ -79,7 +80,7 @@ export class Transactions {
   @JoinColumn([{ name: 'import_id', referencedColumnName: 'id' }])
   import: Imports;
 
-  constructor(data: Partial<Transactions>) {
-    Object.assign(this, data);
+  constructor(transaction: Omit<Transaction, 'id' | 'createdAt'>) {
+    Object.assign(this, transaction);
   }
 }

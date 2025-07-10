@@ -10,10 +10,11 @@ import {
 import { Groups } from '../../groups/entities/group.entity';
 import { Users } from '../../users/entities/user.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
+import { Bankaccount } from '@fina/types';
 
 @Index('accounts_pkey', ['id'], { unique: true })
 @Entity('bankaccounts', { schema: 'public' })
-export class Bankaccounts {
+export class Bankaccounts implements Bankaccount {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -30,7 +31,7 @@ export class Bankaccounts {
   type: string;
 
   @Column('date', { name: 'due_date', nullable: true })
-  dueDate: string | null;
+  dueDate: Date | null;
 
   @ManyToOne(() => Groups, (groups) => groups.bankaccounts)
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
@@ -43,7 +44,9 @@ export class Bankaccounts {
   @OneToMany(() => Transactions, (transactions) => transactions.bankaccount)
   transactions: Transactions[];
 
-  constructor(data: Partial<Bankaccounts>) {
-    Object.assign(this, data);
+  constructor(
+    bankaccount: Omit<Bankaccounts, 'id' | 'createdAt' | 'transactions'>,
+  ) {
+    Object.assign(this, bankaccount);
   }
 }

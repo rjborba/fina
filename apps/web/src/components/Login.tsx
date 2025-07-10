@@ -31,7 +31,7 @@ export default function Login() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm<SignupFormData>({
+  } = useForm({
     resolver: zodResolver(isSignUp ? signupSchema : loginSchema),
     defaultValues: {
       email: "",
@@ -48,7 +48,7 @@ export default function Login() {
     setError(null);
     try {
       if (isSignUp) {
-        await signUp(data.email, data.password, data.name);
+        await signUp(data.email, data.password, data.name!);
         setIsSignUp(false);
       } else {
         await signIn(data.email, data.password);
