@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fina-api
+    env: node
+    buildCommand: |
+      # Install pnpm
+      npm install -g pnpm@10.0.0
+      # Install dependencies from root
+      pnpm install --frozen-lockfile
+      # Build the types package first
+      pnpm --filter @fina/types build
+      # Build the API
+      pnpm --filter @fina/api build
+    startCommand: cd apps/api && pnpm start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production 
