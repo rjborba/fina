@@ -5,7 +5,6 @@ import {
   CreateTransactionOutputDto,
   Transaction,
   UpdateTransactionInputDtoSchema,
-  UpdateTransactionInputDtoType,
 } from "@fina/types";
 import { FinaAPIFetcher } from "../FinaAPIFetcher";
 
@@ -40,20 +39,29 @@ export const useTransactionMutation = () => {
       transaction,
     }: {
       id: string;
-      transaction: UpdateTransactionInputDtoType;
+      transaction: Partial<Transaction>;
     }) => {
-      const validated = UpdateTransactionInputDtoSchema.safeParse(transaction);
+      const updateTransactionDTO = {
+        ...transaction,
+        categoryId: transaction.category?.id,
+        bankaccountId: transaction.bankaccount?.id,
+        groupId: transaction.group?.id,
+        importId: transaction.import?.id,
+      };
+
+      const validated =
+        UpdateTransactionInputDtoSchema.safeParse(updateTransactionDTO);
 
       if (!validated.success) {
         throw new Error("Invalid transaction update");
       }
 
-      const response = await FinaAPIFetcher.patch<Transaction>(
+      await FinaAPIFetcher.patch<Transaction>(
         `transactions/${id}`,
-        transaction
+        updateTransactionDTO
       );
 
-      return response.data;
+      return transaction;
     },
     onMutate: async ({ id, transaction: updatedTransactionFields }) => {
       await queryClient.cancelQueries({

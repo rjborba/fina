@@ -1,6 +1,6 @@
 import { dayjs } from "@/dayjs";
 import { ImportFieldMap } from "./FieldMapAtom";
-import { CreateTransactionInputDtoType } from "@fina/types";
+import { CreateImportInputDto } from "@fina/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const extractText = (row: any, keysOrKey: string | string[]) => {
@@ -20,7 +20,6 @@ export type rawsEntriesToTransactionsProps = {
   accountId?: string;
   invertValue?: boolean;
   creditDueDate?: string;
-  importId?: number;
   groupId: number;
   toBeConsideredAt?: string;
 };
@@ -31,7 +30,6 @@ export const rawEntriesToTransactions = ({
   accountId,
   invertValue,
   creditDueDate,
-  importId,
   groupId,
   toBeConsideredAt,
 }: rawsEntriesToTransactionsProps) => {
@@ -41,110 +39,111 @@ export const rawEntriesToTransactions = ({
 
   const digitRegex = /^\d+\/\d+$/;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return rawData.map((row: any): CreateTransactionInputDtoType => {
-    if (!accountId) {
-      throw new Error("Account ID is required");
-    }
-
-    const parsedRow: CreateTransactionInputDtoType = {
-      bankaccountId: accountId,
-      groupId: groupId.toString(),
-      toBeConsideredAt: toBeConsideredAt,
-      date: null,
-      calculatedDate: null,
-      description: null,
-      installmentCurrent: null,
-      installmentTotal: null,
-      value: null,
-      creditDueDate: null,
-      importId: null,
-    };
-
-    if (typeof row !== "object" || row === null) {
-      throw new Error("Invalid datas");
-    }
-
-    if (importFieldMap.date) {
-      const text = extractText(row, importFieldMap.date);
-      const formatedDate = dayjs(text, "DD/MM/YYYY");
-
-      if (formatedDate.isValid()) {
-        parsedRow.date = formatedDate.toDate();
-        parsedRow.calculatedDate = formatedDate.toDate();
-      } else {
-        throw new Error("Invalid Date");
+  return rawData.map(
+    (row: unknown): CreateImportInputDto["transactions"][number] => {
+      if (!accountId) {
+        throw new Error("Account ID is required");
       }
-    }
 
-    if (importFieldMap.description) {
-      parsedRow.description = extractText(row, importFieldMap.description);
-    }
+      const parsedRow: CreateImportInputDto["transactions"][number] = {
+        bankaccountId: accountId,
+        groupId: groupId.toString(),
+        toBeConsideredAt: toBeConsideredAt,
+        date: null,
+        calculatedDate: null,
+        description: null,
+        installmentCurrent: null,
+        installmentTotal: null,
+        value: null,
+        creditDueDate: null,
+      };
 
-    if (importFieldMap.installment) {
-      const installmentString = String(
-        extractText(row, importFieldMap.installment)
-      );
+      if (typeof row !== "object" || row === null) {
+        throw new Error("Invalid datas");
+      }
 
-      if (digitRegex.test(installmentString)) {
-        const slashIndex = installmentString.indexOf("/");
+      if (importFieldMap.date) {
+        const text = extractText(row, importFieldMap.date);
+        const formatedDate = dayjs(text, "DD/MM/YYYY");
 
-        const installmentCurrentString = installmentString.slice(0, slashIndex);
-        const installmentTotalString = installmentString.slice(slashIndex + 1);
-
-        if (
-          !Number.isNaN(installmentCurrentString) ||
-          !Number.isNaN(installmentTotalString)
-        ) {
-          const installmentCurrent = Number(installmentCurrentString);
-          const installmentTotal = Number(installmentTotalString);
-
-          if (
-            installmentCurrent > 0 &&
-            installmentTotal > 0 &&
-            installmentTotal >= installmentCurrent
-          ) {
-            parsedRow.installmentCurrent = installmentCurrent.toString();
-            parsedRow.installmentTotal = installmentTotal;
-          }
+        if (formatedDate.isValid()) {
+          parsedRow.date = formatedDate.toDate();
+          parsedRow.calculatedDate = formatedDate.toDate();
         } else {
-          parsedRow.installmentCurrent = "-1";
-          parsedRow.installmentTotal = -1;
+          throw new Error("Invalid Date");
         }
       }
-    }
 
-    // Calculated data
-    if (
-      parsedRow.installmentCurrent &&
-      Number(parsedRow.installmentCurrent) > 0 &&
-      parsedRow.date
-    ) {
-      const dateWithInstallment = dayjs(parsedRow.date).add(
-        Number(parsedRow.installmentCurrent) - 1,
-        "month"
-      );
-
-      parsedRow.calculatedDate = dateWithInstallment.toDate();
-    }
-
-    if (importFieldMap.value) {
-      const valueString = extractText(row, importFieldMap.value);
-
-      if (!Number.isNaN(valueString)) {
-        const value = Number(valueString);
-        parsedRow.value = invertValue ? value * -1 : value;
+      if (importFieldMap.description) {
+        parsedRow.description = extractText(row, importFieldMap.description);
       }
-    }
 
-    if (creditDueDate) {
-      parsedRow.creditDueDate = creditDueDate;
-    }
+      if (importFieldMap.installment) {
+        const installmentString = String(
+          extractText(row, importFieldMap.installment)
+        );
 
-    if (importId) {
-      parsedRow.importId = importId.toString();
-    }
+        if (digitRegex.test(installmentString)) {
+          const slashIndex = installmentString.indexOf("/");
 
-    return parsedRow;
-  });
+          const installmentCurrentString = installmentString.slice(
+            0,
+            slashIndex
+          );
+          const installmentTotalString = installmentString.slice(
+            slashIndex + 1
+          );
+
+          if (
+            !Number.isNaN(installmentCurrentString) ||
+            !Number.isNaN(installmentTotalString)
+          ) {
+            const installmentCurrent = Number(installmentCurrentString);
+            const installmentTotal = Number(installmentTotalString);
+
+            if (
+              installmentCurrent > 0 &&
+              installmentTotal > 0 &&
+              installmentTotal >= installmentCurrent
+            ) {
+              parsedRow.installmentCurrent = installmentCurrent.toString();
+              parsedRow.installmentTotal = installmentTotal;
+            }
+          } else {
+            parsedRow.installmentCurrent = "-1";
+            parsedRow.installmentTotal = -1;
+          }
+        }
+      }
+
+      // Calculated data
+      if (
+        parsedRow.installmentCurrent &&
+        Number(parsedRow.installmentCurrent) > 0 &&
+        parsedRow.date
+      ) {
+        const dateWithInstallment = dayjs(parsedRow.date).add(
+          Number(parsedRow.installmentCurrent) - 1,
+          "month"
+        );
+
+        parsedRow.calculatedDate = dateWithInstallment.toDate();
+      }
+
+      if (importFieldMap.value) {
+        const valueString = extractText(row, importFieldMap.value);
+
+        if (!Number.isNaN(valueString)) {
+          const value = Number(valueString);
+          parsedRow.value = invertValue ? value * -1 : value;
+        }
+      }
+
+      if (creditDueDate) {
+        parsedRow.creditDueDate = dayjs(creditDueDate).toDate();
+      }
+
+      return parsedRow;
+    }
+  );
 };

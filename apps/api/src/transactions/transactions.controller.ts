@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import {
-  CreateTransactionInputDtoType,
+  CreateTransactionInputDto,
   CreateTransactionOutputDtoType,
   QueryTransactionInputDto,
   QueryTransactionOutputDtoType,
@@ -27,8 +27,8 @@ export class TransactionsController {
   async create(
     @Body()
     createTransactionDtos:
-      | CreateTransactionInputDtoType
-      | CreateTransactionInputDtoType[],
+      | CreateTransactionInputDto
+      | CreateTransactionInputDto[],
   ): Promise<
     CreateTransactionOutputDtoType | CreateTransactionOutputDtoType[]
   > {

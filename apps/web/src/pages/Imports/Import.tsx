@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
 import { useImportsMutation } from "@/data/imports/useImportsMutation";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
 import { ImportAtom } from "@/preview/FieldMapAtom";
 import { FieldMapTable } from "@/preview/FIeldMapTable";
 import { rawEntriesToTransactions } from "@/preview/rawEntriesToTransactions";
@@ -23,6 +22,7 @@ import { ImportList } from "./ImportList";
 import { useActiveGroup } from "@/contexts/ActiveGroupContext";
 import { EXPECTED_HEADERS_CHECKOUT } from "@/preview/constant";
 import { EXPECTED_HEADERS_CREDIT } from "@/preview/constant";
+import { CreateImportInputDto } from "@fina/types";
 
 const currentDate = dayjs();
 const year = currentDate.year();
@@ -49,7 +49,6 @@ export const Import = () => {
     groupId: selectedGroup?.id?.toString(),
   });
   const { addImport } = useImportsMutation();
-  const { addMutation: addTransaction } = useTransactionMutation();
 
   const selectedAccount = bankAccountsData?.find(
     (currentAccount) => String(currentAccount.id) === importAtom.accountId
@@ -290,33 +289,30 @@ export const Import = () => {
               throw new Error("No group selected");
             }
 
-            // TODO: Use Edge Supabase Edge function to make it in a single transaction
-            const res = await addImport({
-              fileName: file.name,
-              group_id: selectedGroup.id,
-            });
-            const importId = res?.data![0]?.id;
+            const transcations: CreateImportInputDto["transactions"] =
+              rawEntriesToTransactions({
+                groupId: selectedGroup.id,
+                rawData: rawEntries?.data,
+                importFieldMap: importAtom.fieldMap,
+                accountId: importAtom.accountId,
+                invertValue: importAtom.parserConfig.invertValueField,
+                creditDueDate: isAccountCredit
+                  ? getCreditDueDate().toISOString()
+                  : undefined,
+                toBeConsideredAt: isAccountCredit
+                  ? getToBeConsideredAtDate().toISOString()
+                  : undefined,
+              });
 
-            const data = rawEntriesToTransactions({
-              groupId: selectedGroup.id,
-              rawData: rawEntries?.data,
-              importFieldMap: importAtom.fieldMap,
-              accountId: importAtom.accountId,
-              invertValue: importAtom.parserConfig.invertValueField,
-              creditDueDate: isAccountCredit
-                ? getCreditDueDate().toISOString()
-                : undefined,
-              importId,
-              toBeConsideredAt: isAccountCredit
-                ? getToBeConsideredAtDate().toISOString()
-                : undefined,
-            });
-
-            if (!data) {
-              return;
+            if (!transcations) {
+              throw new Error("No data found in the CSV file");
             }
 
-            await addTransaction.mutateAsync(data);
+            await addImport({
+              fileName: file.name,
+              groupId: String(selectedGroup.id),
+              transactions: transcations,
+            });
           }}
         >
           Import

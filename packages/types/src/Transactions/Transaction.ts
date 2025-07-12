@@ -13,7 +13,7 @@ export type Transaction = {
   date: Date | null;
   installmentTotal?: number | null;
   installmentCurrent?: string | null;
-  creditDueDate?: string | null;
+  creditDueDate?: Date | null;
   observation?: string | null;
   removed?: boolean | null;
   toBeConsideredAt?: string | null;
@@ -27,17 +27,17 @@ export type Transaction = {
 // Transaction schema
 export const TransactionSchema = z.object({
   id: z.string(),
-  createdAt: z.date(),
+  createdAt: z.coerce.date(),
   description: z.string().nullable(),
   value: z.number().nullable(),
-  date: z.date().nullable(),
+  date: z.coerce.date().nullable(),
   installmentTotal: z.number().nullable().optional(),
   installmentCurrent: z.string().nullable().optional(),
-  creditDueDate: z.string().nullable().optional(),
+  creditDueDate: z.coerce.date().nullable().optional(),
   observation: z.string().nullable().optional(),
   removed: z.boolean().nullable().optional(),
   toBeConsideredAt: z.string().nullable().optional(),
-  calculatedDate: z.date().nullable().optional(),
+  calculatedDate: z.coerce.date().nullable().optional(),
   bankaccount: BankaccountSchema,
   category: CategorySchema.nullable().optional(),
   group: GroupSchema,

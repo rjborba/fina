@@ -78,12 +78,12 @@ export function TransactionDetailsModal({
   }, [categoriesData]);
 
   const handleCategorySelect = useCallback(
-    async (categoryId: string | null) => {
+    async (category: Category | null) => {
       if (!transaction) return;
 
       await updateMutation.mutateAsync({
         id: transaction?.id,
-        transaction: { categoryId: categoryId?.toString() },
+        transaction: { category },
       });
     },
     [transaction, updateMutation]
@@ -103,7 +103,7 @@ export function TransactionDetailsModal({
         const index = parseInt(e.key) - 1;
         if (index < categoriesData.length) {
           const category = categoriesData[index];
-          handleCategorySelect(category.id);
+          handleCategorySelect(category);
         }
       }
 
@@ -271,7 +271,7 @@ export function TransactionDetailsModal({
               {categoriesData?.map((category, index) => (
                 <Button
                   key={`${category.id}`}
-                  onClick={() => handleCategorySelect(category.id)}
+                  onClick={() => handleCategorySelect(category)}
                   variant={
                     transaction?.category?.id == category.id
                       ? "default"

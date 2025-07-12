@@ -1,15 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
 import supabase from "@/supabaseClient";
-import { Import } from "./Import";
+import { CreateImportInputDtoType, CreateImportOutputDto } from "@fina/types";
+import { FinaAPIFetcher } from "../FinaAPIFetcher";
 
 export const useImportsMutation = () => {
   const queryClient = useQueryClient();
 
-  const addImport = async (_import: Import["Insert"]) => {
-    const res = await supabase.from("imports").insert(_import).select();
+  const addImport = async (_import: CreateImportInputDtoType) => {
+    const response = await FinaAPIFetcher.post<CreateImportOutputDto>(
+      `imports`,
+      _import
+    );
+
     queryClient.invalidateQueries({ queryKey: ["imports"] });
 
-    return res;
+    return response.data;
   };
 
   const removeImport = async (id: number) => {

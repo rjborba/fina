@@ -119,13 +119,7 @@ export const Transactions: FC = () => {
               onUpdateTransaction={async (id, transaction) => {
                 updateTransaction.mutateAsync({
                   id,
-                  transaction: {
-                    ...transaction,
-                    categoryId: transaction.category?.id,
-                    bankaccountId: transaction.bankaccount?.id,
-                    groupId: transaction.group?.id,
-                    importId: transaction.import?.id,
-                  },
+                  transaction,
                 });
               }}
               onDeleteTransaction={async (id) => {

@@ -6,8 +6,11 @@ import {
   // Patch,
   Param,
   Delete,
+  Post,
+  Query,
 } from '@nestjs/common';
 import { ImportsService } from './imports.service';
+import { CreateImportInputDto } from '@fina/types';
 // import { CreateImportDto } from './dto/create-import.dto';
 // import { UpdateImportDto } from './dto/update-import.dto';
 
@@ -15,19 +18,19 @@ import { ImportsService } from './imports.service';
 export class ImportsController {
   constructor(private readonly importsService: ImportsService) {}
 
-  // @Post()
-  // create(@Body() createImportDto: CreateImportDto) {
-  //   return this.importsService.create(createImportDto);
-  // }
+  @Post()
+  create(@Body() createImportDto: CreateImportInputDto) {
+    return this.importsService.create(createImportDto);
+  }
 
   @Get()
-  findAll() {
-    return this.importsService.findAll();
+  findAll(@Query('groupId') groupId: string) {
+    return this.importsService.findAll(groupId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.importsService.findOne(+id);
+    return this.importsService.findOne(id);
   }
 
   // @Patch(':id')
@@ -37,6 +40,6 @@ export class ImportsController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.importsService.remove(+id);
+    return this.importsService.remove(id);
   }
 }

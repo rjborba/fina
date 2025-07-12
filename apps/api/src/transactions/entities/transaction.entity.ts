@@ -40,7 +40,7 @@ export class Transactions implements Transaction {
   installmentCurrent?: string | null;
 
   @Column('date', { name: 'credit_due_date', nullable: true })
-  creditDueDate?: string | null;
+  creditDueDate?: Date | null;
 
   @Column('text', { name: 'observation', nullable: true })
   observation?: string | null;

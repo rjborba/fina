@@ -30,10 +30,12 @@ export class Imports implements Import {
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
   group: Groups;
 
-  @OneToMany(() => Transactions, (transactions) => transactions.import)
+  @OneToMany(() => Transactions, (transactions) => transactions.import, {
+    cascade: ['insert'],
+  })
   transactions: Transactions[];
 
-  constructor(data: Partial<Imports>) {
+  constructor(data: Omit<Imports, 'id' | 'createdAt'>) {
     Object.assign(this, data);
   }
 }
