@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { BankaccountSchema } from "./Bankaccount";
+import { BankaccountSchema } from "./Bankaccount.js";
 
 export class CreateBankaccountOutputDto extends createZodDto(
   BankaccountSchema

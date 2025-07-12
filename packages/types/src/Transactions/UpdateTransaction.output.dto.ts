@@ -1,6 +1,6 @@
 import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
-import { TransactionSchema } from "./Transaction";
+import { TransactionSchema } from "./Transaction.js";
 
 export class UpdateTransactionOutputDto extends createZodDto(
   TransactionSchema

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { ImportSchema } from "./Import";
+import { ImportSchema } from "./Import.js";
 
 export class RemoveImportOutputDto extends createZodDto(ImportSchema) {}
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { GroupSchema } from "../Group/Group";
-import { UserSchema } from "../User/User";
+import { GroupSchema } from "../Group/Group.js";
+import { UserSchema } from "../User/User.js";
 
 export const BankaccountSchema = z.object({
   id: z.string(),

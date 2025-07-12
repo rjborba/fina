@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { CreateTransactionInputDtoSchema } from "../Transactions";
+import { CreateTransactionInputDtoSchema } from "../Transactions/CreateTransaction.input.dto.js";
 
 const CreateImportInputDtoSchema = z.object({
   fileName: z.string(),

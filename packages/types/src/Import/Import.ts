@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { Group, GroupSchema } from "../Group/Group";
-import { Transaction, TransactionSchema } from "../Transactions/Transaction";
+import { Group, GroupSchema } from "../Group/Group.js";
+import { Transaction, TransactionSchema } from "../Transactions/Transaction.js";
 
 export type Import = {
   id: string;
