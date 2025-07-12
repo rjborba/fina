@@ -27,9 +27,10 @@ export class SupabaseAuthGuard implements CanActivate {
 
     const token = authHeader.replace(/^Bearer /, '');
 
-    const secret = this.configService.get<string>('SUPABASE_JWT_SECRET');
+    const secret =
+      'xa8rulz0l75emu/wX26izruvVPQbT7Mu6tfG9W7FxTeYrRmcYdK434CiwUCC070n0RxLf54KuPC37YLFlgBCMA==';
     try {
-      jwt.verify(token, secret!);
+      jwt.verify(token, secret);
       return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');

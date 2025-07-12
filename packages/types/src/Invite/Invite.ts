@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GroupSchema } from "../Group/Group.js";
+import { GroupSchema } from "../Group/Group";
 
 export const InviteSchema = z.object({
   id: z.string(),

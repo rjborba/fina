@@ -1,8 +1,17 @@
 {
+  "version": 2,
+  "installCommand": "cd ../../ && pnpm install",
+  "buildCommand": "turbo run build --filter=@fina/web",
+  "outputDirectory": "dist",
+  "devCommand": "turbo run dev --filter=@fina/web",
+  "env": {
+    "ENABLE_EXPERIMENTAL_COREPACK": "1",
+    "COREPACK_ENABLE_STRICT": "0"
+  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/apps/web"
     }
   ]
 }

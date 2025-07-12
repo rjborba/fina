@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { BankaccountSchema } from "./Bankaccount.js";
+import { BankaccountSchema } from "./Bankaccount";
 
 const CreateBankaccountInputDtoSchema = BankaccountSchema.omit({
   id: true,

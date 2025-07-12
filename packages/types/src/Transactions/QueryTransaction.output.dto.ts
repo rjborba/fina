@@ -1,7 +1,7 @@
 import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
-import { createPaginationScheme } from "../pagination.js";
-import { TransactionSchema } from "./Transaction.js";
+import { createPaginationScheme } from "../pagination";
+import { TransactionSchema } from "./Transaction";
 
 const QueryTransactionOutputDtoSchema =
   createPaginationScheme(TransactionSchema);

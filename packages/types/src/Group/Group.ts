@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserSchema } from "../User/User.js";
+import { UserSchema } from "../User/User";
 
 export const GroupSchema = z.object({
   id: z.string(),

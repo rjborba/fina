@@ -8,7 +8,9 @@
     "build": "turbo run build",
     "build:api": "pnpm --filter @fina/types build && pnpm --filter @fina/api build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "dev:web": "turbo run dev --filter @fina/web",
+    "dev:api": "turbo run dev --filter @fina/api",
+    "lint": "turbo run lint ",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },

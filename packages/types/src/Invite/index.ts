@@ -1,1 +1,1 @@
-export * from "./Invite.js";
+export * from "./Invite";

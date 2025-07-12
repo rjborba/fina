@@ -1,1 +1,1 @@
-export * from "./UserGroup.js";
+export * from "./UserGroup";

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { Bankaccount, BankaccountSchema } from "../BankAccount/Bankaccount.js";
-import { Category, CategorySchema } from "../Category/Category.js";
-import { Group, GroupSchema } from "../Group/Group.js";
-import { Import, ImportSchema } from "../Import/Import.js";
+import { Bankaccount, BankaccountSchema } from "../BankAccount/Bankaccount";
+import { Category, CategorySchema } from "../Category/Category";
+import { Group, GroupSchema } from "../Group/Group";
+import { Import, ImportSchema } from "../Import/Import";
 
 export type Transaction = {
   id: string;

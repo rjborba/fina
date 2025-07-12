@@ -1,4 +1,4 @@
-import { GroupSchema } from "../Group/Group.js";
+import { GroupSchema } from "../Group/Group";
 import { z } from "zod";
 
 export const CategorySchema = z.object({

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
-import { TransactionSchema } from "./Transaction.js";
+import { TransactionSchema } from "./Transaction";
 
 export const UpdateTransactionInputDtoSchema = TransactionSchema.omit({
   id: true,
