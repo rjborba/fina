@@ -14,6 +14,12 @@ export class SupabaseAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
+
+    // Allow OPTIONS requests for CORS preflight
+    if (request.method === 'OPTIONS') {
+      return true;
+    }
+
     const authHeader = request.headers['authorization'];
     if (!authHeader) {
       throw new UnauthorizedException('Missing Authorization header');
