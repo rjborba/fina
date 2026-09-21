@@ -1,3 +1,3 @@
-import { Database } from "@/database.types";
+import { Database } from "@/database.types"
 
-export type Invite = Database["public"]["Tables"]["invites"]["Row"];
+export type Invite = Database["public"]["Tables"]["invites"]["Row"]

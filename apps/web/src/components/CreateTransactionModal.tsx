@@ -1,64 +1,62 @@
-import { FC } from "react";
+import { FC } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  DialogTitle
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useCategories } from "@/data/categories/useCategories";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { toast } from "@/hooks/use-toast";
-import { CreateTransactionInputDtoType } from "@fina/types";
+  SelectValue
+} from "@/components/ui/select"
+import { useForm } from "react-hook-form"
+import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
+import { useCategories } from "@/data/categories/useCategories"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { toast } from "@/hooks/use-toast"
+import { CreateTransactionInputDtoType } from "@fina/types"
 
 interface CreateTransactionModalProps {
-  onOpenChange?: (open: boolean) => void;
-  open?: boolean;
+  onOpenChange?: (open: boolean) => void
+  open?: boolean
 }
 
 type FormData = {
-  date: string;
-  description: string;
-  value: string;
-  category_id: string;
-  observation: string;
-  bankaccount_id: string;
-  installment_current: string;
-  installment_total: string;
-  group_id?: number;
-};
+  date: string
+  description: string
+  value: string
+  category_id: string
+  observation: string
+  bankaccount_id: string
+  installment_current: string
+  installment_total: string
+  group_id?: number
+}
 
 export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
   open,
-  onOpenChange = () => {},
+  onOpenChange = () => {}
 }) => {
-  const { selectedGroup } = useActiveGroup();
+  const { selectedGroup } = useActiveGroup()
   const { data: bankAccounts } = useBankAccounts({
-    groupId: selectedGroup?.id?.toString(),
-  });
+    groupId: selectedGroup?.id?.toString()
+  })
   const { data: categories } = useCategories({
-    groupId: selectedGroup?.id?.toString(),
-  });
-  const { addMutation } = useTransactionMutation();
+    groupId: selectedGroup?.id?.toString()
+  })
+  const { addMutation } = useTransactionMutation()
 
   const isCreditCardAccount = (accountId: string) => {
-    const account = bankAccounts?.find(
-      (acc) => acc.id.toString() === accountId
-    );
-    return account?.type === "credit";
-  };
+    const account = bankAccounts?.find((acc) => acc.id.toString() === accountId)
+    return account?.type === "credit"
+  }
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -70,18 +68,18 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       bankaccount_id: "",
       installment_current: "",
       installment_total: "",
-      group_id: selectedGroup?.id,
-    },
-  });
+      group_id: selectedGroup?.id
+    }
+  })
 
   const onSubmit = async (data: FormData) => {
     try {
       const selectedAccount = bankAccounts?.find(
         (account) => account.id.toString() === data.bankaccount_id
-      );
+      )
 
       if (!data.group_id) {
-        throw new Error("Group ID is required");
+        throw new Error("Group ID is required")
       }
 
       const transactionData: CreateTransactionInputDtoType = {
@@ -99,29 +97,29 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         installmentTotal: data.installment_total
           ? parseInt(data.installment_total)
           : null,
-        groupId: data.group_id.toString(),
-      };
+        groupId: data.group_id.toString()
+      }
 
-      await addMutation.mutateAsync(transactionData);
+      await addMutation.mutateAsync(transactionData)
       toast({
-        title: "Transaction created successfully",
-      });
-      form.reset();
-      onOpenChange?.(false);
+        title: "Transaction created successfully"
+      })
+      form.reset()
+      onOpenChange?.(false)
     } catch (error) {
-      console.error("Failed to create transaction:", error);
+      console.error("Failed to create transaction:", error)
       toast({
         title: "Failed to create transaction",
-        variant: "destructive",
-      });
+        variant: "destructive"
+      })
     }
-  };
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(newOpen) => {
-        onOpenChange(newOpen);
+        onOpenChange(newOpen)
       }}
     >
       <DialogContent className="sm:max-w-[425px]">
@@ -222,5 +220,5 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         </form>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}

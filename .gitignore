@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment files contain credentials. Safe templates remain tracked.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Local RuleSync overrides are never shared.
+rulesync.local.jsonc
+.rulesync.local/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

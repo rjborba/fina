@@ -1,44 +1,44 @@
-import { TransactionsFilter } from "@/components/transactions/TransactionsFilter";
-import { TransactionsHeader } from "@/components/transactions/TransactionsHeader";
-import { TransactionsTableProps } from "@/components/transactions/TransactionsTable";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useCategories } from "@/data/categories/useCategories";
-import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom";
-import { useTransactions } from "@/data/transactions/useTransactions";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
-import useLocalStorageState from "@/hooks/useLocalStorageState";
-import { cn } from "@/lib/utils";
-import { useAtom } from "jotai";
-import { PanelBottomClose, PanelBottomOpen } from "lucide-react";
-import { FC, Fragment, Suspense, lazy, useState } from "react";
+import { TransactionsFilter } from "@/components/transactions/TransactionsFilter"
+import { TransactionsHeader } from "@/components/transactions/TransactionsHeader"
+import { TransactionsTableProps } from "@/components/transactions/TransactionsTable"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useCategories } from "@/data/categories/useCategories"
+import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
+import { useTransactions } from "@/data/transactions/useTransactions"
+import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
+import useLocalStorageState from "@/hooks/useLocalStorageState"
+import { cn } from "@/lib/utils"
+import { useAtom } from "jotai"
+import { PanelBottomClose, PanelBottomOpen } from "lucide-react"
+import { FC, Fragment, Suspense, lazy, useState } from "react"
 
 const TransactionsTable = lazy(() =>
   import("@/components/transactions/TransactionsTable").then((module) => ({
-    default: module.default as FC<TransactionsTableProps>,
+    default: module.default as FC<TransactionsTableProps>
   }))
-);
+)
 
 export const Transactions: FC = () => {
   const {
     updateMutation: updateTransaction,
-    removeMutation: removeTransaction,
-  } = useTransactionMutation();
+    removeMutation: removeTransaction
+  } = useTransactionMutation()
 
-  const { selectedGroup } = useActiveGroup();
+  const { selectedGroup } = useActiveGroup()
 
   const [pagination] = useState({
     pageIndex: 0,
-    pageSize: 4000,
-  });
+    pageSize: 4000
+  })
 
-  const [filterProps] = useAtom(transactionFilterAtom);
+  const [filterProps] = useAtom(transactionFilterAtom)
 
   const {
     data: transactionsData,
     isLoading,
-    isError,
+    isError
   } = useTransactions({
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
@@ -46,47 +46,47 @@ export const Transactions: FC = () => {
     startDate: filterProps.startDate,
     endDate: filterProps.endDate,
     search: filterProps.partialDescription || undefined,
-    categoryIdList: filterProps.categoriesId,
-  });
+    categoryIdList: filterProps.categoriesId
+  })
 
   const { data: categories } = useCategories({
-    groupId: selectedGroup?.id?.toString() || "",
-  });
+    groupId: selectedGroup?.id?.toString() || ""
+  })
 
   const [isFilterOpen, setIsFilterOpen] = useLocalStorageState<boolean>(
     "transactionsFilterOpen",
     true
-  );
+  )
 
   const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
     "transactionsDrawerOpen",
     false
-  );
+  )
 
   const sum: Record<string, number> = {
     total: 0,
     income: 0,
-    expense: 0,
-  };
+    expense: 0
+  }
 
-  const sumCategories: Record<string, number> = {};
+  const sumCategories: Record<string, number> = {}
 
   for (const transaction of transactionsData?.data || []) {
     if (!transaction.value) {
-      continue;
+      continue
     }
-    sum.total += transaction.value;
+    sum.total += transaction.value
     if (transaction.value > 0) {
-      sum.income += transaction.value;
+      sum.income += transaction.value
     } else {
-      sum.expense += transaction.value;
+      sum.expense += transaction.value
     }
 
     if (transaction.category?.id) {
       if (sumCategories[transaction.category.id]) {
-        sumCategories[transaction.category.id] += transaction.value;
+        sumCategories[transaction.category.id] += transaction.value
       } else {
-        sumCategories[transaction.category.id] = transaction.value;
+        sumCategories[transaction.category.id] = transaction.value
       }
     }
   }
@@ -119,11 +119,11 @@ export const Transactions: FC = () => {
               onUpdateTransaction={async (id, transaction) => {
                 updateTransaction.mutateAsync({
                   id,
-                  transaction,
-                });
+                  transaction
+                })
               }}
               onDeleteTransaction={async (id) => {
-                removeTransaction.mutateAsync(id);
+                removeTransaction.mutateAsync(id)
               }}
             />
           </Suspense>
@@ -133,7 +133,7 @@ export const Transactions: FC = () => {
           className={cn(
             "sticky bottom-0 bg-background border-t transition-all duration-300 h-[40px] py-1 px-4 overflow-hidden",
             {
-              "h-[200px]": isDrawerOpen,
+              "h-[200px]": isDrawerOpen
             }
           )}
         >
@@ -198,7 +198,7 @@ export const Transactions: FC = () => {
                       </div>
                       <Separator orientation="vertical" className="h-full" />
                     </Fragment>
-                  );
+                  )
                 })}
                 {/* {Object.keys(sumCategories).map((categoryId) => {
                   return (
@@ -225,5 +225,5 @@ export const Transactions: FC = () => {
         onFilterToggle={setIsFilterOpen}
       />
     </div>
-  );
-};
+  )
+}

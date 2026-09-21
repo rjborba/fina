@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
+import { useQuery } from "@tanstack/react-query"
+import supabase from "@/supabaseClient"
 
 export const useGroupById = (groupId: number) => {
   return useQuery({
@@ -10,16 +10,16 @@ export const useGroupById = (groupId: number) => {
         .select(
           `
           *
-        `,
+        `
         )
         .eq("id", groupId)
-        .single();
+        .single()
 
       if (error) {
-        throw error;
+        throw error
       }
 
-      return data;
-    },
-  });
-};
+      return data
+    }
+  })
+}

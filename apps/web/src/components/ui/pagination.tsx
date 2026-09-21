@@ -1,19 +1,19 @@
-import { Button } from "./button";
+import { Button } from "./button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "./select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+  SelectValue
+} from "./select"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
+  currentPage: number
+  totalPages: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (size: number) => void
 }
 
 export function Pagination({
@@ -21,7 +21,7 @@ export function Pagination({
   totalPages,
   pageSize,
   onPageChange,
-  onPageSizeChange,
+  onPageSizeChange
 }: PaginationProps) {
   return (
     <div className="flex items-center justify-between">
@@ -64,5 +64,5 @@ export function Pagination({
         </Button>
       </div>
     </div>
-  );
+  )
 }

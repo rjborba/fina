@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query"
 
 import {
   QueryTransactionInputDto,
-  QueryTransactionOutputDtoType,
-} from "@fina/types";
-import { fetchTransactions } from "./fetchTransactions";
+  QueryTransactionOutputDtoType
+} from "@fina/types"
+import { fetchTransactions } from "./fetchTransactions"
 
 export const useTransactions = (
   fetchTransactionsOptions: QueryTransactionInputDto
@@ -20,8 +20,8 @@ export const useTransactions = (
       fetchTransactionsOptions.endDate,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
-      fetchTransactionsOptions.search,
+      fetchTransactionsOptions.search
     ],
-    queryFn: () => fetchTransactions(fetchTransactionsOptions),
-  });
-};
+    queryFn: () => fetchTransactions(fetchTransactionsOptions)
+  })
+}

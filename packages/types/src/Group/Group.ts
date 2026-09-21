@@ -6,7 +6,7 @@ export const GroupSchema = z.object({
   id: z.string(),
   createdAt: z.date(),
   name: z.string(),
-  creator: UserSchema,
+  creator: UserSchema
 });
 
 export type Group = z.infer<typeof GroupSchema>;

@@ -6,10 +6,10 @@ const CreateBankaccountInputDtoSchema = BankaccountSchema.omit({
   id: true,
   createdAt: true,
   group: true,
-  user: true,
+  user: true
 }).extend({
   groupId: z.string(),
-  userId: z.string(),
+  userId: z.string()
 });
 
 export class CreateBankaccountInputDto extends createZodDto(

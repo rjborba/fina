@@ -1,56 +1,56 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useGroupsMutation } from "@/data/groups/useGroupsMutation";
-import { toast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router";
-import * as z from "zod";
+  FormMessage
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useGroupsMutation } from "@/data/groups/useGroupsMutation"
+import { toast } from "@/hooks/use-toast"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Link } from "react-router"
+import * as z from "zod"
 
 const groupFormSchema = z.object({
-  name: z.string().min(1, "Group name is required"),
-});
+  name: z.string().min(1, "Group name is required")
+})
 
-type GroupFormValues = z.infer<typeof groupFormSchema>;
+type GroupFormValues = z.infer<typeof groupFormSchema>
 
 export function Settings() {
-  const { groups } = useActiveGroup();
-  const { addGroup } = useGroupsMutation();
+  const { groups } = useActiveGroup()
+  const { addGroup } = useGroupsMutation()
 
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: {
-      name: "",
-    },
-  });
+      name: ""
+    }
+  })
 
   const onSubmit = async (data: GroupFormValues) => {
     try {
       await addGroup.mutateAsync({
-        name: data.name.trim(),
-      });
-      form.reset();
+        name: data.name.trim()
+      })
+      form.reset()
       toast({
         title: "Group created",
-        description: "The new group has been created successfully.",
-      });
+        description: "The new group has been created successfully."
+      })
     } catch {
       toast({
         title: "Error",
         description: "Failed to create group. Please try again.",
-        variant: "destructive",
-      });
+        variant: "destructive"
+      })
     }
-  };
+  }
 
   return (
     <div className="p-4 w-full space-y-4">
@@ -95,5 +95,5 @@ export function Settings() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

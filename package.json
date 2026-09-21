@@ -4,20 +4,39 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": "24.21.0",
+    "pnpm": "10.0.0"
+  },
   "scripts": {
+    "setup": "node ./scripts/setup.mjs",
     "build": "turbo run build",
     "build:api": "pnpm --filter @fina/types build && pnpm --filter @fina/api build",
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter @fina/web",
     "dev:api": "turbo run dev --filter @fina/api",
-    "lint": "turbo run lint ",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "check-types": "pnpm typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "rules:generate": "rulesync generate",
+    "rules:check": "rulesync doctor --strict && rulesync generate --check",
+    "api:client:generate": "node ./scripts/api-client.mjs generate",
+    "api:client:check": "node ./scripts/api-client.mjs check",
+    "secrets:check": "secretlint \"**/*\"",
+    "verify": "pnpm rules:check && pnpm secrets:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build && pnpm api:client:check"
   },
   "devDependencies": {
-    "turbo": "^2.5.4"
-  },
-  "dependencies": {
-    "lint-staged": "^15.5.2"
+    "@hey-api/openapi-ts": "0.84.0",
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.5",
+    "lint-staged": "15.5.2",
+    "prettier": "3.4.2",
+    "rulesync": "16.39.1",
+    "secretlint": "13.0.5",
+    "turbo": "2.5.4"
   }
 }

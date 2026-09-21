@@ -7,7 +7,7 @@ const CreateImportInputDtoSchema = z.object({
   groupId: z.string(),
   transactions: z.array(
     CreateTransactionInputDtoSchema.omit({ importId: true })
-  ),
+  )
 });
 
 export class CreateImportInputDto extends createZodDto(

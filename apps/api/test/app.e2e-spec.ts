@@ -1,24 +1,53 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { Test, TestingModule } from '@nestjs/testing';
+import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { AppController } from '../src/app.controller';
+import { AppService } from '../src/app.service';
+import { SupabaseAuthGuard } from '../src/supabase-auth.guard';
 
-describe('AppController (e2e)', () => {
+const testSecret = 'local-test-jwt-secret';
+
+describe('authentication boundary (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          ignoreEnvFile: true,
+          load: [() => ({ SUPABASE_JWT_SECRET: testSecret })],
+        }),
+      ],
+      controllers: [AppController],
+      providers: [
+        AppService,
+        { provide: APP_GUARD, useClass: SupabaseAuthGuard },
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('rejects a request without an identity', async () => {
+    await request(app.getHttpServer()).get('/').expect(401);
+  });
+
+  it('accepts a request with a token signed by configured identity provider', async () => {
+    const token = jwt.sign({ sub: 'user-1' }, testSecret, { expiresIn: '1m' });
+
+    await request(app.getHttpServer())
       .get('/')
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect('Hello World!');
   });

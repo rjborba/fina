@@ -8,13 +8,13 @@ export const UpdateTransactionInputDtoSchema = TransactionSchema.omit({
   bankaccount: true,
   category: true,
   group: true,
-  import: true,
+  import: true
 })
   .extend({
     bankaccountId: z.string(),
     categoryId: z.string(),
     groupId: z.string(),
-    importId: z.string(),
+    importId: z.string()
   })
   .partial();
 

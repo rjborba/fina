@@ -1,45 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { patchNestJsSwagger } from 'nestjs-zod';
 import { INestApplication } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
+import { Environment } from './config/environment';
+import { setupSwagger } from './swagger';
 
 let app: INestApplication;
 
 async function bootstrap() {
   if (!app) {
     app = await NestFactory.create(AppModule, new ExpressAdapter());
+    const config = app.get(ConfigService<Environment, true>);
 
     app.enableCors({
-      origin: '*',
+      origin: config.get('CORS_ORIGINS', { infer: true }),
     });
 
-    // Patch Swagger to support Zod schemas
-    patchNestJsSwagger();
-
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Finance API')
-      .setDescription('API for the Finance app')
-      .setVersion('1.0')
-      .addTag('finance')
-      .addBearerAuth(
-        {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          name: 'Authorization',
-          description: 'Enter JWT token here',
-          in: 'header',
-        },
-        'access-token',
-      )
-      .build();
-
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    document.security = [{ 'access-token': [] }];
-    SwaggerModule.setup('api', app, document);
+    setupSwagger(app);
 
     await app.init();
   }

@@ -7,7 +7,7 @@ function Home() {
         </main>
       </div>
     </div>
-  );
+  )
 }
 
-export default Home;
+export default Home

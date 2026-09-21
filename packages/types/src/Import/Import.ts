@@ -16,7 +16,5 @@ export const ImportSchema: z.ZodType<Import> = z.object({
   createdAt: z.date(),
   fileName: z.string(),
   group: GroupSchema,
-  get transactions() {
-    return z.array(z.lazy<typeof TransactionSchema>(() => TransactionSchema));
-  },
+  transactions: z.array(z.lazy(() => TransactionSchema))
 });

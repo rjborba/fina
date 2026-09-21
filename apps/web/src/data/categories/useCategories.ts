@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query"
 
-import { QueryCategoryOutputDtoType } from "@fina/types";
-import { FinaAPIFetcher } from "../FinaAPIFetcher";
+import { QueryCategoryOutputDtoType } from "@fina/types"
+import { FinaAPIFetcher } from "../FinaAPIFetcher"
 
 type UseCategoriesProps = {
-  groupId?: string;
-};
+  groupId?: string
+}
 
 export const useCategories = ({ groupId }: UseCategoriesProps) => {
   return useQuery({
@@ -15,11 +15,11 @@ export const useCategories = ({ groupId }: UseCategoriesProps) => {
       const response = await FinaAPIFetcher.get<QueryCategoryOutputDtoType>(
         `categories`,
         {
-          groupId,
+          groupId
         }
-      );
+      )
 
-      return response.data;
-    },
-  });
-};
+      return response.data
+    }
+  })
+}

@@ -1,33 +1,33 @@
-import dayjs from "dayjs";
-import { useAtom } from "jotai";
-import Papa, { ParseResult } from "papaparse";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import dayjs from "dayjs"
+import { useAtom } from "jotai"
+import Papa, { ParseResult } from "papaparse"
+import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useImportsMutation } from "@/data/imports/useImportsMutation";
-import { ImportAtom } from "@/preview/FieldMapAtom";
-import { FieldMapTable } from "@/preview/FIeldMapTable";
-import { rawEntriesToTransactions } from "@/preview/rawEntriesToTransactions";
-import { RawDataTable } from "@/RawDataTable";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ImportList } from "./ImportList";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { EXPECTED_HEADERS_CHECKOUT } from "@/preview/constant";
-import { EXPECTED_HEADERS_CREDIT } from "@/preview/constant";
-import { CreateImportInputDto } from "@fina/types";
+  SelectValue
+} from "@/components/ui/select"
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
+import { useImportsMutation } from "@/data/imports/useImportsMutation"
+import { ImportAtom } from "@/preview/FieldMapAtom"
+import { FieldMapTable } from "@/preview/FIeldMapTable"
+import { rawEntriesToTransactions } from "@/preview/rawEntriesToTransactions"
+import { RawDataTable } from "@/RawDataTable"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ImportList } from "./ImportList"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { EXPECTED_HEADERS_CHECKOUT } from "@/preview/constant"
+import { EXPECTED_HEADERS_CREDIT } from "@/preview/constant"
+import { CreateImportInputDto } from "@fina/types"
 
-const currentDate = dayjs();
-const year = currentDate.year();
-const month = currentDate.month();
-const oneMonthAgo = currentDate.subtract(1, "month").month();
+const currentDate = dayjs()
+const year = currentDate.year()
+const month = currentDate.month()
+const oneMonthAgo = currentDate.subtract(1, "month").month()
 
 //  TODO improve
 const yearOptions = [
@@ -37,74 +37,74 @@ const yearOptions = [
   year,
   year + 1,
   year + 2,
-  year + 3,
-];
+  year + 3
+]
 
 // TODO: This needs to be refactored
 export const Import = () => {
-  const [rawEntries, setRawEntries] = useState<ParseResult<object>>();
-  const [importAtom, setImportAtom] = useAtom(ImportAtom);
-  const { selectedGroup } = useActiveGroup();
+  const [rawEntries, setRawEntries] = useState<ParseResult<object>>()
+  const [importAtom, setImportAtom] = useAtom(ImportAtom)
+  const { selectedGroup } = useActiveGroup()
   const { data: bankAccountsData } = useBankAccounts({
-    groupId: selectedGroup?.id?.toString(),
-  });
-  const { addImport } = useImportsMutation();
+    groupId: selectedGroup?.id?.toString()
+  })
+  const { addImport } = useImportsMutation()
 
   const selectedAccount = bankAccountsData?.find(
     (currentAccount) => String(currentAccount.id) === importAtom.accountId
-  );
+  )
 
-  const [file, setFile] = useState<File>();
+  const [file, setFile] = useState<File>()
 
   useEffect(() => {
     if (bankAccountsData && !importAtom.accountId) {
       setImportAtom((oldImportAtom) => {
-        return { ...oldImportAtom, accountId: String(bankAccountsData[0].id) };
-      });
+        return { ...oldImportAtom, accountId: String(bankAccountsData[0].id) }
+      })
     }
-  }, [bankAccountsData, importAtom.accountId, setImportAtom]);
+  }, [bankAccountsData, importAtom.accountId, setImportAtom])
 
   // TODO: Do it outside render
-  const [selectedYear, setSelectedYear] = useState<string>(year.toString());
-  const [selectedMonth, setSelectedMonth] = useState<string>(month.toString());
+  const [selectedYear, setSelectedYear] = useState<string>(year.toString())
+  const [selectedMonth, setSelectedMonth] = useState<string>(month.toString())
 
   const [selectedToBeConsideredYear, setToBeConsideredYear] = useState<string>(
     year.toString()
-  );
+  )
   const [selectedToBeConsideredMonth, setToBeConsideredMonth] =
-    useState<string>(oneMonthAgo.toString());
+    useState<string>(oneMonthAgo.toString())
 
-  const isAccountCredit = selectedAccount?.type === "credit";
+  const isAccountCredit = selectedAccount?.type === "credit"
 
   useEffect(() => {
-    const oneMonthBeforeSelectedMonth = Number(selectedMonth) - 1;
-    setToBeConsideredMonth(String(oneMonthBeforeSelectedMonth));
-  }, [selectedMonth]);
+    const oneMonthBeforeSelectedMonth = Number(selectedMonth) - 1
+    setToBeConsideredMonth(String(oneMonthBeforeSelectedMonth))
+  }, [selectedMonth])
 
   const getCreditDueDate = () => {
-    let d = dayjs();
-    d = d = d.month(Number(selectedMonth));
-    d = d.year(Number(selectedYear));
-    d = d.hour(0);
-    d = d.minute(0);
-    d = d.second(0);
-    d = d.millisecond(0);
+    let d = dayjs()
+    d = d = d.month(Number(selectedMonth))
+    d = d.year(Number(selectedYear))
+    d = d.hour(0)
+    d = d.minute(0)
+    d = d.second(0)
+    d = d.millisecond(0)
 
-    return d.toDate();
-  };
+    return d.toDate()
+  }
 
   const getToBeConsideredAtDate = () => {
-    let d = dayjs();
-    d = d = d.month(Number(selectedToBeConsideredMonth));
-    d = d.year(Number(selectedToBeConsideredYear));
-    d = d.date(1);
-    d = d.hour(0);
-    d = d.minute(0);
-    d = d.second(0);
-    d = d.millisecond(0);
+    let d = dayjs()
+    d = d = d.month(Number(selectedToBeConsideredMonth))
+    d = d.year(Number(selectedToBeConsideredYear))
+    d = d.date(1)
+    d = d.hour(0)
+    d = d.minute(0)
+    d = d.second(0)
+    d = d.millisecond(0)
 
-    return d.toDate();
-  };
+    return d.toDate()
+  }
 
   return (
     <div className="p-5 w-full">
@@ -115,8 +115,8 @@ export const Import = () => {
           value={importAtom.accountId}
           onValueChange={(newValue) => {
             setImportAtom((oldImportAtomData) => {
-              return { ...oldImportAtomData, accountId: newValue };
-            });
+              return { ...oldImportAtomData, accountId: newValue }
+            })
           }}
         >
           <SelectTrigger className="w-[180px]">
@@ -128,7 +128,7 @@ export const Import = () => {
                 <SelectItem key={account.id} value={String(account.id)}>
                   {account.name}
                 </SelectItem>
-              );
+              )
             })}
           </SelectContent>
         </Select>
@@ -148,7 +148,7 @@ export const Import = () => {
                         <SelectItem key={year} value={String(year)}>
                           {String(year)}
                         </SelectItem>
-                      );
+                      )
                     })}
                   </SelectContent>
                 </Select>
@@ -163,7 +163,7 @@ export const Import = () => {
                         <SelectItem key={month} value={String(index)}>
                           {month}
                         </SelectItem>
-                      );
+                      )
                     })}
                   </SelectContent>
                 </Select>
@@ -185,7 +185,7 @@ export const Import = () => {
                         <SelectItem key={year} value={String(year)}>
                           {String(year)}
                         </SelectItem>
-                      );
+                      )
                     })}
                   </SelectContent>
                 </Select>
@@ -210,7 +210,7 @@ export const Import = () => {
                           <SelectItem key={month} value={String(index)}>
                             {month}
                           </SelectItem>
-                        );
+                        )
                       })}
                   </SelectContent>
                 </Select>
@@ -224,25 +224,25 @@ export const Import = () => {
           type="file"
           accept=".csv"
           onChange={async (e) => {
-            const input = e.target as HTMLInputElement;
-            const csvFile = input.files?.[0];
+            const input = e.target as HTMLInputElement
+            const csvFile = input.files?.[0]
             if (!csvFile) {
-              return;
+              return
             }
 
-            const content = await csvFile.text();
+            const content = await csvFile.text()
 
             const parsed = Papa.parse<object>(content, {
               header: true, // Parse with headers
-              skipEmptyLines: true, // Skip empty rows
-            });
+              skipEmptyLines: true // Skip empty rows
+            })
 
             if (!parsed.data?.length) {
-              throw new Error("No data found in the CSV file");
+              throw new Error("No data found in the CSV file")
             }
 
-            setFile(csvFile);
-            setRawEntries(parsed);
+            setFile(csvFile)
+            setRawEntries(parsed)
           }}
         />
         <RawDataTable rawImportedData={rawEntries} />
@@ -252,9 +252,9 @@ export const Import = () => {
             checked={importAtom.parserConfig.invertValueField}
             onCheckedChange={(newValue) => {
               setImportAtom((oldAtomValue) => {
-                oldAtomValue.parserConfig.invertValueField = Boolean(newValue);
-                return { ...oldAtomValue };
-              });
+                oldAtomValue.parserConfig.invertValueField = Boolean(newValue)
+                return { ...oldAtomValue }
+              })
             }}
           />
           <label
@@ -282,11 +282,11 @@ export const Import = () => {
           className="mt-4"
           onClick={async () => {
             if (!file) {
-              throw new Error("No file selected");
+              throw new Error("No file selected")
             }
 
             if (!selectedGroup?.id) {
-              throw new Error("No group selected");
+              throw new Error("No group selected")
             }
 
             const transcations: CreateImportInputDto["transactions"] =
@@ -301,18 +301,18 @@ export const Import = () => {
                   : undefined,
                 toBeConsideredAt: isAccountCredit
                   ? getToBeConsideredAtDate().toISOString()
-                  : undefined,
-              });
+                  : undefined
+              })
 
             if (!transcations) {
-              throw new Error("No data found in the CSV file");
+              throw new Error("No data found in the CSV file")
             }
 
             await addImport({
               fileName: file.name,
               groupId: String(selectedGroup.id),
-              transactions: transcations,
-            });
+              transactions: transcations
+            })
           }}
         >
           Import
@@ -320,5 +320,5 @@ export const Import = () => {
       </div>
       <ImportList />
     </div>
-  );
-};
+  )
+}

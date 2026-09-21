@@ -1,31 +1,31 @@
-import { dayjs } from "@/dayjs";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useCategories } from "@/data/categories/useCategories";
-import { Badge } from "@/components/ui/badge";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { dayjs } from "@/dayjs"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
+import { useCategories } from "@/data/categories/useCategories"
+import { Badge } from "@/components/ui/badge"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "../ui/button";
-import { cn } from "@/lib/utils";
-import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
-import { Bankaccount, Category, Transaction } from "@fina/types";
+  DialogDescription
+} from "@/components/ui/dialog"
+import { Button } from "../ui/button"
+import { cn } from "@/lib/utils"
+import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react"
+import { Bankaccount, Category, Transaction } from "@fina/types"
 
 interface TransactionDetailsModalProps {
-  transaction: Transaction | null;
-  onNextTransaction: () => void;
-  onPreviousTransaction: () => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  totalTransactions: number;
-  currentTransactionIndex: number;
+  transaction: Transaction | null
+  onNextTransaction: () => void
+  onPreviousTransaction: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  totalTransactions: number
+  currentTransactionIndex: number
 }
 
 export function TransactionDetailsModal({
@@ -35,122 +35,122 @@ export function TransactionDetailsModal({
   onNextTransaction,
   onPreviousTransaction,
   totalTransactions,
-  currentTransactionIndex,
+  currentTransactionIndex
 }: TransactionDetailsModalProps) {
-  const { selectedGroup } = useActiveGroup();
+  const { selectedGroup } = useActiveGroup()
   const { data: bankAccountsData } = useBankAccounts({
-    groupId: selectedGroup?.id?.toString(),
-  });
-  const { updateMutation } = useTransactionMutation();
+    groupId: selectedGroup?.id?.toString()
+  })
+  const { updateMutation } = useTransactionMutation()
   const { data: categoriesData } = useCategories({
-    groupId: selectedGroup?.id?.toString(),
-  });
+    groupId: selectedGroup?.id?.toString()
+  })
 
-  const [highlightNextButton, setHighlightNextButton] = useState(false);
-  const [highlightPreviousButton, setHighlightPreviousButton] = useState(false);
+  const [highlightNextButton, setHighlightNextButton] = useState(false)
+  const [highlightPreviousButton, setHighlightPreviousButton] = useState(false)
 
-  const highlightNextRef = useRef<NodeJS.Timeout | null>(null);
-  const highlightPreviousRef = useRef<NodeJS.Timeout | null>(null);
+  const highlightNextRef = useRef<NodeJS.Timeout | null>(null)
+  const highlightPreviousRef = useRef<NodeJS.Timeout | null>(null)
 
-  const hasNextTransaction = currentTransactionIndex < totalTransactions - 1;
-  const hasPreviousTransaction = currentTransactionIndex > 0;
+  const hasNextTransaction = currentTransactionIndex < totalTransactions - 1
+  const hasPreviousTransaction = currentTransactionIndex > 0
 
   const accountsMapById = React.useMemo(() => {
-    if (!bankAccountsData) return {};
+    if (!bankAccountsData) return {}
     return bankAccountsData.reduce(
       (acc: Record<string, Bankaccount>, current: Bankaccount) => {
-        acc[current.id] = current;
-        return acc;
+        acc[current.id] = current
+        return acc
       },
       {}
-    );
-  }, [bankAccountsData]);
+    )
+  }, [bankAccountsData])
 
   const categoriesMapById = React.useMemo(() => {
-    if (!categoriesData) return {};
+    if (!categoriesData) return {}
     return categoriesData.reduce(
       (acc: Record<string, Category>, current: Category) => {
-        acc[current.id] = current;
-        return acc;
+        acc[current.id] = current
+        return acc
       },
       {}
-    );
-  }, [categoriesData]);
+    )
+  }, [categoriesData])
 
   const handleCategorySelect = useCallback(
     async (category: Category | null) => {
-      if (!transaction) return;
+      if (!transaction) return
 
       await updateMutation.mutateAsync({
         id: transaction?.id,
-        transaction: { category },
-      });
+        transaction: { category }
+      })
     },
     [transaction, updateMutation]
-  );
+  )
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!categoriesData || !transaction) return;
+      if (!categoriesData || !transaction) return
 
       // Number keys for categories (1-9)
       if (e.key >= "0" && e.key <= "9") {
         if (e.key === "0") {
-          handleCategorySelect(null);
-          return;
+          handleCategorySelect(null)
+          return
         }
 
-        const index = parseInt(e.key) - 1;
+        const index = parseInt(e.key) - 1
         if (index < categoriesData.length) {
-          const category = categoriesData[index];
-          handleCategorySelect(category);
+          const category = categoriesData[index]
+          handleCategorySelect(category)
         }
       }
 
       // Space to skip
       if (e.key === " ") {
-        handleCategorySelect(null);
-        e.preventDefault();
+        handleCategorySelect(null)
+        e.preventDefault()
       }
 
       // Arrow keys for navigation
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        if (!hasPreviousTransaction) return;
+        if (!hasPreviousTransaction) return
 
         if (highlightPreviousRef.current) {
-          clearTimeout(highlightPreviousRef.current);
+          clearTimeout(highlightPreviousRef.current)
         }
 
-        e.preventDefault();
-        e.stopPropagation();
-        onPreviousTransaction();
-        setHighlightPreviousButton(true);
+        e.preventDefault()
+        e.stopPropagation()
+        onPreviousTransaction()
+        setHighlightPreviousButton(true)
         highlightPreviousRef.current = setTimeout(() => {
-          setHighlightPreviousButton(false);
-        }, 300);
+          setHighlightPreviousButton(false)
+        }, 300)
       }
 
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        if (!hasNextTransaction) return;
+        if (!hasNextTransaction) return
 
         if (highlightNextRef.current) {
-          clearTimeout(highlightNextRef.current);
+          clearTimeout(highlightNextRef.current)
         }
 
-        e.preventDefault();
-        e.stopPropagation();
-        onNextTransaction();
-        setHighlightNextButton(true);
+        e.preventDefault()
+        e.stopPropagation()
+        onNextTransaction()
+        setHighlightNextButton(true)
         highlightNextRef.current = setTimeout(() => {
-          setHighlightNextButton(false);
-        }, 300);
+          setHighlightNextButton(false)
+        }, 300)
       }
-    };
+    }
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown)
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+      window.removeEventListener("keydown", handleKeyDown)
+    }
   }, [
     categoriesData,
     handleCategorySelect,
@@ -158,12 +158,12 @@ export function TransactionDetailsModal({
     hasPreviousTransaction,
     onNextTransaction,
     onPreviousTransaction,
-    transaction,
-  ]);
+    transaction
+  ])
 
   const accountData = transaction
     ? accountsMapById[parseInt(transaction.bankaccount.id)]
-    : null;
+    : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -300,7 +300,7 @@ export function TransactionDetailsModal({
             <Button
               variant="ghost"
               className={cn("transition-all transition-duration-200", {
-                "bg-accent": highlightPreviousButton,
+                "bg-accent": highlightPreviousButton
               })}
               disabled={!hasPreviousTransaction}
               onClick={onPreviousTransaction}
@@ -318,7 +318,7 @@ export function TransactionDetailsModal({
             <Button
               variant="ghost"
               className={cn("transition-all transition-duration-200", {
-                "bg-accent": highlightNextButton,
+                "bg-accent": highlightNextButton
               })}
               disabled={!hasNextTransaction}
               onClick={onNextTransaction}
@@ -337,5 +337,5 @@ export function TransactionDetailsModal({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

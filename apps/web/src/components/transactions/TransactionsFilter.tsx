@@ -1,47 +1,45 @@
-import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom";
-import { cn } from "@/lib/utils";
-import { useAtom } from "jotai";
-import { FC, useEffect, useState } from "react";
+import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
+import { cn } from "@/lib/utils"
+import { useAtom } from "jotai"
+import { FC, useEffect, useState } from "react"
 
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useCategories } from "@/data/categories/useCategories";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useDebounce } from "@/components/ui/multipleselector";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "../ui/skeleton";
-import { Button } from "../ui/button";
-import { Filter } from "lucide-react";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useCategories } from "@/data/categories/useCategories"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useDebounce } from "@/components/ui/multipleselector"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "../ui/skeleton"
+import { Button } from "../ui/button"
+import { Filter } from "lucide-react"
 
 interface TransactionsFilterProps {
-  isOpen: boolean;
-  onFilterToggle: (value: boolean) => void;
+  isOpen: boolean
+  onFilterToggle: (value: boolean) => void
 }
 
 export const TransactionsFilter: FC<TransactionsFilterProps> = ({
   isOpen,
-  onFilterToggle,
+  onFilterToggle
 }) => {
-  const [filterProps, setFilterProps] = useAtom(transactionFilterAtom);
-  const [description, setDescription] = useState(
-    filterProps.partialDescription
-  );
-  const debouncedDescription = useDebounce(description, 200);
+  const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
+  const [description, setDescription] = useState(filterProps.partialDescription)
+  const debouncedDescription = useDebounce(description, 200)
 
-  const { selectedGroup } = useActiveGroup();
+  const { selectedGroup } = useActiveGroup()
   const { data: categoriesData, isLoading: isCategoriesLoading } =
     useCategories({
-      groupId: selectedGroup?.id?.toString(),
-    });
+      groupId: selectedGroup?.id?.toString()
+    })
 
   useEffect(() => {
     setFilterProps({
       ...filterProps,
-      partialDescription: debouncedDescription,
-    });
+      partialDescription: debouncedDescription
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedDescription]);
+  }, [debouncedDescription])
 
   return (
     <>
@@ -51,7 +49,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
           "fixed bg-black/40 z-30 inset-0 cursor-pointer xl:hidden block xl:pointer-events-auto ",
           {
             "opacity-100 pointer-events-auto": isOpen,
-            "opacity-0 pointer-events-none": !isOpen,
+            "opacity-0 pointer-events-none": !isOpen
           }
         )}
       ></div>
@@ -59,7 +57,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
         className={cn(
           "bg-background fixed xl:sticky right-0 top-0 h-screen z-50 border-l cursor-auto transition-all duration-300 w-[200px] overflow-hidden",
           {
-            "w-0": !isOpen,
+            "w-0": !isOpen
           }
         )}
       >
@@ -78,7 +76,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                 type="text"
                 value={description}
                 onInput={(e) => {
-                  setDescription((e.target as HTMLInputElement).value);
+                  setDescription((e.target as HTMLInputElement).value)
                 }}
               />
             </div>
@@ -115,16 +113,16 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                                   ...filterProps,
                                   categoriesId: [
                                     ...filterProps.categoriesId,
-                                    category.id,
-                                  ],
-                                });
+                                    category.id
+                                  ]
+                                })
                               } else {
                                 setFilterProps({
                                   ...filterProps,
                                   categoriesId: filterProps.categoriesId.filter(
                                     (id: string) => id !== category.id
-                                  ),
-                                });
+                                  )
+                                })
                               }
                             }}
                           />
@@ -146,15 +144,15 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                             if (checked) {
                               setFilterProps({
                                 ...filterProps,
-                                categoriesId: [...filterProps.categoriesId, -1],
-                              });
+                                categoriesId: [...filterProps.categoriesId, -1]
+                              })
                             } else {
                               setFilterProps({
                                 ...filterProps,
                                 categoriesId: filterProps.categoriesId.filter(
                                   (id: number) => id !== -1
-                                ),
-                              });
+                                )
+                              })
                             }
                           }}
                         />
@@ -176,5 +174,5 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
         </div>
       </div>
     </>
-  );
-};
+  )
+}

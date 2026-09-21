@@ -15,14 +15,17 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.21.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -46,7 +49,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.24"
+    "typeorm": "^0.3.24",
+    "zod": "3.25.75"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -60,6 +64,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
+    "@testcontainers/postgresql": "12.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",

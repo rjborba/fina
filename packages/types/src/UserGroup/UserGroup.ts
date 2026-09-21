@@ -7,7 +7,7 @@ export const UserGroupSchema = z.object({
   id: z.string(),
   createdAt: z.date(),
   group: GroupSchema,
-  user: UserSchema,
+  user: UserSchema
 });
 
 export type UserGroup = z.infer<typeof UserGroupSchema>;

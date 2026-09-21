@@ -22,30 +22,38 @@ import { SupabaseAuthGuard } from './supabase-auth.guard';
 import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ZodValidationPipe } from 'nestjs-zod';
+import { Environment, validateEnvironment } from './config/environment';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'aws-0-us-west-1.pooler.supabase.com',
-      port: 6543,
-      username: 'postgres.krgwgeabxeyvejwscoer',
-      password: 'finasupabase',
-      database: 'postgres',
-      schema: 'public',
-      entities: [
-        Transactions,
-        Bankaccounts,
-        Groups,
-        UserGroup,
-        Categories,
-        Users,
-        Imports,
-        Invites,
-      ],
-      // synchronize: true,
-      logging: true,
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Environment, true>) => ({
+        type: 'postgres',
+        host: config.get('DATABASE_HOST', { infer: true }),
+        port: config.get('DATABASE_PORT', { infer: true }),
+        username: config.get('DATABASE_USER', { infer: true }),
+        password: config.get('DATABASE_PASSWORD', { infer: true }),
+        database: config.get('DATABASE_NAME', { infer: true }),
+        schema: config.get('DATABASE_SCHEMA', { infer: true }),
+        ssl: config.get('DATABASE_SSL', { infer: true })
+          ? { rejectUnauthorized: true }
+          : false,
+        entities: [
+          Transactions,
+          Bankaccounts,
+          Groups,
+          UserGroup,
+          Categories,
+          Users,
+          Imports,
+          Invites,
+        ],
+        synchronize: false,
+        logging: false,
+      }),
     }),
     TransactionsModule,
     CategoriesModule,

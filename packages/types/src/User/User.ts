@@ -6,7 +6,7 @@ export const UserSchema = z.object({
   name: z.string().nullable(),
   email: z.string().nullable(),
   metaData: z.record(z.unknown()).nullable(),
-  avatar: z.string().nullable(),
+  avatar: z.string().nullable()
 });
 
 export type User = z.infer<typeof UserSchema>;

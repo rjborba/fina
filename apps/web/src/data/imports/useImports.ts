@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
+import { useQuery } from "@tanstack/react-query"
+import supabase from "@/supabaseClient"
 
 type UseImportsProps = {
-  groupId?: string;
-};
+  groupId?: string
+}
 
 export const useImports = ({ groupId }: UseImportsProps) => {
   return useQuery({
@@ -14,13 +14,13 @@ export const useImports = ({ groupId }: UseImportsProps) => {
         .from("imports")
         .select("*")
         .order("id", { ascending: true })
-        .eq("group_id", Number(groupId));
+        .eq("group_id", Number(groupId))
 
       if (error) {
-        throw error;
+        throw error
       }
 
-      return data;
-    },
-  });
-};
+      return data
+    }
+  })
+}

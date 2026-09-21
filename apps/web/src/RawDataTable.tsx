@@ -1,23 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FC } from "react";
+import { FC } from "react"
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "./components/ui/table";
-import { ParseResult } from "papaparse";
+  TableRow
+} from "./components/ui/table"
+import { ParseResult } from "papaparse"
 
 export const RawDataTable: FC<{
-  rawImportedData?: ParseResult<unknown>;
+  rawImportedData?: ParseResult<unknown>
 }> = ({ rawImportedData }) => {
-  const data = rawImportedData?.data;
-  const fields = rawImportedData?.meta.fields;
+  const data = rawImportedData?.data
+  const fields = rawImportedData?.meta.fields
 
   if (!data || !fields) {
-    return null;
+    return null
   }
 
   return (
@@ -26,9 +26,7 @@ export const RawDataTable: FC<{
       <Table>
         <TableHeader>
           <TableRow>
-            {fields?.map((field) => (
-              <TableHead key={field}>{field}</TableHead>
-            ))}
+            {fields?.map((field) => <TableHead key={field}>{field}</TableHead>)}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -40,13 +38,13 @@ export const RawDataTable: FC<{
                     <TableCell key={`${index}-${rowIndex}`}>
                       {value as string}
                     </TableCell>
-                  );
+                  )
                 })}
               </TableRow>
-            );
+            )
           })}
         </TableBody>
       </Table>
     </div>
-  );
-};
+  )
+}

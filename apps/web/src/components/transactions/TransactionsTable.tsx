@@ -1,8 +1,8 @@
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useCategories } from "@/data/categories/useCategories";
-import { EditableSelect } from "@/data/transactions/EditableSelectCell";
-import { EditableText } from "@/data/transactions/EditableTextCell";
-import { cn } from "@/lib/utils";
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useCategories } from "@/data/categories/useCategories"
+import { EditableSelect } from "@/data/transactions/EditableSelectCell"
+import { EditableText } from "@/data/transactions/EditableTextCell"
+import { cn } from "@/lib/utils"
 import {
   createColumnHelper,
   flexRender,
@@ -10,62 +10,62 @@ import {
   getSortedRowModel,
   Row,
   SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import dayjs from "dayjs";
+  useReactTable
+} from "@tanstack/react-table"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import dayjs from "dayjs"
 import {
   ArrowDown,
   ArrowUp,
   Frown,
   LucideCreditCard,
-  Trash,
-} from "lucide-react";
-import { FC, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+  Trash
+} from "lucide-react"
+import { FC, useEffect, useMemo, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TransactionDetailsModal } from "./TransactionDetailsModal";
-import { Skeleton } from "../ui/skeleton";
-import React from "react";
+  TableRow
+} from "@/components/ui/table"
+import { TransactionDetailsModal } from "./TransactionDetailsModal"
+import { Skeleton } from "../ui/skeleton"
+import React from "react"
 
 export interface TransactionsTableProps {
-  data?: Transaction[] | null;
-  totalCount: number;
-  pageIndex: number;
-  pageSize: number;
-  isLoading: boolean;
-  isError: boolean;
+  data?: Transaction[] | null
+  totalCount: number
+  pageIndex: number
+  pageSize: number
+  isLoading: boolean
+  isError: boolean
   onUpdateTransaction: (
     id: string,
     transaction: Partial<Transaction>
-  ) => Promise<void>;
-  onDeleteTransaction: (id: string) => Promise<void>;
+  ) => Promise<void>
+  onDeleteTransaction: (id: string) => Promise<void>
 }
 
-const columnHelper = createColumnHelper<Transaction>();
+const columnHelper = createColumnHelper<Transaction>()
 
 // Memoized TableRow to prevent unnecessary re-renders
-const MemoizedTableRow = React.memo(TableRow);
+const MemoizedTableRow = React.memo(TableRow)
 
-import { useAtom } from "jotai";
-import { openSelectIdAtom } from "./OpenSelectAtom";
-import { CreateTransactionModal } from "../CreateTransactionModal";
-import { Transaction } from "@fina/types";
+import { useAtom } from "jotai"
+import { openSelectIdAtom } from "./OpenSelectAtom"
+import { CreateTransactionModal } from "../CreateTransactionModal"
+import { Transaction } from "@fina/types"
 
 const CategoryCell: React.FC<{
-  row: Row<Transaction>;
-  categories: { id: string; name: string }[];
-  onUpdateTransaction: TransactionsTableProps["onUpdateTransaction"];
+  row: Row<Transaction>
+  categories: { id: string; name: string }[]
+  onUpdateTransaction: TransactionsTableProps["onUpdateTransaction"]
 }> = ({ row, categories, onUpdateTransaction }) => {
-  const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom);
+  const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom)
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
@@ -75,25 +75,25 @@ const CategoryCell: React.FC<{
         open={openSelectId === row.original.id}
         onOpenChange={(open) => {
           if (open) {
-            setOpenSelectId(row.original.id);
+            setOpenSelectId(row.original.id)
           } else {
-            setOpenSelectId(null);
+            setOpenSelectId(null)
           }
         }}
         onChange={(value) => {
-          setOpenSelectId(null);
+          setOpenSelectId(null)
 
           if (!row.original.category) {
-            throw new Error("Category not found");
+            throw new Error("Category not found")
           }
           return onUpdateTransaction(row.original.id, {
-            category: { ...row.original.category, id: value! },
-          });
+            category: { ...row.original.category, id: value! }
+          })
         }}
       />
     </div>
-  );
-};
+  )
+}
 
 const TransactionsTable: FC<TransactionsTableProps> = ({
   data,
@@ -103,33 +103,33 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
   isLoading,
   isError,
   onUpdateTransaction,
-  onDeleteTransaction,
+  onDeleteTransaction
 }) => {
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const { selectedGroup } = useActiveGroup();
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const { selectedGroup } = useActiveGroup()
 
   const [openCreateTransactionModal, setOpenCreateTransactionModal] =
-    useState(false);
+    useState(false)
 
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: "date",
-      desc: true,
-    },
-  ]);
+      desc: true
+    }
+  ])
 
   const { data: categoriesData } = useCategories({
-    groupId: selectedGroup?.id?.toString(),
-  });
+    groupId: selectedGroup?.id?.toString()
+  })
 
   const categories = useMemo(() => {
     return (
       categoriesData?.map((category) => ({
         id: category.id,
-        name: category.name,
+        name: category.name
       })) || []
-    );
-  }, [categoriesData]);
+    )
+  }, [categoriesData])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -138,22 +138,22 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         e.target instanceof HTMLElement &&
         e.target.closest('input, textarea, select, [role="combobox"]')
       ) {
-        return;
+        return
       }
 
       if (e.key === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
+        e.preventDefault()
         // Only open the modal, don't toggle
         if (!openCreateTransactionModal) {
-          setOpenCreateTransactionModal(true);
+          setOpenCreateTransactionModal(true)
         }
       }
-    };
+    }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [])
 
   const columns = useMemo(
     () => [
@@ -177,11 +177,11 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                 <ArrowUp className="ml-1 h-1 w-1" />
               )}
             </Button>
-          );
+          )
         },
         cell: (info) => {
-          return dayjs(info.getValue()).format("DD/MM/YYYY");
-        },
+          return dayjs(info.getValue()).format("DD/MM/YYYY")
+        }
       }),
       columnHelper.accessor("description", {
         id: "description",
@@ -194,20 +194,20 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                 <LucideCreditCard className="h-3 w-3 text-muted-foreground inline" />
               )}
             </div>
-          );
-        },
+          )
+        }
       }),
       // Installments
       columnHelper.accessor(
         (row) => {
           if (!row.installmentCurrent || !row.installmentTotal) {
-            return "";
+            return ""
           }
 
-          return `${row.installmentCurrent}/${row.installmentTotal}`;
+          return `${row.installmentCurrent}/${row.installmentTotal}`
         },
         {
-          id: "installment",
+          id: "installment"
         }
       ),
       columnHelper.accessor("value", {
@@ -215,11 +215,11 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         header: "Value",
         cell: ({ row }) => {
           if (!row.original.value) {
-            return "";
+            return ""
           }
 
-          return <div>R$ {row.original.value.toFixed(2)}</div>;
-        },
+          return <div>R$ {row.original.value.toFixed(2)}</div>
+        }
       }),
       columnHelper.accessor("category", {
         header: "Category",
@@ -230,32 +230,8 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               categories={categories}
               onUpdateTransaction={onUpdateTransaction}
             />
-          );
-        },
-        // const { openSelectId, setOpenSelectId } = useEditableSelectOpen();
-        // return (
-        //   <div
-        //     onClick={(e) => {
-        //       e.stopPropagation();
-        //     }}
-        //   >
-        //     <EditableSelect
-        //       value={row.original.category_id}
-        //       categories={categories}
-        //       transactionId={row.original.id}
-        //       open={openSelectId === row.original.id}
-        //       onOpen={() => setOpenSelectId(row.original.id)}
-        //       onClose={() => setOpenSelectId(null)}
-        //       onChange={(value) => {
-        //         setOpenSelectId(null);
-        //         return onUpdateTransaction(row.original.id, {
-        //           category_id: value,
-        //         });
-        //       }}
-        //     />
-        //   </div>
-        //   );
-        // },
+          )
+        }
       }),
       columnHelper.accessor("observation", {
         id: "observation",
@@ -264,20 +240,20 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           return (
             <div
               onClick={(e) => {
-                e.stopPropagation();
+                e.stopPropagation()
               }}
             >
               <EditableText
                 value={row.original.observation || ""}
                 onChange={(value) => {
                   return onUpdateTransaction(row.original.id, {
-                    observation: value,
-                  });
+                    observation: value
+                  })
                 }}
               />
             </div>
-          );
-        },
+          )
+        }
       }),
       // Actions
       columnHelper.display({
@@ -295,12 +271,12 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               description="Are you sure you want to delete this transaction?"
               onConfirm={() => onDeleteTransaction(row.original.id)}
             />
-          );
-        },
-      }),
+          )
+        }
+      })
     ],
     [categories, onUpdateTransaction, onDeleteTransaction]
-  );
+  )
 
   const table = useReactTable({
     data: data || [],
@@ -314,12 +290,12 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
       sorting: sorting,
       pagination: {
         pageIndex,
-        pageSize,
-      },
-    },
-  });
+        pageSize
+      }
+    }
+  })
 
-  const { rows } = table.getRowModel();
+  const { rows } = table.getRowModel()
 
   const rowVirtualizer = useVirtualizer({
     count: data?.length || 0,
@@ -330,15 +306,15 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
       navigator.userAgent.indexOf("Firefox") === -1
         ? (element) => element?.getBoundingClientRect().height
         : undefined,
-    overscan: 15,
-  });
+    overscan: 15
+  })
 
   const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] =
-    useState(false);
+    useState(false)
 
   const [selectedTransactionIndex, setSelectedTransactionIndex] = useState<
     number | null
-  >(null);
+  >(null)
 
   const RenderTable = () => {
     return (
@@ -362,13 +338,13 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         <TableBody
           style={{
             height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
-            position: "relative", //needed for absolute positioning of rows
+            position: "relative" //needed for absolute positioning of rows
           }}
         >
           {rowVirtualizer
             .getVirtualItems()
             .map((virtualRow, virtualRowIndex) => {
-              const row = rows[virtualRow.index] as Row<Transaction>;
+              const row = rows[virtualRow.index] as Row<Transaction>
 
               return (
                 <MemoizedTableRow
@@ -378,7 +354,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${
                       virtualRow.start - virtualRowIndex * virtualRow.size
-                    }px)`,
+                    }px)`
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -386,8 +362,8 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                       key={cell.id}
                       className="py-0"
                       onClick={() => {
-                        setSelectedTransactionIndex(virtualRow.index);
-                        setIsTransactionsDetailsModalOpen(true);
+                        setSelectedTransactionIndex(virtualRow.index)
+                        setIsTransactionsDetailsModalOpen(true)
                       }}
                     >
                       {flexRender(
@@ -397,12 +373,12 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                     </TableCell>
                   ))}
                 </MemoizedTableRow>
-              );
+              )
             })}
         </TableBody>
       </Table>
-    );
-  };
+    )
+  }
 
   const RenderNoTransactions = () => {
     return (
@@ -410,8 +386,8 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         <p className="text-muted-foreground">No transactions here</p>
         <Frown className="h-24 w-24 text-muted" />
       </div>
-    );
-  };
+    )
+  }
 
   const RenderLoading = () => {
     return (
@@ -429,28 +405,28 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           </div>
         ))}
       </div>
-    );
-  };
+    )
+  }
 
   const RenderError = () => {
-    return <div>Error</div>;
-  };
+    return <div>Error</div>
+  }
 
   const RenderContent = () => {
     if (isError) {
-      return <RenderError />;
+      return <RenderError />
     }
 
     if (isLoading || data === undefined) {
-      return <RenderLoading />;
+      return <RenderLoading />
     }
 
     if (data?.length === 0) {
-      return <RenderNoTransactions />;
+      return <RenderNoTransactions />
     }
 
-    return <RenderTable />;
-  };
+    return <RenderTable />
+  }
 
   return (
     <div className="flex relative" ref={tableContainerRef}>
@@ -466,7 +442,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
               currentTransactionIndex={selectedTransactionIndex}
               onNextTransaction={() => {
                 if (selectedTransactionIndex === null) {
-                  return;
+                  return
                 }
 
                 setSelectedTransactionIndex(
@@ -474,16 +450,16 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
                     data?.length ? data?.length - 1 : 0,
                     selectedTransactionIndex + 1
                   )
-                );
+                )
               }}
               onPreviousTransaction={() => {
                 if (selectedTransactionIndex === null) {
-                  return;
+                  return
                 }
 
                 setSelectedTransactionIndex(
                   Math.max(0, selectedTransactionIndex - 1)
-                );
+                )
               }}
             />
           )}
@@ -493,7 +469,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TransactionsTable;
+export default TransactionsTable

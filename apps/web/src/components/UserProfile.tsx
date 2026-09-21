@@ -1,22 +1,22 @@
-import { User } from "@supabase/supabase-js";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { User } from "@supabase/supabase-js"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 interface UserProfileProps {
-  user: User;
-  isSidebarCollapsed: boolean;
+  user: User
+  isSidebarCollapsed: boolean
 }
 
 export function UserProfile({ user, isSidebarCollapsed }: UserProfileProps) {
-  const avatarUrl = user.user_metadata?.avatar_url;
-  const userInitial = user.user_metadata?.name?.[0]?.toUpperCase() || "U";
+  const avatarUrl = user.user_metadata?.avatar_url
+  const userInitial = user.user_metadata?.name?.[0]?.toUpperCase() || "U"
 
   return (
     <div className="flex items-center gap-2 px-2 py-1 hover:bg-muted">
       <div
         className={cn({
           "flex items-center": true,
-          "gap-2 px-2 py-1": !isSidebarCollapsed && user,
+          "gap-2 px-2 py-1": !isSidebarCollapsed && user
         })}
       >
         <Avatar className="h-8 w-8">
@@ -35,5 +35,5 @@ export function UserProfile({ user, isSidebarCollapsed }: UserProfileProps) {
         )}
       </div>
     </div>
-  );
+  )
 }

@@ -1,25 +1,25 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts";
-import { useAccountsMutation } from "@/data/bankAccounts/useBankAccountsMutation";
-import { FC, useEffect, useState } from "react";
+  SelectValue
+} from "@/components/ui/select"
+import { useForm } from "react-hook-form"
+import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
+import { useAccountsMutation } from "@/data/bankAccounts/useBankAccountsMutation"
+import { FC, useEffect, useState } from "react"
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
+  FormMessage
+} from "@/components/ui/form"
+import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,25 +28,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreateBankaccountInputDto } from "@fina/types";
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CreateBankaccountInputDto } from "@fina/types"
 
 type FormData = {
-  accountName: string;
-  accountType: string;
-  dueDate: string;
-  user_id: string;
-};
+  accountName: string
+  accountType: string
+  dueDate: string
+  user_id: string
+}
 
 const RemoveConfirmDialog: FC<{ id: string }> = ({ id }) => {
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-  const { removeAccount } = useAccountsMutation();
-  const [isLoading, setIsLoading] = useState(false);
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+  const { removeAccount } = useAccountsMutation()
+  const [isLoading, setIsLoading] = useState(false)
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
@@ -67,19 +67,19 @@ const RemoveConfirmDialog: FC<{ id: string }> = ({ id }) => {
           <Button
             disabled={isLoading}
             onClick={async () => {
-              setIsLoading(true);
+              setIsLoading(true)
               removeAccount(id.toString())
                 .then(() => {
-                  toast({ title: "Successfully removed" });
-                  setOpen(false);
+                  toast({ title: "Successfully removed" })
+                  setOpen(false)
                 })
                 .catch((e) => {
-                  toast({ title: "Something went wrong" });
-                  console.error(e);
+                  toast({ title: "Something went wrong" })
+                  console.error(e)
                 })
                 .finally(() => {
-                  setIsLoading(false);
-                });
+                  setIsLoading(false)
+                })
             }}
           >
             Continue
@@ -87,47 +87,47 @@ const RemoveConfirmDialog: FC<{ id: string }> = ({ id }) => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-};
+  )
+}
 
 export const Accounts: FC = () => {
-  const { selectedGroup } = useActiveGroup();
+  const { selectedGroup } = useActiveGroup()
   const { data: bankAccountsData } = useBankAccounts({
-    groupId: selectedGroup?.id?.toString(),
-  });
-  const { addAccount } = useAccountsMutation();
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+    groupId: selectedGroup?.id?.toString()
+  })
+  const { addAccount } = useAccountsMutation()
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
   const { data: usersPerGroup } = useUsersPerGroup({
-    groupId: selectedGroup?.id?.toString(),
-  });
+    groupId: selectedGroup?.id?.toString()
+  })
 
   const form = useForm<FormData>({
     defaultValues: {
       accountName: "",
       accountType: "checkout",
       dueDate: "",
-      user_id: "",
-    },
-  });
+      user_id: ""
+    }
+  })
 
   useEffect(() => {
     if (!usersPerGroup || !usersPerGroup.length) {
-      return;
+      return
     }
 
-    form.setValue("user_id", usersPerGroup[0].user_id!);
-  }, [form, usersPerGroup]);
+    form.setValue("user_id", usersPerGroup[0].user_id!)
+  }, [form, usersPerGroup])
 
-  const accountType = form.watch("accountType");
+  const accountType = form.watch("accountType")
 
   const onSubmit = async (data: FormData) => {
     if (!selectedGroup?.id) {
-      throw new Error("No group selected");
+      throw new Error("No group selected")
     }
 
     if (!data.user_id) {
-      throw new Error("User not found");
+      throw new Error("User not found")
     }
 
     const addAccountPayload: CreateBankaccountInputDto = {
@@ -135,27 +135,27 @@ export const Accounts: FC = () => {
       type: data.accountType,
       groupId: selectedGroup?.id.toString(),
       userId: data.user_id,
-      dueDate: accountType === "credit" ? new Date(data.dueDate) : null,
-    };
-
-    if (accountType === "credit") {
-      addAccountPayload.dueDate = new Date(data.dueDate);
+      dueDate: accountType === "credit" ? new Date(data.dueDate) : null
     }
 
-    setIsLoading(true);
+    if (accountType === "credit") {
+      addAccountPayload.dueDate = new Date(data.dueDate)
+    }
+
+    setIsLoading(true)
     addAccount(addAccountPayload)
       .then(() => {
-        toast({ title: "Successfully added" });
-        form.reset();
+        toast({ title: "Successfully added" })
+        form.reset()
       })
       .catch((e) => {
-        toast({ title: "Something went wrong" });
-        console.error(e);
+        toast({ title: "Something went wrong" })
+        console.error(e)
       })
       .finally(() => {
-        setIsLoading(false);
-      });
-  };
+        setIsLoading(false)
+      })
+  }
 
   return (
     <div className="p-5 w-full">
@@ -316,5 +316,5 @@ export const Accounts: FC = () => {
         </Card>
       </div>
     </div>
-  );
-};
+  )
+}

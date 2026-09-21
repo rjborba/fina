@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+apps/web/src/database.types.ts
+apps/web/src/output.css
+apps/api/openapi.json
+apps/web/src/api/generated/

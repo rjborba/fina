@@ -8,12 +8,12 @@ export const CreateTransactionInputDtoSchema = TransactionSchema.omit({
   bankaccount: true,
   category: true,
   group: true,
-  import: true,
+  import: true
 }).extend({
   bankaccountId: z.string(),
   categoryId: z.string().nullable().optional(),
   groupId: z.string(),
-  importId: z.string().nullable().optional(),
+  importId: z.string().nullable().optional()
 });
 
 export class CreateTransactionInputDto extends createZodDto(

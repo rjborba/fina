@@ -7,7 +7,7 @@ export const InviteSchema = z.object({
   createdAt: z.date(),
   email: z.string(),
   pending: z.boolean(),
-  group: GroupSchema,
+  group: GroupSchema
 });
 
 export type Invite = z.infer<typeof InviteSchema>;

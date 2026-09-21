@@ -1,29 +1,29 @@
-import MultipleSelector from "@/components/ui/multipleselector";
+import MultipleSelector from "@/components/ui/multipleselector"
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { FC, Fragment, useMemo } from "react";
-import { EXPECTED_HEADERS_CREDIT } from "./constant";
-import { useAtom } from "jotai";
-import { ImportAtom, ImportFieldMap } from "./FieldMapAtom";
-import { rawEntriesToTransactions } from "./rawEntriesToTransactions";
-import { CreateTransactionInputDtoType } from "@fina/types";
+  TableRow
+} from "@/components/ui/table"
+import { FC, Fragment, useMemo } from "react"
+import { EXPECTED_HEADERS_CREDIT } from "./constant"
+import { useAtom } from "jotai"
+import { ImportAtom, ImportFieldMap } from "./FieldMapAtom"
+import { rawEntriesToTransactions } from "./rawEntriesToTransactions"
+import { CreateTransactionInputDtoType } from "@fina/types"
 
 export const FieldMapTable: FC<{
-  rawData?: object[];
-  rawFields?: string[];
-  groupId: number;
-  expectedHeaders: string[];
+  rawData?: object[]
+  rawFields?: string[]
+  groupId: number
+  expectedHeaders: string[]
 }> = ({ rawData = [], rawFields = [], groupId, expectedHeaders }) => {
-  const [importAtom, setImportAtom] = useAtom(ImportAtom);
+  const [importAtom, setImportAtom] = useAtom(ImportAtom)
 
   const fieldMapOptions =
-    rawFields.map((rawField) => ({ label: rawField, value: rawField })) || [];
+    rawFields.map((rawField) => ({ label: rawField, value: rawField })) || []
 
   const previewData = useMemo(() => {
     return rawEntriesToTransactions({
@@ -31,9 +31,9 @@ export const FieldMapTable: FC<{
       importFieldMap: importAtom.fieldMap,
       accountId: importAtom.accountId,
       invertValue: importAtom.parserConfig.invertValueField,
-      groupId,
-    });
-  }, [importAtom, rawData, groupId]);
+      groupId
+    })
+  }, [importAtom, rawData, groupId])
 
   return (
     <div className="min-h-[200px]">
@@ -52,18 +52,18 @@ export const FieldMapTable: FC<{
                   options={fieldMapOptions}
                   onChange={(selectedValues) => {
                     setImportAtom((oldImportData) => {
-                      const oldFieldMap = oldImportData.fieldMap;
+                      const oldFieldMap = oldImportData.fieldMap
                       if (selectedValues.length) {
                         oldFieldMap[column as keyof ImportFieldMap] =
                           selectedValues.map(
                             (currentValue) => currentValue.value
-                          );
+                          )
                       } else {
-                        oldFieldMap[column as keyof ImportFieldMap] = null;
+                        oldFieldMap[column as keyof ImportFieldMap] = null
                       }
 
-                      return { ...oldImportData };
-                    });
+                      return { ...oldImportData }
+                    })
                   }}
                 />
               </TableHead>
@@ -92,21 +92,21 @@ export const FieldMapTable: FC<{
                                     row as CreateTransactionInputDtoType
                                   )[
                                     column as keyof CreateTransactionInputDtoType
-                                  ];
+                                  ]
                                   return value instanceof Date
                                     ? value.toLocaleDateString()
-                                    : value;
-                                })();
+                                    : value
+                                })()
                           })()}
                         </TableCell>
                       </Fragment>
                     ))}
                   </TableRow>
-                );
+                )
               })
             : null}
         </TableBody>
       </Table>
     </div>
-  );
-};
+  )
+}

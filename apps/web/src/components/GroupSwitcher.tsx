@@ -1,28 +1,28 @@
-"use client";
-import { ChevronsUpDown, PersonStanding } from "lucide-react";
+"use client"
+import { ChevronsUpDown, PersonStanding } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { cn } from "@/lib/utils";
+  useSidebar
+} from "@/components/ui/sidebar"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { cn } from "@/lib/utils"
 
 export function GroupSwitcher() {
-  const { isMobile } = useSidebar();
-  const { selectedGroup, groups, setSelectedGroup } = useActiveGroup();
+  const { isMobile } = useSidebar()
+  const { selectedGroup, groups, setSelectedGroup } = useActiveGroup()
 
   if (!selectedGroup) {
-    return null;
+    return null
   }
 
   return (
@@ -77,5 +77,5 @@ export function GroupSwitcher() {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  );
+  )
 }

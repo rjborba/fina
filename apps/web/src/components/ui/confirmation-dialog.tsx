@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "./alert-dialog";
-import { ReactNode } from "react";
+  AlertDialogTrigger
+} from "./alert-dialog"
+import { ReactNode } from "react"
 
 interface ConfirmationDialogProps {
-  trigger: ReactNode;
-  title: ReactNode;
-  description: ReactNode;
-  onConfirm: () => void;
-  confirmText?: string;
-  cancelText?: string;
+  trigger: ReactNode
+  title: ReactNode
+  description: ReactNode
+  onConfirm: () => void
+  confirmText?: string
+  cancelText?: string
 }
 
 export function ConfirmationDialog({
@@ -26,7 +26,7 @@ export function ConfirmationDialog({
   description,
   onConfirm,
   confirmText = "Confirm",
-  cancelText = "Cancel",
+  cancelText = "Cancel"
 }: ConfirmationDialogProps) {
   return (
     <AlertDialog>
@@ -44,5 +44,5 @@ export function ConfirmationDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
+  )
 }

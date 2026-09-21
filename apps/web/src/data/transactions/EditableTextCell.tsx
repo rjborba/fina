@@ -1,59 +1,59 @@
-import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
-import { FC, useEffect, useRef, useState, KeyboardEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils"
+import { Check, X } from "lucide-react"
+import { FC, useEffect, useRef, useState, KeyboardEvent } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { toast } from "@/hooks/use-toast"
 
 interface EditableTextProps {
-  value: string;
-  onChange: (value: string) => Promise<unknown>;
-  className?: string;
+  value: string
+  onChange: (value: string) => Promise<unknown>
+  className?: string
 }
 
 export const EditableText: FC<EditableTextProps> = ({
   value,
   onChange,
-  className,
+  className
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setEditValue(value);
-  }, [value]);
+    setEditValue(value)
+  }, [value])
 
   useEffect(() => {
     if (isEditing) {
-      inputRef.current?.focus();
+      inputRef.current?.focus()
     }
-  }, [isEditing]);
+  }, [isEditing])
 
   const handleAccept = () => {
     if (editValue !== value) {
       onChange(editValue).catch(() => {
-        toast({ title: "Something went wrong", variant: "destructive" });
-        setEditValue(value);
-      });
+        toast({ title: "Something went wrong", variant: "destructive" })
+        setEditValue(value)
+      })
     }
-    setIsEditing(false);
-  };
+    setIsEditing(false)
+  }
 
   const handleReject = () => {
-    setEditValue(value);
-    setIsEditing(false);
-  };
+    setEditValue(value)
+    setIsEditing(false)
+  }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      e.preventDefault();
-      handleAccept();
+      e.preventDefault()
+      handleAccept()
     } else if (e.key === "Escape") {
-      e.preventDefault();
-      handleReject();
+      e.preventDefault()
+      handleReject()
     }
-  };
+  }
 
   if (!isEditing) {
     return (
@@ -63,7 +63,7 @@ export const EditableText: FC<EditableTextProps> = ({
       >
         {editValue || "-"}
       </div>
-    );
+    )
   }
 
   return (
@@ -93,5 +93,5 @@ export const EditableText: FC<EditableTextProps> = ({
         <X className="h-4 w-4" />
       </Button>
     </div>
-  );
-};
+  )
+}

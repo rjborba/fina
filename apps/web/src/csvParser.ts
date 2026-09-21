@@ -1,1 +1,1 @@
-export const csvParser = () => {};
+export const csvParser = () => {}

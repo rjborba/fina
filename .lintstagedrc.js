@@ -7,7 +7,10 @@ export default {
       chunks.push(filenames.slice(i, i + chunkSize));
     }
     return chunks.map(
-      (chunk) => `cd apps/api && pnpm eslint --cache ${chunk.join(" ")}`
+      (chunk) =>
+        `pnpm --dir apps/api exec eslint --cache ${chunk
+          .map((filename) => JSON.stringify(filename))
+          .join(" ")}`,
     );
   },
   "apps/web/**/*.{js,jsx,ts,tsx}": (filenames) => {
@@ -17,7 +20,10 @@ export default {
       chunks.push(filenames.slice(i, i + chunkSize));
     }
     return chunks.map(
-      (chunk) => `cd apps/web && pnpm eslint --cache ${chunk.join(" ")}`
+      (chunk) =>
+        `pnpm --dir apps/web exec eslint --cache ${chunk
+          .map((filename) => JSON.stringify(filename))
+          .join(" ")}`,
     );
   },
   "packages/**/*.{js,jsx,ts,tsx}": (filenames) => {
@@ -26,12 +32,11 @@ export default {
     for (let i = 0; i < filenames.length; i += chunkSize) {
       chunks.push(filenames.slice(i, i + chunkSize));
     }
-    // For packages, we'll use the web's eslint since packages doesn't have its own
     return chunks.map(
       (chunk) =>
-        `cd apps/web && pnpm eslint --cache ${chunk
-          .map((f) => `../../${f}`)
-          .join(" ")}`
+        `pnpm --dir packages/types exec eslint --cache ${chunk
+          .map((filename) => JSON.stringify(filename))
+          .join(" ")}`,
     );
   },
 };

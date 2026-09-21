@@ -1,9 +1,9 @@
-import dayjs from "dayjs";
-import { FinaAPIFetcher } from "../FinaAPIFetcher";
+import dayjs from "dayjs"
+import { FinaAPIFetcher } from "../FinaAPIFetcher"
 import {
   QueryTransactionInputDto,
-  QueryTransactionOutputDtoType,
-} from "@fina/types";
+  QueryTransactionOutputDtoType
+} from "@fina/types"
 
 export const fetchTransactions = async ({
   page,
@@ -13,16 +13,16 @@ export const fetchTransactions = async ({
   endDate,
   categoryIdList,
   accountIdList,
-  search,
+  search
 }: QueryTransactionInputDto): Promise<QueryTransactionOutputDtoType> => {
   const getFormattedDate = (date?: Date) => {
-    if (!date) return undefined;
+    if (!date) return undefined
 
-    return dayjs(date).format("YYYY-MM-DD");
-  };
+    return dayjs(date).format("YYYY-MM-DD")
+  }
 
-  const formattedStartDate = getFormattedDate(startDate);
-  const formattedEndDate = getFormattedDate(endDate);
+  const formattedStartDate = getFormattedDate(startDate)
+  const formattedEndDate = getFormattedDate(endDate)
 
   const response = await FinaAPIFetcher.get<QueryTransactionOutputDtoType>(
     "transactions",
@@ -34,13 +34,13 @@ export const fetchTransactions = async ({
       endDate: formattedEndDate,
       categoryIdList,
       accountIdList,
-      search,
+      search
     }
-  );
+  )
 
   if (response.status !== 200) {
-    throw new Error("Failed to fetch transactions");
+    throw new Error("Failed to fetch transactions")
   }
 
-  return response.data;
-};
+  return response.data
+}

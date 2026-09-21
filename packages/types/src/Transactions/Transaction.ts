@@ -41,7 +41,8 @@ export const TransactionSchema = z.object({
   bankaccount: BankaccountSchema,
   category: CategorySchema.nullable().optional(),
   group: GroupSchema,
-  get import() {
-    return ImportSchema.nullable().optional();
-  },
+  import: z
+    .lazy(() => ImportSchema)
+    .nullable()
+    .optional()
 }) satisfies z.ZodType<Transaction>;

@@ -10,7 +10,7 @@ import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
@@ -27,8 +27,7 @@ export class SupabaseAuthGuard implements CanActivate {
 
     const token = authHeader.replace(/^Bearer /, '');
 
-    const secret =
-      'xa8rulz0l75emu/wX26izruvVPQbT7Mu6tfG9W7FxTeYrRmcYdK434CiwUCC070n0RxLf54KuPC37YLFlgBCMA==';
+    const secret = this.configService.getOrThrow<string>('SUPABASE_JWT_SECRET');
     try {
       jwt.verify(token, secret);
       return true;

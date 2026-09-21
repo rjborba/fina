@@ -1,0 +1,7 @@
+{
+  "targets": ["codexcli", "claudecode"],
+  "features": ["rules"],
+  "outputRoots": ["."],
+  "delete": false,
+  "verbose": false,
+}

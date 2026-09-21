@@ -1,3 +1,3 @@
-import { atom } from "jotai";
+import { atom } from "jotai"
 
-export const openSelectIdAtom = atom<string | null>(null);
+export const openSelectIdAtom = atom<string | null>(null)

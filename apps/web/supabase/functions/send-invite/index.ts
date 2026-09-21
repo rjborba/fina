@@ -3,36 +3,36 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
 // Import Supabase client for Deno
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { corsHeaders } from "../_shared/cors.ts"
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!
 
 const defaultResponse = ({
   emailSent,
   inviteInserted,
   status,
-  message,
+  message
 }: {
-  emailSent: boolean;
-  inviteInserted: boolean;
-  status: number;
-  message?: string;
+  emailSent: boolean
+  inviteInserted: boolean
+  status: number
+  message?: string
 }) => {
   return new Response(JSON.stringify({ emailSent, inviteInserted, message }), {
     status,
-    headers: corsHeaders,
-  });
-};
+    headers: corsHeaders
+  })
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders })
   }
 
   // if (req.method !== "POST") {
@@ -54,48 +54,48 @@ Deno.serve(async (req) => {
   //   );
   // }
 
-  let payload;
+  let payload
   try {
-    payload = await req.json();
+    payload = await req.json()
   } catch {
     return defaultResponse({
       message: "Invalid JSON",
       emailSent: false,
       inviteInserted: false,
-      status: 400,
-    });
+      status: 400
+    })
   }
 
-  const { email, group_id } = payload;
+  const { email, group_id } = payload
   if (!email || !group_id) {
     return defaultResponse({
       message: "Missing email or group_id",
       emailSent: false,
       inviteInserted: false,
-      status: 400,
-    });
+      status: 400
+    })
   }
 
   // Create Supabase client with JWT for RLS
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
-      headers: { Authorization: req.headers.get("Authorization")! },
-    },
-  });
+      headers: { Authorization: req.headers.get("Authorization")! }
+    }
+  })
 
   const { data: group, error: groupError } = await supabase
     .from("groups")
     .select("*")
     .eq("id", group_id)
-    .single();
+    .single()
 
   if (groupError) {
     return defaultResponse({
       message: groupError.message,
       emailSent: false,
       inviteInserted: false,
-      status: 403,
-    });
+      status: 403
+    })
   }
 
   // Insert invite
@@ -103,15 +103,15 @@ Deno.serve(async (req) => {
     .from("invites")
     .insert({ email, group_id, pending: true })
     .select()
-    .single();
+    .single()
 
   if (error) {
     return defaultResponse({
       message: error.message,
       emailSent: false,
       inviteInserted: false,
-      status: 500,
-    });
+      status: 500
+    })
   }
 
   // Send email using Resend API
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${RESEND_API_KEY}`
     },
     body: JSON.stringify({
       from: "noreply@rjborba.com", // Change to your verified sender
@@ -129,25 +129,25 @@ Deno.serve(async (req) => {
       <div>
         <p>You have been invited to join group ${group.name}.</p>
         <p>Click <a href="https://fina.rjborba.com/invite/${group.id}">here</a> to accept the invite.</p>
-      </div>`,
-    }),
-  });
+      </div>`
+    })
+  })
 
   if (!emailRes.ok) {
-    const err = await emailRes.text();
+    const err = await emailRes.text()
 
     return defaultResponse({
       message: `Invite created, but failed to send email: ${err}`,
       emailSent: false,
       inviteInserted: true,
-      status: 500,
-    });
+      status: 500
+    })
   }
 
   return defaultResponse({
     message: "Invite created and email sent",
     emailSent: true,
     inviteInserted: true,
-    status: 200,
-  });
-});
+    status: 200
+  })
+})

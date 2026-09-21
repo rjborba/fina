@@ -1,14 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
-import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query"
+import supabase from "@/supabaseClient"
+import { useAuth } from "@/hooks/useAuth"
 
 export const useGroups = () => {
-  const { user } = useAuth();
+  const { user } = useAuth()
 
   return useQuery({
     queryKey: ["groups", user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id) return []
 
       const { data, error } = await supabase
         .from("user_group")
@@ -17,15 +17,15 @@ export const useGroups = () => {
           group:group_id(*)
         `
         )
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
 
       if (error) {
-        throw error;
+        throw error
       }
 
       return (
         data?.filter((item) => !!item.group).map((item) => item.group) || []
-      );
-    },
-  });
-};
+      )
+    }
+  })
+}

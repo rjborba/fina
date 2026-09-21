@@ -27,6 +27,7 @@ If you prefer to configure the service manually in Render's dashboard:
 3. Configure the service with these settings:
 
    **Build Command:**
+
    ```bash
    npm install -g pnpm@10.0.0 && \
    pnpm install --frozen-lockfile && \
@@ -35,6 +36,7 @@ If you prefer to configure the service manually in Render's dashboard:
    ```
 
    **Start Command:**
+
    ```bash
    cd apps/api && pnpm start:prod
    ```
@@ -52,6 +54,7 @@ Make sure to set these environment variables in Render:
 ## Important Notes
 
 1. The build process must:
+
    - Install pnpm (the package manager used by this monorepo)
    - Build the `@fina/types` package first (dependency)
    - Then build the API
@@ -64,9 +67,11 @@ Make sure to set these environment variables in Render:
 ## Troubleshooting
 
 If you encounter "module not found" errors for `@fina/types`:
+
 - Ensure the build command includes `pnpm --filter @fina/types build`
 - Check that the build is running from the repository root, not from `apps/api`
 
 If the build fails with pnpm errors:
+
 - Make sure pnpm version matches the one in package.json (10.0.0)
-- Ensure `pnpm install` runs with `--frozen-lockfile` flag 
+- Ensure `pnpm install` runs with `--frozen-lockfile` flag

@@ -1,6 +1,6 @@
-import { Banknote, Home, Import, List, Settings, Tag } from "lucide-react";
-import React from "react";
-import { Link } from "react-router";
+import { Banknote, Home, Import, List, Settings, Tag } from "lucide-react"
+import React from "react"
+import { Link } from "react-router"
 
 import {
   SidebarContent,
@@ -13,16 +13,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  Sidebar as SidebarShadcn,
-} from "@/components/ui/sidebar";
-import { GroupSwitcher } from "./GroupSwitcher";
-import { NavUser } from "./nav-user";
+  Sidebar as SidebarShadcn
+} from "@/components/ui/sidebar"
+import { GroupSwitcher } from "./GroupSwitcher"
+import { NavUser } from "./nav-user"
 
 interface NavigationItem {
-  path: string;
-  title: string;
-  icon: React.ReactNode;
-  subItems?: NavigationItem[];
+  path: string
+  title: string
+  icon: React.ReactNode
+  subItems?: NavigationItem[]
 }
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
@@ -30,29 +30,29 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
   {
     path: "/transactions",
     title: "Transactions",
-    icon: <List className="size-4" />,
+    icon: <List className="size-4" />
   },
   {
     path: "/bank-accounts",
     title: "Bank Accounts",
-    icon: <Banknote className="size-4" />,
+    icon: <Banknote className="size-4" />
   },
   {
     path: "/categories",
     title: "Categories",
-    icon: <Tag className="size-4" />,
+    icon: <Tag className="size-4" />
   },
   {
     path: "/imports",
     title: "Imports",
-    icon: <Import className="size-4" />,
+    icon: <Import className="size-4" />
   },
   {
     path: "/settings",
     title: "Settings",
-    icon: <Settings className="size-4" />,
-  },
-];
+    icon: <Settings className="size-4" />
+  }
+]
 
 // const getInitials = (name: string | null | undefined) => {
 //   if (!name) return "";
@@ -95,5 +95,5 @@ export function Sidebar() {
       </SidebarFooter>
       <SidebarRail />
     </SidebarShadcn>
-  );
+  )
 }

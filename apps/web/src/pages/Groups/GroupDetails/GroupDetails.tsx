@@ -1,41 +1,41 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { Input } from "@/components/ui/input";
-import { useActiveGroup } from "@/contexts/ActiveGroupContext";
-import { useGroupsMutation } from "@/data/groups/useGroupsMutation";
-import { useInvites } from "@/data/Invites/useInvites";
-import { useInvitesMutation } from "@/data/Invites/useInvitesMutation";
-import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup";
-import { toast } from "@/hooks/use-toast";
-import { Trash, TriangleAlert } from "lucide-react";
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+  CardTitle
+} from "@/components/ui/card"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { Input } from "@/components/ui/input"
+import { useActiveGroup } from "@/contexts/ActiveGroupContext"
+import { useGroupsMutation } from "@/data/groups/useGroupsMutation"
+import { useInvites } from "@/data/Invites/useInvites"
+import { useInvitesMutation } from "@/data/Invites/useInvitesMutation"
+import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup"
+import { toast } from "@/hooks/use-toast"
+import { Trash, TriangleAlert } from "lucide-react"
+import { useState } from "react"
+import { useNavigate, useParams } from "react-router"
 
 export function GroupDetails() {
-  const [inviteEmail, setInviteEmail] = useState("");
-  const { groupId } = useParams();
-  const { removeGroup } = useGroupsMutation();
-  const navigate = useNavigate();
+  const [inviteEmail, setInviteEmail] = useState("")
+  const { groupId } = useParams()
+  const { removeGroup } = useGroupsMutation()
+  const navigate = useNavigate()
   const { data: usersPerGroup } = useUsersPerGroup({
-    groupId,
-  });
+    groupId
+  })
 
-  const { groups } = useActiveGroup();
+  const { groups } = useActiveGroup()
 
-  const { data: invites } = useInvites(Number(groupId));
-  const { addInvite, removeInvite } = useInvitesMutation();
+  const { data: invites } = useInvites(Number(groupId))
+  const { addInvite, removeInvite } = useInvitesMutation()
 
-  const group = groups.find((group) => group.id === Number(groupId));
+  const group = groups.find((group) => group.id === Number(groupId))
 
   if (!group) {
-    return <div>Error. No group</div>;
+    return <div>Error. No group</div>
   }
 
   return (
@@ -75,9 +75,9 @@ export function GroupDetails() {
                       toast({
                         title: "Error removing invite",
                         description: "Please try again later",
-                        variant: "destructive",
-                      });
-                    });
+                        variant: "destructive"
+                      })
+                    })
                   }}
                 />
               </div>
@@ -97,21 +97,21 @@ export function GroupDetails() {
                 addInvite
                   .mutateAsync({
                     email: inviteEmail,
-                    group_id: Number(groupId),
+                    group_id: Number(groupId)
                   })
                   .then(() => {
-                    setInviteEmail("");
+                    setInviteEmail("")
                     toast({
                       title: "Invite sent",
                       description:
-                        "The user will receive an email with the invite",
-                    });
+                        "The user will receive an email with the invite"
+                    })
                   })
                   .catch(() => {
                     toast({
                       title: "Error sending invite",
-                      description: "Please try again later",
-                    });
+                      description: "Please try again later"
+                    })
                   })
               }
               disabled={
@@ -140,19 +140,19 @@ export function GroupDetails() {
               await removeGroup
                 .mutateAsync(group.id)
                 .then(() => {
-                  navigate("/settings");
+                  navigate("/settings")
                 })
                 .catch(() => {
                   toast({
                     title: "Error removing group",
                     description: "Please try again later",
-                    variant: "destructive",
-                  });
-                });
+                    variant: "destructive"
+                  })
+                })
             }}
           />
         </CardFooter>
       </Card>
     </div>
-  );
+  )
 }

@@ -1,67 +1,67 @@
-import { lazy, Suspense, useEffect } from "react";
-import Login from "./components/Login";
-import { Sidebar } from "./components/Sidebar";
-import { Route, Routes, Outlet, Navigate } from "react-router";
-import { Toaster } from "./components/ui/toaster";
-import { AuthProvider } from "./contexts/AuthProvider";
-import { AuthGuard } from "./components/AuthGuard";
-import { useAuth } from "./hooks/useAuth";
-import { ActiveGroupProvider } from "./contexts/ActiveGroupContext";
-import { WalletMinimal } from "lucide-react";
-import useLocalStorageState from "./hooks/useLocalStorageState";
-import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
-import Invites from "./pages/Invites/Invites";
+import { lazy, Suspense, useEffect } from "react"
+import Login from "./components/Login"
+import { Sidebar } from "./components/Sidebar"
+import { Route, Routes, Outlet, Navigate } from "react-router"
+import { Toaster } from "./components/ui/toaster"
+import { AuthProvider } from "./contexts/AuthProvider"
+import { AuthGuard } from "./components/AuthGuard"
+import { useAuth } from "./hooks/useAuth"
+import { ActiveGroupProvider } from "./contexts/ActiveGroupContext"
+import { WalletMinimal } from "lucide-react"
+import useLocalStorageState from "./hooks/useLocalStorageState"
+import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
+import Invites from "./pages/Invites/Invites"
 
 // Lazy load components with named exports and better chunking
 const Home = lazy(() =>
   import("./Home").then((module) => ({ default: module.default }))
-);
+)
 const Transactions = lazy(() =>
   import("./pages/Transactions/Transactions").then((module) => ({
-    default: module.Transactions,
+    default: module.Transactions
   }))
-);
+)
 const Accounts = lazy(() =>
   import("./pages/Accounts/Accounts").then((module) => ({
-    default: module.Accounts,
+    default: module.Accounts
   }))
-);
+)
 const Categories = lazy(() =>
   import("./pages/Categories/Categories").then((module) => ({
-    default: module.Categories,
+    default: module.Categories
   }))
-);
+)
 const Import = lazy(() =>
   import("./pages/Imports/Import").then((module) => ({
-    default: module.Import,
+    default: module.Import
   }))
-);
+)
 const Settings = lazy(() =>
   import("./pages/Settings/Settings").then((module) => ({
-    default: module.Settings,
+    default: module.Settings
   }))
-);
+)
 const GroupDetails = lazy(() =>
   import("./pages/Groups/GroupDetails/GroupDetails").then((module) => ({
-    default: module.GroupDetails,
+    default: module.GroupDetails
   }))
-);
+)
 
 function AppContent() {
-  const { user } = useAuth();
-  const [isDarkMode] = useLocalStorageState("theme-dark", false);
+  const { user } = useAuth()
+  const [isDarkMode] = useLocalStorageState("theme-dark", false)
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = window.document.documentElement
     if (isDarkMode) {
-      root.classList.add("dark");
+      root.classList.add("dark")
     } else {
-      root.classList.remove("dark");
+      root.classList.remove("dark")
     }
-  }, [isDarkMode]);
+  }, [isDarkMode])
 
   if (user === undefined) {
-    return null;
+    return null
   }
   return (
     <Routes>
@@ -101,7 +101,7 @@ function AppContent() {
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
-  );
+  )
 }
 
 function App() {
@@ -112,7 +112,7 @@ function App() {
         <Toaster />
       </ActiveGroupProvider>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

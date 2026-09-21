@@ -10,7 +10,7 @@ export const BankaccountSchema = z.object({
   type: z.string(),
   dueDate: z.coerce.date().nullable(),
   group: GroupSchema,
-  user: UserSchema,
+  user: UserSchema
 });
 
 export type Bankaccount = z.infer<typeof BankaccountSchema>;

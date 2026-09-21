@@ -2,7 +2,7 @@ export const EXPECTED_HEADERS_CREDIT = [
   "date",
   "description",
   "installment",
-  "value",
-];
+  "value"
+]
 
-export const EXPECTED_HEADERS_CHECKOUT = ["date", "description", "value"];
+export const EXPECTED_HEADERS_CHECKOUT = ["date", "description", "value"]

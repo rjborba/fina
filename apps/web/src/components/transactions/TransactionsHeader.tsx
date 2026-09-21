@@ -1,29 +1,29 @@
-import { FC, useState } from "react";
+import { FC, useState } from "react"
 
-import { Filter, PanelBottomOpen } from "lucide-react";
+import { Filter, PanelBottomOpen } from "lucide-react"
 
-import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter";
-import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
+import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter"
+import { cn } from "@/lib/utils"
+import { Button } from "../ui/button"
 
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  SheetTitle
+} from "@/components/ui/sheet"
 
 interface TransactionsHeaderProps {
-  isFilterOpen: boolean;
-  onFilterToggle: (value: boolean) => void;
+  isFilterOpen: boolean
+  onFilterToggle: (value: boolean) => void
 }
 
 export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
   isFilterOpen,
-  onFilterToggle,
+  onFilterToggle
 }) => {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   return (
     <div className="p-4 flex justify-between sticky top-0 bg-background z-20 border-b">
       {/* Placeholder for the search bar */}
@@ -45,7 +45,7 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
           onClick={() => onFilterToggle(!isFilterOpen)}
           className={cn({
             "transition-all duration-300": true,
-            "opacity-0 pointer-events-none": isFilterOpen,
+            "opacity-0 pointer-events-none": isFilterOpen
           })}
         >
           <Filter className="h-4 w-4" />
@@ -64,5 +64,5 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
         </Sheet>
       </div>
     </div>
-  );
-};
+  )
+}

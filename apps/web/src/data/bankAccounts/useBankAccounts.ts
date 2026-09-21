@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { FinaAPIFetcher } from "../FinaAPIFetcher";
-import { QueryBankaccountOutputDto } from "@fina/types";
+import { useQuery } from "@tanstack/react-query"
+import { FinaAPIFetcher } from "../FinaAPIFetcher"
+import { QueryBankaccountOutputDto } from "@fina/types"
 
 type UseBankAccountsProps = {
-  groupId?: string;
-};
+  groupId?: string
+}
 
 export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
   return useQuery({
@@ -14,11 +14,11 @@ export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
       const response = await FinaAPIFetcher.get<QueryBankaccountOutputDto>(
         `bankaccounts`,
         {
-          groupId,
+          groupId
         }
-      );
+      )
 
-      return response.data;
-    },
-  });
-};
+      return response.data
+    }
+  })
+}

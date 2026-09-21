@@ -1,50 +1,50 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import supabase from "@/supabaseClient";
-import { Invites } from "./Invites";
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import supabase from "@/supabaseClient"
+import { Invites } from "./Invites"
 
 export const useInvitesMutation = () => {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const addInvite = useMutation({
     mutationFn: async (
-      invite: Pick<Invites["Insert"], "email" | "group_id">,
+      invite: Pick<Invites["Insert"], "email" | "group_id">
     ) => {
       const { data, error } = await supabase.functions.invoke("send-invite", {
         body: {
           email: invite.email,
-          group_id: invite.group_id,
-        },
-      });
+          group_id: invite.group_id
+        }
+      })
 
       if (error) {
-        throw error;
+        throw error
       }
 
-      const parsedData = JSON.parse(data);
+      const parsedData = JSON.parse(data)
 
       if (!parsedData?.inviteInserted) {
-        throw new Error(parsedData?.message || "Failed to create invite");
+        throw new Error(parsedData?.message || "Failed to create invite")
       }
 
-      return data;
+      return data
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["invites"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ["invites"] })
+      queryClient.invalidateQueries({ queryKey: ["groups"] })
+    }
+  })
 
   const removeInvite = useMutation({
     mutationFn: async (inviteId: number) => {
       const { error: deleteInviteError } = await supabase
         .from("invites")
         .delete()
-        .eq("id", inviteId);
+        .eq("id", inviteId)
 
-      if (deleteInviteError) throw deleteInviteError;
+      if (deleteInviteError) throw deleteInviteError
 
-      queryClient.invalidateQueries({ queryKey: ["invites"] });
-    },
-  });
-  return { addInvite, removeInvite };
-};
+      queryClient.invalidateQueries({ queryKey: ["invites"] })
+    }
+  })
+  return { addInvite, removeInvite }
+}

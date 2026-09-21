@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createZodDto } from "nestjs-zod";
 
 const QueryBankaccountInputDtoSchema = z.object({
-  groupId: z.string(),
+  groupId: z.string()
 });
 
 export class QueryBankaccountInputDto extends createZodDto(

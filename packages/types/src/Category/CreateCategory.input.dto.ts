@@ -5,9 +5,9 @@ import { CategorySchema } from "./Category";
 const CreateCategoryInputDtoSchema = CategorySchema.omit({
   id: true,
   createdAt: true,
-  group: true,
+  group: true
 }).extend({
-  groupId: z.string(),
+  groupId: z.string()
 });
 
 export class CreateCategoryInputDto extends createZodDto(

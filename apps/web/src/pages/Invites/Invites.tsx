@@ -1,24 +1,24 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useGroupById } from "@/data/groups/useGroup";
-import { Invite } from "@/data/Invites/Invite";
-import { useInvitesByUser } from "@/data/Invites/useInvitesByUser";
+  CardTitle
+} from "@/components/ui/card"
+import { useGroupById } from "@/data/groups/useGroup"
+import { Invite } from "@/data/Invites/Invite"
+import { useInvitesByUser } from "@/data/Invites/useInvitesByUser"
 
 const InviteItem = (invite: Invite) => {
-  const { data: group, isLoading } = useGroupById(invite.group_id);
+  const { data: group, isLoading } = useGroupById(invite.group_id)
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>
   }
 
   if (!group) {
-    return <div>Group not found</div>;
+    return <div>Group not found</div>
   }
 
   return (
@@ -26,18 +26,18 @@ const InviteItem = (invite: Invite) => {
       <div>You have been invite to join group {group.name}</div>
       <Button>Accept</Button>
     </div>
-  );
-};
+  )
+}
 
 const Invites = () => {
-  const { data: invites, isLoading } = useInvitesByUser();
+  const { data: invites, isLoading } = useInvitesByUser()
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>
   }
 
   if (!invites?.length) {
-    return <div>No invite found</div>;
+    return <div>No invite found</div>
   }
 
   return (
@@ -55,7 +55,7 @@ const Invites = () => {
         <div>todo</div>
       </CardFooter>
     </Card>
-  );
-};
+  )
+}
 
-export default Invites;
+export default Invites
