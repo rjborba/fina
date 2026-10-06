@@ -1,24 +1,9 @@
+import { bankaccountsControllerFindAll } from "@/api/generated"
 import { useQuery } from "@tanstack/react-query"
-import { FinaAPIFetcher } from "../FinaAPIFetcher"
-import { QueryBankaccountOutputDto } from "@fina/types"
 
-type UseBankAccountsProps = {
-  groupId?: string
-}
-
-export const useBankAccounts = ({ groupId }: UseBankAccountsProps) => {
-  return useQuery({
-    enabled: groupId !== undefined,
+export const useBankAccounts = ({ groupId }: { groupId?: string }) =>
+  useQuery({
+    enabled: !!groupId,
     queryKey: ["bankaccounts", groupId],
-    queryFn: async () => {
-      const response = await FinaAPIFetcher.get<QueryBankaccountOutputDto>(
-        `bankaccounts`,
-        {
-          groupId
-        }
-      )
-
-      return response.data
-    }
+    queryFn: () => bankaccountsControllerFindAll({ groupId: groupId! })
   })
-}

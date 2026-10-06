@@ -17,9 +17,11 @@ export default defineConfig({
     }
   },
   server: {
+    host: true,
     fs: {
       strict: false
-    }
+    },
+    allowedHosts: ["2e50-2804-411c-1e2b-fd1-e813-25f7-ebca-4fdc.ngrok-free.app"]
   },
   build: {
     commonjsOptions: {

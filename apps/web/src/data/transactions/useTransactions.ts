@@ -7,10 +7,11 @@ import {
 import { fetchTransactions } from "./fetchTransactions"
 
 export const useTransactions = (
-  fetchTransactionsOptions: QueryTransactionInputDto
+  fetchTransactionsOptions: QueryTransactionInputDto,
+  enabled = true
 ) => {
   return useQuery<QueryTransactionOutputDtoType>({
-    enabled: !!fetchTransactionsOptions.groupId,
+    enabled: enabled && !!fetchTransactionsOptions.groupId,
     queryKey: [
       "transactions",
       fetchTransactionsOptions.page,
@@ -20,6 +21,7 @@ export const useTransactions = (
       fetchTransactionsOptions.endDate,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
+      fetchTransactionsOptions.accountType,
       fetchTransactionsOptions.search
     ],
     queryFn: () => fetchTransactions(fetchTransactionsOptions)

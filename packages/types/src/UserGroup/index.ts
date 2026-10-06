@@ -1,1 +1,1 @@
-export * from "./UserGroup";
+export * from "./GroupMember.dto";

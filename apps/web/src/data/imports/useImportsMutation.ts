@@ -1,26 +1,36 @@
+import {
+  CreateImportInputDto,
+  importsControllerCreate,
+  importsControllerPreview,
+  importsControllerRemove
+} from "@/api/generated"
 import { useQueryClient } from "@tanstack/react-query"
-import supabase from "@/supabaseClient"
-import { CreateImportInputDtoType, CreateImportOutputDto } from "@fina/types"
-import { FinaAPIFetcher } from "../FinaAPIFetcher"
 
 export const useImportsMutation = () => {
   const queryClient = useQueryClient()
-
-  const addImport = async (_import: CreateImportInputDtoType) => {
-    const response = await FinaAPIFetcher.post<CreateImportOutputDto>(
-      `imports`,
-      _import
-    )
-
-    queryClient.invalidateQueries({ queryKey: ["imports"] })
-
-    return response.data
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["imports"] }),
+      queryClient.invalidateQueries({ queryKey: ["import-profiles"] }),
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+    ])
   }
 
-  const removeImport = async (id: number) => {
-    await supabase.from("imports").delete().eq("id", id)
-    queryClient.invalidateQueries({ queryKey: ["imports"] })
+  const previewImport = (input: CreateImportInputDto) =>
+    importsControllerPreview({ requestBody: input })
+
+  const addImport = async (input: CreateImportInputDto, file: File) => {
+    const result = await importsControllerCreate({
+      formData: { payload: input, file }
+    })
+    await invalidate()
+    return result
   }
 
-  return { addImport, removeImport }
+  const removeImport = async (id: string) => {
+    await importsControllerRemove({ id })
+    await invalidate()
+  }
+
+  return { addImport, previewImport, removeImport }
 }

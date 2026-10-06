@@ -8,8 +8,9 @@ description: "Behavioral testing and verification"
 
 - Prefer a small set of tests proving behavior over generated existence tests or
   coverage targets. Remove broken placeholder `should be defined` tests.
-- Automated tests must never use production or a shared Supabase database. Use
-  isolated Docker PostgreSQL for migrations, repositories, transactions,
+- Automated tests must never use production, the development database, or a
+  shared Supabase database. Use uniquely named disposable databases inside
+  local Supabase PostgreSQL for migrations, repositories, transactions,
   cascades, scoping, and authorization.
 - Security coverage must reject missing/invalid identity, cross-group access,
   client identifier bypasses, invalid role capabilities, incomplete aggregate

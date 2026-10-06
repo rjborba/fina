@@ -7,6 +7,7 @@ import { createContext, useContext, ReactNode, useEffect } from "react"
 interface ActiveGroupContextType {
   selectedGroup: Group["Row"] | undefined
   groups: Group["Row"][]
+  isGroupsLoading: boolean
   setSelectedGroup: (group: Group["Row"]) => void
 }
 
@@ -15,28 +16,36 @@ const ActiveGroupContext = createContext<ActiveGroupContextType | undefined>(
 )
 
 export function ActiveGroupProvider({ children }: { children: ReactNode }) {
-  const { data: groups } = useGroups()
-  const [selectedGroup, setSelectedGroup] = useLocalStorageState<
-    Group["Row"] | undefined
-  >("selectedGroup", undefined)
+  const { data: groups, isPending: isGroupsLoading } = useGroups()
+  const [selectedGroupId, setSelectedGroupId] = useLocalStorageState<string>(
+    "activeGroupId",
+    ""
+  )
+  const storedGroup = groups?.find((group) => group.id === selectedGroupId)
+  const selectedGroup = storedGroup ?? groups?.[0]
 
   useEffect(() => {
     if (!groups) {
       return
     }
 
-    if (selectedGroup) {
-      return
+    if (!storedGroup) {
+      setSelectedGroupId(groups[0]?.id ?? "")
     }
+  }, [groups, storedGroup, setSelectedGroupId])
 
-    if (groups.length > 0) {
-      setSelectedGroup(groups[0])
-    }
-  }, [groups, selectedGroup, setSelectedGroup])
+  const setSelectedGroup = (group: Group["Row"]) => {
+    setSelectedGroupId(group.id)
+  }
 
   return (
     <ActiveGroupContext.Provider
-      value={{ selectedGroup, groups: groups || [], setSelectedGroup }}
+      value={{
+        selectedGroup,
+        groups: groups || [],
+        isGroupsLoading,
+        setSelectedGroup
+      }}
     >
       {children}
     </ActiveGroupContext.Provider>

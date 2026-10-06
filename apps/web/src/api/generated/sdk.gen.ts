@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AppControllerGetHelloResponse, TransactionsControllerCreateResponse, TransactionsControllerFindAllResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerUpdateResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, UserGroupsControllerFindAllResponse, UserGroupsControllerFindOneData, UserGroupsControllerFindOneResponse, UserGroupsControllerRemoveData, UserGroupsControllerRemoveResponse, InvitesControllerFindAllResponse, InvitesControllerFindOneData, InvitesControllerFindOneResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, UsersControllerFindAllResponse, UsersControllerFindOneData, UsersControllerFindOneResponse, UsersControllerRemoveData, UsersControllerRemoveResponse } from './types.gen';
+import type { AppControllerGetHelloResponse, TransactionsControllerCreateData, TransactionsControllerCreateResponse, TransactionsControllerFindAllData, TransactionsControllerFindAllResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CategoriesControllerCreateData, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, CategoriesControllerUpdateAppearanceData, CategoriesControllerUpdateAppearanceResponse, GroupsControllerCreateData, GroupsControllerCreateResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, UserGroupsControllerFindAllData, UserGroupsControllerFindAllResponse, InvitesControllerCreateData, InvitesControllerCreateResponse, InvitesControllerFindAllData, InvitesControllerFindAllResponse, InvitesControllerFindMineResponse, InvitesControllerAcceptData, InvitesControllerAcceptResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerPreviewData, ImportsControllerPreviewResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindProfilesData, ImportsControllerFindProfilesResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, CreditCardBillsControllerFindAllData, CreditCardBillsControllerFindAllResponse, CreditCardBillsControllerFindOneData, CreditCardBillsControllerFindOneResponse, CreditCardBillsControllerReconcileData, CreditCardBillsControllerReconcileResponse, CreditCardBillsControllerUnlinkData, CreditCardBillsControllerUnlinkResponse } from './types.gen';
 
 /**
  * @returns unknown
@@ -17,31 +17,56 @@ export const appControllerGetHello = (): CancelablePromise<AppControllerGetHello
 };
 
 /**
- * @returns unknown
+ * @param data The data for the request.
+ * @param data.requestBody
+ * @returns TransactionOutputDto
  * @throws ApiError
  */
-export const transactionsControllerCreate = (): CancelablePromise<TransactionsControllerCreateResponse> => {
+export const transactionsControllerCreate = (data: TransactionsControllerCreateData): CancelablePromise<TransactionsControllerCreateResponse> => {
     return __request(OpenAPI, {
         method: 'POST',
-        url: '/transactions'
+        url: '/transactions',
+        body: data.requestBody,
+        mediaType: 'application/json'
     });
 };
 
 /**
- * @returns unknown
+ * @param data The data for the request.
+ * @param data.groupId
+ * @param data.search
+ * @param data.accountType
+ * @param data.accountIdList
+ * @param data.categoryIdList
+ * @param data.endDate
+ * @param data.startDate
+ * @param data.pageSize
+ * @param data.page
+ * @returns QueryTransactionOutputDto
  * @throws ApiError
  */
-export const transactionsControllerFindAll = (): CancelablePromise<TransactionsControllerFindAllResponse> => {
+export const transactionsControllerFindAll = (data: TransactionsControllerFindAllData): CancelablePromise<TransactionsControllerFindAllResponse> => {
     return __request(OpenAPI, {
         method: 'GET',
-        url: '/transactions'
+        url: '/transactions',
+        query: {
+            search: data.search,
+            accountType: data.accountType,
+            accountIdList: data.accountIdList,
+            categoryIdList: data.categoryIdList,
+            endDate: data.endDate,
+            startDate: data.startDate,
+            pageSize: data.pageSize,
+            page: data.page,
+            groupId: data.groupId
+        }
     });
 };
 
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns TransactionOutputDto
  * @throws ApiError
  */
 export const transactionsControllerFindOne = (data: TransactionsControllerFindOneData): CancelablePromise<TransactionsControllerFindOneResponse> => {
@@ -58,7 +83,7 @@ export const transactionsControllerFindOne = (data: TransactionsControllerFindOn
  * @param data The data for the request.
  * @param data.id
  * @param data.requestBody
- * @returns unknown
+ * @returns TransactionOutputDto
  * @throws ApiError
  */
 export const transactionsControllerUpdate = (data: TransactionsControllerUpdateData): CancelablePromise<TransactionsControllerUpdateResponse> => {
@@ -76,7 +101,7 @@ export const transactionsControllerUpdate = (data: TransactionsControllerUpdateD
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns DeleteTransactionOutputDto
  * @throws ApiError
  */
 export const transactionsControllerRemove = (data: TransactionsControllerRemoveData): CancelablePromise<TransactionsControllerRemoveResponse> => {
@@ -90,20 +115,24 @@ export const transactionsControllerRemove = (data: TransactionsControllerRemoveD
 };
 
 /**
- * @returns unknown
+ * @param data The data for the request.
+ * @param data.requestBody
+ * @returns CategoryOutputDto
  * @throws ApiError
  */
-export const categoriesControllerCreate = (): CancelablePromise<CategoriesControllerCreateResponse> => {
+export const categoriesControllerCreate = (data: CategoriesControllerCreateData): CancelablePromise<CategoriesControllerCreateResponse> => {
     return __request(OpenAPI, {
         method: 'POST',
-        url: '/categories'
+        url: '/categories',
+        body: data.requestBody,
+        mediaType: 'application/json'
     });
 };
 
 /**
  * @param data The data for the request.
  * @param data.groupId
- * @returns unknown
+ * @returns CategoryListOutputDto
  * @throws ApiError
  */
 export const categoriesControllerFindAll = (data: CategoriesControllerFindAllData): CancelablePromise<CategoriesControllerFindAllResponse> => {
@@ -119,7 +148,7 @@ export const categoriesControllerFindAll = (data: CategoriesControllerFindAllDat
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns CategoryOutputDto
  * @throws ApiError
  */
 export const categoriesControllerFindOne = (data: CategoriesControllerFindOneData): CancelablePromise<CategoriesControllerFindOneResponse> => {
@@ -133,20 +162,9 @@ export const categoriesControllerFindOne = (data: CategoriesControllerFindOneDat
 };
 
 /**
- * @returns unknown
- * @throws ApiError
- */
-export const categoriesControllerUpdate = (): CancelablePromise<CategoriesControllerUpdateResponse> => {
-    return __request(OpenAPI, {
-        method: 'PATCH',
-        url: '/categories/{id}'
-    });
-};
-
-/**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns DeleteCategoryOutputDto
  * @throws ApiError
  */
 export const categoriesControllerRemove = (data: CategoriesControllerRemoveData): CancelablePromise<CategoriesControllerRemoveResponse> => {
@@ -160,7 +178,41 @@ export const categoriesControllerRemove = (data: CategoriesControllerRemoveData)
 };
 
 /**
- * @returns unknown
+ * @param data The data for the request.
+ * @param data.id
+ * @param data.requestBody
+ * @returns CategoryOutputDto
+ * @throws ApiError
+ */
+export const categoriesControllerUpdateAppearance = (data: CategoriesControllerUpdateAppearanceData): CancelablePromise<CategoriesControllerUpdateAppearanceResponse> => {
+    return __request(OpenAPI, {
+        method: 'PATCH',
+        url: '/categories/{id}/appearance',
+        path: {
+            id: data.id
+        },
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.requestBody
+ * @returns GroupOutputDto
+ * @throws ApiError
+ */
+export const groupsControllerCreate = (data: GroupsControllerCreateData): CancelablePromise<GroupsControllerCreateResponse> => {
+    return __request(OpenAPI, {
+        method: 'POST',
+        url: '/groups',
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @returns GroupListOutputDto
  * @throws ApiError
  */
 export const groupsControllerFindAll = (): CancelablePromise<GroupsControllerFindAllResponse> => {
@@ -173,7 +225,7 @@ export const groupsControllerFindAll = (): CancelablePromise<GroupsControllerFin
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns GroupOutputDto
  * @throws ApiError
  */
 export const groupsControllerFindOne = (data: GroupsControllerFindOneData): CancelablePromise<GroupsControllerFindOneResponse> => {
@@ -189,7 +241,8 @@ export const groupsControllerFindOne = (data: GroupsControllerFindOneData): Canc
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @param data.requestBody
+ * @returns DeleteGroupOutputDto
  * @throws ApiError
  */
 export const groupsControllerRemove = (data: GroupsControllerRemoveData): CancelablePromise<GroupsControllerRemoveResponse> => {
@@ -198,14 +251,16 @@ export const groupsControllerRemove = (data: GroupsControllerRemoveData): Cancel
         url: '/groups/{id}',
         path: {
             id: data.id
-        }
+        },
+        body: data.requestBody,
+        mediaType: 'application/json'
     });
 };
 
 /**
  * @param data The data for the request.
  * @param data.requestBody
- * @returns unknown
+ * @returns BankaccountOutputDto
  * @throws ApiError
  */
 export const bankaccountsControllerCreate = (data: BankaccountsControllerCreateData): CancelablePromise<BankaccountsControllerCreateResponse> => {
@@ -220,7 +275,7 @@ export const bankaccountsControllerCreate = (data: BankaccountsControllerCreateD
 /**
  * @param data The data for the request.
  * @param data.groupId
- * @returns unknown
+ * @returns BankaccountListOutputDto
  * @throws ApiError
  */
 export const bankaccountsControllerFindAll = (data: BankaccountsControllerFindAllData): CancelablePromise<BankaccountsControllerFindAllResponse> => {
@@ -236,7 +291,7 @@ export const bankaccountsControllerFindAll = (data: BankaccountsControllerFindAl
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns DeleteBankaccountOutputDto
  * @throws ApiError
  */
 export const bankaccountsControllerRemove = (data: BankaccountsControllerRemoveData): CancelablePromise<BankaccountsControllerRemoveResponse> => {
@@ -250,26 +305,73 @@ export const bankaccountsControllerRemove = (data: BankaccountsControllerRemoveD
 };
 
 /**
- * @returns unknown
+ * @param data The data for the request.
+ * @param data.groupId
+ * @returns GroupMemberListOutputDto
  * @throws ApiError
  */
-export const userGroupsControllerFindAll = (): CancelablePromise<UserGroupsControllerFindAllResponse> => {
+export const userGroupsControllerFindAll = (data: UserGroupsControllerFindAllData): CancelablePromise<UserGroupsControllerFindAllResponse> => {
     return __request(OpenAPI, {
         method: 'GET',
-        url: '/user-groups'
+        url: '/user-groups',
+        query: {
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.requestBody
+ * @returns InviteOutputDto
+ * @throws ApiError
+ */
+export const invitesControllerCreate = (data: InvitesControllerCreateData): CancelablePromise<InvitesControllerCreateResponse> => {
+    return __request(OpenAPI, {
+        method: 'POST',
+        url: '/invites',
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.groupId
+ * @returns InviteListOutputDto
+ * @throws ApiError
+ */
+export const invitesControllerFindAll = (data: InvitesControllerFindAllData): CancelablePromise<InvitesControllerFindAllResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/invites',
+        query: {
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @returns InviteListOutputDto
+ * @throws ApiError
+ */
+export const invitesControllerFindMine = (): CancelablePromise<InvitesControllerFindMineResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/invites/mine'
     });
 };
 
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns AcceptInviteOutputDto
  * @throws ApiError
  */
-export const userGroupsControllerFindOne = (data: UserGroupsControllerFindOneData): CancelablePromise<UserGroupsControllerFindOneResponse> => {
+export const invitesControllerAccept = (data: InvitesControllerAcceptData): CancelablePromise<InvitesControllerAcceptResponse> => {
     return __request(OpenAPI, {
-        method: 'GET',
-        url: '/user-groups/{id}',
+        method: 'POST',
+        url: '/invites/{id}/accept',
         path: {
             id: data.id
         }
@@ -279,50 +381,7 @@ export const userGroupsControllerFindOne = (data: UserGroupsControllerFindOneDat
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
- * @throws ApiError
- */
-export const userGroupsControllerRemove = (data: UserGroupsControllerRemoveData): CancelablePromise<UserGroupsControllerRemoveResponse> => {
-    return __request(OpenAPI, {
-        method: 'DELETE',
-        url: '/user-groups/{id}',
-        path: {
-            id: data.id
-        }
-    });
-};
-
-/**
- * @returns unknown
- * @throws ApiError
- */
-export const invitesControllerFindAll = (): CancelablePromise<InvitesControllerFindAllResponse> => {
-    return __request(OpenAPI, {
-        method: 'GET',
-        url: '/invites'
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.id
- * @returns unknown
- * @throws ApiError
- */
-export const invitesControllerFindOne = (data: InvitesControllerFindOneData): CancelablePromise<InvitesControllerFindOneResponse> => {
-    return __request(OpenAPI, {
-        method: 'GET',
-        url: '/invites/{id}',
-        path: {
-            id: data.id
-        }
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.id
- * @returns unknown
+ * @returns DeleteInviteOutputDto
  * @throws ApiError
  */
 export const invitesControllerRemove = (data: InvitesControllerRemoveData): CancelablePromise<InvitesControllerRemoveResponse> => {
@@ -338,13 +397,13 @@ export const invitesControllerRemove = (data: InvitesControllerRemoveData): Canc
 /**
  * @param data The data for the request.
  * @param data.requestBody
- * @returns unknown
+ * @returns PreviewImportOutputDto
  * @throws ApiError
  */
-export const importsControllerCreate = (data: ImportsControllerCreateData): CancelablePromise<ImportsControllerCreateResponse> => {
+export const importsControllerPreview = (data: ImportsControllerPreviewData): CancelablePromise<ImportsControllerPreviewResponse> => {
     return __request(OpenAPI, {
         method: 'POST',
-        url: '/imports',
+        url: '/imports/preview',
         body: data.requestBody,
         mediaType: 'application/json'
     });
@@ -352,8 +411,23 @@ export const importsControllerCreate = (data: ImportsControllerCreateData): Canc
 
 /**
  * @param data The data for the request.
+ * @param data.formData
+ * @returns ImportOutputDto
+ * @throws ApiError
+ */
+export const importsControllerCreate = (data: ImportsControllerCreateData): CancelablePromise<ImportsControllerCreateResponse> => {
+    return __request(OpenAPI, {
+        method: 'POST',
+        url: '/imports',
+        formData: data.formData,
+        mediaType: 'multipart/form-data'
+    });
+};
+
+/**
+ * @param data The data for the request.
  * @param data.groupId
- * @returns unknown
+ * @returns ImportListOutputDto
  * @throws ApiError
  */
 export const importsControllerFindAll = (data: ImportsControllerFindAllData): CancelablePromise<ImportsControllerFindAllResponse> => {
@@ -368,8 +442,26 @@ export const importsControllerFindAll = (data: ImportsControllerFindAllData): Ca
 
 /**
  * @param data The data for the request.
+ * @param data.fingerprint
+ * @param data.groupId
+ * @returns ImportProfileListOutputDto
+ * @throws ApiError
+ */
+export const importsControllerFindProfiles = (data: ImportsControllerFindProfilesData): CancelablePromise<ImportsControllerFindProfilesResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/imports/profiles',
+        query: {
+            fingerprint: data.fingerprint,
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns ImportOutputDto
  * @throws ApiError
  */
 export const importsControllerFindOne = (data: ImportsControllerFindOneData): CancelablePromise<ImportsControllerFindOneResponse> => {
@@ -385,7 +477,7 @@ export const importsControllerFindOne = (data: ImportsControllerFindOneData): Ca
 /**
  * @param data The data for the request.
  * @param data.id
- * @returns unknown
+ * @returns DeleteImportOutputDto
  * @throws ApiError
  */
 export const importsControllerRemove = (data: ImportsControllerRemoveData): CancelablePromise<ImportsControllerRemoveResponse> => {
@@ -399,44 +491,86 @@ export const importsControllerRemove = (data: ImportsControllerRemoveData): Canc
 };
 
 /**
- * @returns unknown
- * @throws ApiError
- */
-export const usersControllerFindAll = (): CancelablePromise<UsersControllerFindAllResponse> => {
-    return __request(OpenAPI, {
-        method: 'GET',
-        url: '/users'
-    });
-};
-
-/**
  * @param data The data for the request.
- * @param data.id
- * @returns unknown
+ * @param data.groupId
+ * @param data.endDate
+ * @param data.startDate
+ * @returns CreditCardBillListOutputDto
  * @throws ApiError
  */
-export const usersControllerFindOne = (data: UsersControllerFindOneData): CancelablePromise<UsersControllerFindOneResponse> => {
+export const creditCardBillsControllerFindAll = (data: CreditCardBillsControllerFindAllData): CancelablePromise<CreditCardBillsControllerFindAllResponse> => {
     return __request(OpenAPI, {
         method: 'GET',
-        url: '/users/{id}',
-        path: {
-            id: data.id
+        url: '/credit-card-bills',
+        query: {
+            endDate: data.endDate,
+            startDate: data.startDate,
+            groupId: data.groupId
         }
     });
 };
 
 /**
  * @param data The data for the request.
- * @param data.id
- * @returns unknown
+ * @param data.groupId
+ * @param data.billMonth
+ * @param data.accountId
+ * @returns CreditCardBillDetailDto
  * @throws ApiError
  */
-export const usersControllerRemove = (data: UsersControllerRemoveData): CancelablePromise<UsersControllerRemoveResponse> => {
+export const creditCardBillsControllerFindOne = (data: CreditCardBillsControllerFindOneData): CancelablePromise<CreditCardBillsControllerFindOneResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/credit-card-bills/{accountId}/{billMonth}',
+        path: {
+            billMonth: data.billMonth,
+            accountId: data.accountId
+        },
+        query: {
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.billMonth
+ * @param data.accountId
+ * @param data.requestBody
+ * @returns CreditCardBillDetailDto
+ * @throws ApiError
+ */
+export const creditCardBillsControllerReconcile = (data: CreditCardBillsControllerReconcileData): CancelablePromise<CreditCardBillsControllerReconcileResponse> => {
+    return __request(OpenAPI, {
+        method: 'POST',
+        url: '/credit-card-bills/{accountId}/{billMonth}/reconciliation',
+        path: {
+            billMonth: data.billMonth,
+            accountId: data.accountId
+        },
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.groupId
+ * @param data.billMonth
+ * @param data.accountId
+ * @returns UnlinkCreditCardBillOutputDto
+ * @throws ApiError
+ */
+export const creditCardBillsControllerUnlink = (data: CreditCardBillsControllerUnlinkData): CancelablePromise<CreditCardBillsControllerUnlinkResponse> => {
     return __request(OpenAPI, {
         method: 'DELETE',
-        url: '/users/{id}',
+        url: '/credit-card-bills/{accountId}/{billMonth}/reconciliation',
         path: {
-            id: data.id
+            billMonth: data.billMonth,
+            accountId: data.accountId
+        },
+        query: {
+            groupId: data.groupId
         }
     });
 };

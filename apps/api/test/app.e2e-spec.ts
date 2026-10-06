@@ -10,6 +10,7 @@ import { AppService } from '../src/app.service';
 import { SupabaseAuthGuard } from '../src/supabase-auth.guard';
 
 const testSecret = 'local-test-jwt-secret';
+const testUrl = 'https://fina-test.supabase.co';
 
 describe('authentication boundary (e2e)', () => {
   let app: INestApplication<App>;
@@ -20,7 +21,12 @@ describe('authentication boundary (e2e)', () => {
         ConfigModule.forRoot({
           isGlobal: true,
           ignoreEnvFile: true,
-          load: [() => ({ SUPABASE_JWT_SECRET: testSecret })],
+          load: [
+            () => ({
+              SUPABASE_JWT_SECRET: testSecret,
+              SUPABASE_URL: testUrl,
+            }),
+          ],
         }),
       ],
       controllers: [AppController],
@@ -43,7 +49,15 @@ describe('authentication boundary (e2e)', () => {
   });
 
   it('accepts a request with a token signed by configured identity provider', async () => {
-    const token = jwt.sign({ sub: 'user-1' }, testSecret, { expiresIn: '1m' });
+    const token = jwt.sign(
+      { sub: 'user-1', role: 'authenticated' },
+      testSecret,
+      {
+        expiresIn: '1m',
+        audience: 'authenticated',
+        issuer: `${testUrl}/auth/v1`,
+      },
+    );
 
     await request(app.getHttpServer())
       .get('/')

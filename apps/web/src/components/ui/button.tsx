@@ -10,15 +10,23 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white shadow-xs hover:bg-destructive focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+        "fina-primary":
+          "rounded-none border-2 border-fina-ink bg-fina-lime font-black uppercase text-fina-ink shadow-fina-md hover:bg-fina-lime hover:text-fina-ink hover:shadow-fina-lg active:shadow-fina-sm",
+        "fina-secondary":
+          "rounded-none border-2 border-fina-ink bg-fina-surface font-black uppercase text-fina-ink shadow-fina-md hover:bg-fina-sky hover:text-fina-ink hover:shadow-fina-lg active:shadow-fina-sm",
+        "fina-ghost":
+          "rounded-none bg-transparent text-fina-ink hover:bg-fina-yellow hover:text-fina-ink",
+        "fina-danger":
+          "rounded-none border-2 border-fina-ink bg-fina-danger font-black text-fina-ink shadow-fina-sm hover:bg-fina-danger hover:text-fina-ink",
         link: "text-primary underline-offset-4 hover:underline"
       },
       size: {
@@ -26,11 +34,16 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9"
+      },
+      lift: {
+        true: "hover:-translate-y-0.5 active:translate-y-0",
+        false: ""
       }
     },
     defaultVariants: {
       variant: "default",
-      size: "default"
+      size: "default",
+      lift: false
     }
   }
 )
@@ -39,6 +52,7 @@ function Button({
   className,
   variant,
   size,
+  lift,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
@@ -50,7 +64,7 @@ function Button({
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, lift, className }))}
       {...props}
     />
   )

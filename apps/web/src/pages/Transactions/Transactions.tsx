@@ -1,18 +1,45 @@
 import { TransactionsFilter } from "@/components/transactions/TransactionsFilter"
 import { TransactionsHeader } from "@/components/transactions/TransactionsHeader"
-import { TransactionsTableProps } from "@/components/transactions/TransactionsTable"
+import { TransactionsSort } from "@/components/transactions/TransactionsSort"
+import { CreditCardBillsLedger } from "@/components/transactions/CreditCardBillsLedger"
+import type { TransactionsTableProps } from "@/components/transactions/TransactionsTable"
+import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import {
+  DEFAULT_TRANSACTION_SORT,
+  type TransactionSortOption
+} from "@/components/transactions/transactionSort"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { FinaBadge, FinaSurface } from "@/components/ui/fina"
+import { Switch } from "@/components/ui/switch"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
+import { useCreditCardBills } from "@/data/creditCardBills/useCreditCardBills"
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
 import { useTransactions } from "@/data/transactions/useTransactions"
 import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
 import useLocalStorageState from "@/hooks/useLocalStorageState"
 import { cn } from "@/lib/utils"
 import { useAtom } from "jotai"
-import { PanelBottomClose, PanelBottomOpen } from "lucide-react"
-import { FC, Fragment, Suspense, lazy, useState } from "react"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ReceiptText,
+  Sigma,
+  TriangleAlert,
+  X
+} from "lucide-react"
+import {
+  FC,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react"
+import { useSearchParams } from "react-router"
+import type { TransactionOutput } from "@fina/types"
 
 const TransactionsTable = lazy(() =>
   import("@/components/transactions/TransactionsTable").then((module) => ({
@@ -20,11 +47,56 @@ const TransactionsTable = lazy(() =>
   }))
 )
 
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL"
+})
+
+const formatCurrency = (value: number) => currencyFormatter.format(value)
+
+const EMPTY_TRANSACTIONS: TransactionOutput[] = []
+
+const creditCardBillKey = (accountId: string, billMonth: string) =>
+  `${accountId}:${billMonth}`
+
+const transactionBillKey = (transaction: TransactionOutput) => {
+  if (transaction.bankaccount?.type !== "credit") return null
+
+  const billDate =
+    transaction.creditDueDate ||
+    transaction.toBeConsideredAt ||
+    transaction.calculatedDate
+
+  return billDate
+    ? creditCardBillKey(transaction.bankaccount.id, billDate.slice(0, 7))
+    : null
+}
+
 export const Transactions: FC = () => {
+  const [searchParams] = useSearchParams()
+  const linkedAccountId = searchParams.get("accountId")
   const {
-    updateMutation: updateTransaction,
-    removeMutation: removeTransaction
+    updateMutation: { mutateAsync: updateTransaction },
+    removeManyMutation: { mutateAsync: removeTransactions }
   } = useTransactionMutation()
+
+  const handleUpdateTransaction = useCallback<
+    TransactionsTableProps["onUpdateTransaction"]
+  >(
+    async (id, transaction) => {
+      await updateTransaction({ id, transaction })
+    },
+    [updateTransaction]
+  )
+
+  const handleDeleteTransactions = useCallback<
+    TransactionsTableProps["onDeleteTransactions"]
+  >(
+    async (ids) => {
+      await removeTransactions(ids)
+    },
+    [removeTransactions]
+  )
 
   const { selectedGroup } = useActiveGroup()
 
@@ -32,6 +104,11 @@ export const Transactions: FC = () => {
     pageIndex: 0,
     pageSize: 4000
   })
+  const [sort, setSort] = useState<TransactionSortOption>(
+    DEFAULT_TRANSACTION_SORT
+  )
+  const [inlineCreditCardTransactions, setInlineCreditCardTransactions] =
+    useLocalStorageState<boolean>("inlineCreditCardTransactions", true)
 
   const [filterProps] = useAtom(transactionFilterAtom)
 
@@ -46,8 +123,23 @@ export const Transactions: FC = () => {
     startDate: filterProps.startDate,
     endDate: filterProps.endDate,
     search: filterProps.partialDescription || undefined,
-    categoryIdList: filterProps.categoriesId
+    categoryIdList: filterProps.categoriesId,
+    accountIdList: linkedAccountId ? [linkedAccountId] : undefined
   })
+
+  const billQuery = useMemo(
+    () => ({
+      groupId: selectedGroup?.id?.toString() || "-1",
+      startDate: filterProps.startDate,
+      endDate: filterProps.endDate
+    }),
+    [filterProps.endDate, filterProps.startDate, selectedGroup?.id]
+  )
+  const {
+    data: creditCardBills = [],
+    isLoading: areBillsLoading,
+    isError: areBillsError
+  } = useCreditCardBills(billQuery, !inlineCreditCardTransactions)
 
   const { data: categories } = useCategories({
     groupId: selectedGroup?.id?.toString() || ""
@@ -55,15 +147,98 @@ export const Transactions: FC = () => {
 
   const [isFilterOpen, setIsFilterOpen] = useLocalStorageState<boolean>(
     "transactionsFilterOpen",
-    true
+    false
   )
 
   const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
     "transactionsDrawerOpen",
     false
   )
+  const drawerRef = useRef<HTMLElement>(null)
+  const closeDrawerButtonRef = useRef<HTMLButtonElement>(null)
 
-  const sum: Record<string, number> = {
+  useEffect(() => {
+    drawerRef.current?.toggleAttribute("inert", !isDrawerOpen)
+
+    if (!isDrawerOpen) {
+      return
+    }
+
+    closeDrawerButtonRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDrawerOpen(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isDrawerOpen, setIsDrawerOpen])
+
+  const hasTransactionFilter =
+    filterProps.partialDescription.trim().length > 0 ||
+    filterProps.categoriesId.length > 0
+
+  const matchingCreditCardBillKeys = useMemo(
+    () =>
+      new Set(
+        (transactionsData?.data || []).flatMap((transaction) => {
+          const key = transactionBillKey(transaction)
+          return key ? [key] : []
+        })
+      ),
+    [transactionsData?.data]
+  )
+
+  const visibleCreditCardBills = useMemo(
+    () =>
+      creditCardBills.filter((bill) => {
+        if (linkedAccountId && bill.accountId !== linkedAccountId) return false
+        if (!hasTransactionFilter) return true
+
+        return matchingCreditCardBillKeys.has(
+          creditCardBillKey(bill.accountId, bill.billMonth)
+        )
+      }),
+    [
+      creditCardBills,
+      hasTransactionFilter,
+      linkedAccountId,
+      matchingCreditCardBillKeys
+    ]
+  )
+
+  const linkedPaymentIds = useMemo(
+    () =>
+      new Set(
+        visibleCreditCardBills.flatMap((bill) =>
+          bill.payment ? [bill.payment.transactionId] : []
+        )
+      ),
+    [visibleCreditCardBills]
+  )
+  const visibleCheckoutTransactions = useMemo(
+    () =>
+      (transactionsData?.data || []).filter(
+        (transaction) =>
+          transaction.bankaccount?.type !== "credit" &&
+          !linkedPaymentIds.has(transaction.id)
+      ),
+    [linkedPaymentIds, transactionsData?.data]
+  )
+  const inlineLedgerTransactions = transactionsData?.data || EMPTY_TRANSACTIONS
+  const visibleEntryCount = inlineCreditCardTransactions
+    ? transactionsData?.totalCount || 0
+    : visibleCheckoutTransactions.length + visibleCreditCardBills.length
+  const hasProvisionalGroupedTotal =
+    !inlineCreditCardTransactions &&
+    visibleCreditCardBills.some(
+      (bill) =>
+        bill.status === "needs-reconciliation" || bill.status === "needs-review"
+    )
+
+  const sum = {
     total: 0,
     income: 0,
     expense: 0
@@ -71,158 +246,291 @@ export const Transactions: FC = () => {
 
   const sumCategories: Record<string, number> = {}
 
-  for (const transaction of transactionsData?.data || []) {
+  const transactionsForTotals = inlineCreditCardTransactions
+    ? transactionsData?.data || []
+    : visibleCheckoutTransactions
+
+  for (const transaction of transactionsForTotals) {
     if (!transaction.value) {
       continue
     }
+
     sum.total += transaction.value
     if (transaction.value > 0) {
       sum.income += transaction.value
     } else {
       sum.expense += transaction.value
     }
+  }
 
-    if (transaction.category?.id) {
-      if (sumCategories[transaction.category.id]) {
-        sumCategories[transaction.category.id] += transaction.value
-      } else {
-        sumCategories[transaction.category.id] = transaction.value
-      }
+  if (!inlineCreditCardTransactions) {
+    for (const bill of visibleCreditCardBills) {
+      sum.total += bill.total
+      if (bill.total > 0) sum.income += bill.total
+      if (bill.total < 0) sum.expense += bill.total
     }
   }
 
-  // console.log(sum);
-  // console.log(sumCategories);
+  for (const transaction of transactionsData?.data || []) {
+    if (!transaction.value || !transaction.category?.id) continue
+
+    sumCategories[transaction.category.id] =
+      (sumCategories[transaction.category.id] || 0) + transaction.value
+  }
 
   return (
-    <div className="flex">
-      <div className="flex flex-col flex-1">
+    <div className="flex min-h-svh min-w-0 bg-fina-grid text-fina-ink">
+      <div className="min-w-0 flex-1">
         <TransactionsHeader
           isFilterOpen={isFilterOpen}
-          onFilterToggle={setIsFilterOpen}
+          onFilterToggle={(isOpen) => {
+            setIsFilterOpen(isOpen)
+            if (isOpen) {
+              setIsDrawerOpen(false)
+            }
+          }}
+          totalCount={visibleEntryCount}
         />
-        <div className="flex-1">
+
+        <section className="px-4 py-4 md:px-8 md:py-5">
+          <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
+                Ledger / Cash flow
+              </p>
+              <h2 className="mt-1 text-2xl font-black uppercase tracking-[-0.05em] md:text-3xl">
+                Activity log
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-stretch justify-end gap-3">
+              <label
+                htmlFor="inline-credit-card-transactions"
+                className="flex h-11 cursor-pointer items-center gap-3 border-2 border-fina-ink bg-fina-surface px-3 shadow-fina-sm"
+              >
+                <Switch
+                  id="inline-credit-card-transactions"
+                  checked={inlineCreditCardTransactions}
+                  onCheckedChange={setInlineCreditCardTransactions}
+                  className="rounded-none border-2 border-fina-ink bg-fina-canvas data-[state=checked]:bg-fina-lime data-[state=unchecked]:bg-fina-surface"
+                />
+                <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em]">
+                  Inline credit card transactions
+                </span>
+              </label>
+              <TransactionsSort value={sort} onValueChange={setSort} />
+            </div>
+          </div>
+
+          {hasProvisionalGroupedTotal ? (
+            <div
+              role="status"
+              className="mb-3 flex items-start gap-3 border-2 border-fina-ink bg-fina-yellow p-3 font-mono text-[10px] font-black uppercase tracking-[0.08em] shadow-fina-sm"
+            >
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              Period totals are provisional until every credit card bill is
+              reconciled. An unlinked payment may still be counted twice.
+            </div>
+          ) : null}
+
           <Suspense
             fallback={
-              <div className="flex items-center justify-center p-8">
-                Loading transactions table...
-              </div>
+              <FinaSurface
+                elevation="lg"
+                className="p-10 text-center font-mono text-xs font-black uppercase"
+              >
+                Loading the ledger...
+              </FinaSurface>
             }
           >
-            <TransactionsTable
-              data={transactionsData?.data || []}
-              isLoading={isLoading}
-              isError={isError}
-              totalCount={transactionsData?.totalCount || 0}
-              pageIndex={pagination.pageIndex}
-              pageSize={pagination.pageSize}
-              onUpdateTransaction={async (id, transaction) => {
-                updateTransaction.mutateAsync({
-                  id,
-                  transaction
-                })
-              }}
-              onDeleteTransaction={async (id) => {
-                removeTransaction.mutateAsync(id)
-              }}
-            />
+            {inlineCreditCardTransactions ? (
+              <TransactionsTable
+                data={inlineLedgerTransactions}
+                isLoading={isLoading}
+                isError={isError}
+                totalCount={visibleEntryCount}
+                pageIndex={pagination.pageIndex}
+                pageSize={pagination.pageSize}
+                sort={sort}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransactions={handleDeleteTransactions}
+              />
+            ) : (
+              <CreditCardBillsLedger
+                transactions={visibleCheckoutTransactions}
+                bills={visibleCreditCardBills}
+                isLoading={isLoading || areBillsLoading}
+                isError={isError || areBillsError}
+                sort={sort}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransactions={handleDeleteTransactions}
+              />
+            )}
           </Suspense>
-        </div>
-        {/* Footer */}
-        <div
+
+          {linkedAccountId && (
+            <FinaBadge tone="yellow" className="mt-4 shadow-fina-sm">
+              Account filter is active
+            </FinaBadge>
+          )}
+        </section>
+
+        <Button
+          variant="fina-primary"
+          onClick={() => {
+            setIsFilterOpen(false)
+            setIsDrawerOpen(true)
+          }}
+          aria-expanded={isDrawerOpen}
+          aria-controls="transactions-summary-panel"
+          className="fixed right-0 top-1/2 z-30 h-auto -translate-y-1/2 flex-col border-r-0 px-2 py-4 shadow-[-4px_4px_0_var(--fina-ink)] hover:-translate-y-1/2 hover:bg-fina-surface hover:shadow-[-4px_4px_0_var(--fina-ink)] active:-translate-y-1/2"
+        >
+          <span className="font-mono text-[10px] font-black uppercase tracking-[0.16em] [writing-mode:vertical-rl]">
+            Totals
+          </span>
+          <Sigma className="mt-2 size-4" />
+        </Button>
+
+        <button
+          type="button"
+          aria-label="Close totals panel"
+          aria-hidden={!isDrawerOpen}
+          tabIndex={isDrawerOpen ? 0 : -1}
+          onClick={() => setIsDrawerOpen(false)}
           className={cn(
-            "sticky bottom-0 bg-background border-t transition-all duration-300 h-[40px] py-1 px-4 overflow-hidden",
-            {
-              "h-[200px]": isDrawerOpen
-            }
+            "fixed inset-0 z-[60] cursor-default bg-fina-ink/60 transition-opacity duration-300 ease-out",
+            isDrawerOpen
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0"
+          )}
+        />
+        <aside
+          ref={drawerRef}
+          id="transactions-summary-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden={!isDrawerOpen}
+          aria-label="Period totals"
+          className={cn(
+            "fixed inset-y-0 right-0 z-[70] flex w-[min(440px,calc(100vw-16px))] flex-col border-l-[3px] border-fina-ink bg-fina-canvas text-fina-ink shadow-[-10px_0_0_var(--fina-ink)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            isDrawerOpen
+              ? "pointer-events-auto translate-x-0"
+              : "pointer-events-none translate-x-[calc(100%+10px)]"
           )}
         >
-          <div className={cn("")}>
-            <div className="flex items-center justify-between border-b">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-              >
-                {!isDrawerOpen ? (
-                  <PanelBottomOpen className="h-4 w-4" />
-                ) : (
-                  <PanelBottomClose className="h-4 w-4" />
-                )}
-              </Button>
-              <div className="flex h-5 items-center space-x-4 text-xs">
-                <p>
-                  <span className="text-xs font-medium leading-none">
-                    Total{" "}
+          <div className="flex h-20 shrink-0 items-center justify-between border-b-2 border-fina-ink bg-fina-lime px-5">
+            <div>
+              <p className="font-mono text-[9px] font-black uppercase tracking-[0.2em]">
+                Statement / totals
+              </p>
+              <h2 className="text-2xl font-black uppercase tracking-[-0.06em]">
+                Period summary
+              </h2>
+            </div>
+            <Button
+              ref={closeDrawerButtonRef}
+              variant="ghost"
+              size="icon"
+              tabIndex={isDrawerOpen ? 0 : -1}
+              aria-label="Close totals panel"
+              onClick={() => setIsDrawerOpen(false)}
+              className="size-10 rounded-none border-2 border-fina-ink bg-fina-surface text-fina-ink shadow-fina-sm hover:bg-fina-ink hover:text-white"
+            >
+              <X className="size-5" />
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 border-b-2 border-fina-ink">
+              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-ink p-5 text-white">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/65">
+                    Net flow
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    R${sum.total?.toFixed(2)}
-                  </span>
+                  <Sigma className="size-5 text-fina-lime" />
+                </div>
+                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
+                  {formatCurrency(sum.total)}
                 </p>
-                <Separator orientation="vertical" />
-                <p>
-                  <span className="text-xs font-medium leading-none">
-                    Incoming{" "}
+              </div>
+              <div className="border-b-2 border-fina-ink bg-fina-lime p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
+                    Incoming
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    R${sum.income?.toFixed(2)}
-                  </span>
+                  <ArrowUpRight className="size-5" />
+                </div>
+                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
+                  {formatCurrency(sum.income)}
                 </p>
-                <Separator orientation="vertical" />
-                <p>
-                  <span className="text-xs font-medium leading-none">
-                    Expenses{" "}
+              </div>
+              <div className="border-r-2 border-fina-ink bg-fina-violet p-5 text-white">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/75">
+                    Outgoing
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    R${sum.expense?.toFixed(2)}
+                  <ArrowDownRight className="size-5" />
+                </div>
+                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
+                  {formatCurrency(Math.abs(sum.expense))}
+                </p>
+              </div>
+              <div className="bg-fina-sky p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
+                    Entries
                   </span>
+                  <ReceiptText className="size-5" />
+                </div>
+                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
+                  {visibleEntryCount.toLocaleString("en-US")}
                 </p>
               </div>
             </div>
 
-            <div className="p-4">
-              <div className="flex h-5 items-center space-x-4 pt-4">
-                {categories?.map((category) => {
-                  return (
-                    <Fragment key={category.id}>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {category.name}{" "}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          R${" "}
-                          {sumCategories[category.id]
-                            ? sumCategories[category.id].toFixed(2)
-                            : "0.00"}
-                        </p>
-                      </div>
-                      <Separator orientation="vertical" className="h-full" />
-                    </Fragment>
-                  )
-                })}
-                {/* {Object.keys(sumCategories).map((categoryId) => {
-                  return (
-                    <Fragment key={categoryId}>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {categoryAsMap?.[categoryId] || ""}{" "}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          R${sumCategories[categoryId]?.toFixed(2)}
-                        </p>
-                      </div>
-                      <Separator orientation="vertical" />
-                    </Fragment>
-                  );
-                })} */}
+            <div className="border-b-2 border-fina-ink bg-fina-yellow px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+                  Category breakdown
+                </p>
+                <span className="font-mono text-[9px] font-black uppercase">
+                  {categories?.length || 0} categories
+                </span>
               </div>
             </div>
+            <div className="grid grid-cols-2 bg-fina-surface">
+              {categories?.map((category) => (
+                <div
+                  key={category.id}
+                  className="border-b border-r border-fina-ink p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <CategoryAppearance
+                      icon={category.icon}
+                      color={category.color}
+                      className="size-7 border"
+                    />
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
+                      {category.name}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-lg font-black tracking-[-0.04em]">
+                    {formatCurrency(sumCategories[category.id] || 0)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </aside>
       </div>
+
       <TransactionsFilter
         isOpen={isFilterOpen}
-        onFilterToggle={setIsFilterOpen}
+        onFilterToggle={(isOpen) => {
+          setIsFilterOpen(isOpen)
+          if (isOpen) {
+            setIsDrawerOpen(false)
+          }
+        }}
       />
     </div>
   )

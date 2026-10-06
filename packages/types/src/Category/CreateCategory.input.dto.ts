@@ -1,18 +1,12 @@
 import { z } from "zod";
-import { createZodDto } from "nestjs-zod";
-import { CategorySchema } from "./Category";
+import { CategoryColorSchema, CategoryIconSchema } from "./CategoryApi.dto";
 
-const CreateCategoryInputDtoSchema = CategorySchema.omit({
-  id: true,
-  createdAt: true,
-  group: true
-}).extend({
-  groupId: z.string()
+export const CreateCategoryInputDtoSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  icon: CategoryIconSchema.default("tag"),
+  color: CategoryColorSchema.default("yellow"),
+  groupId: z.string().regex(/^\d+$/)
 });
-
-export class CreateCategoryInputDto extends createZodDto(
-  CreateCategoryInputDtoSchema
-) {}
 
 export type CreateCategoryInputDtoType = z.infer<
   typeof CreateCategoryInputDtoSchema

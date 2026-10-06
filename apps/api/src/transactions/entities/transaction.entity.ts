@@ -1,20 +1,19 @@
 import {
   Column,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Bankaccounts } from '../../bankaccounts/entities/bankaccount.entity';
 import { Categories } from '../../categories/entities/category.entity';
 import { Groups } from '../../groups/entities/group.entity';
 import { Imports } from '../../imports/entities/import.entity';
-import { Transaction } from '@fina/types';
+import { CreditCardBillReconciliations } from '../../credit-card-bills/entities/credit-card-bill-reconciliation.entity';
 
-@Index('transactions_pkey', ['id'], { unique: true })
 @Entity('transactions', { schema: 'public' })
-export class Transactions implements Transaction {
+export class Transactions {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -27,11 +26,11 @@ export class Transactions implements Transaction {
   @Column('character varying', { name: 'description', nullable: true })
   description: string | null;
 
-  @Column('real', { name: 'value', nullable: true, precision: 24 })
+  @Column('real', { name: 'value', nullable: true })
   value: number | null;
 
   @Column('timestamp without time zone', { name: 'date', nullable: true })
-  date: Date | null;
+  date: Date | string | null;
 
   @Column('integer', { name: 'installment_total', nullable: true })
   installmentTotal?: number | null;
@@ -47,40 +46,58 @@ export class Transactions implements Transaction {
 
   @Column('boolean', {
     name: 'removed',
-    nullable: true,
     default: () => 'false',
   })
-  removed?: boolean | null;
+  removed: boolean;
 
   @Column('date', { name: 'to_be_considered_at', nullable: true })
-  toBeConsideredAt?: string | null;
+  toBeConsideredAt?: Date | null;
 
   @Column('date', { name: 'calculated_date', nullable: true })
-  calculatedDate?: Date | null;
+  calculatedDate?: Date | string | null;
+
+  @Column('integer', { name: 'source_row', nullable: true })
+  sourceRow?: number | null;
 
   @ManyToOne(() => Bankaccounts, (bankaccounts) => bankaccounts.transactions, {
-    onDelete: 'CASCADE',
+    nullable: true,
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn([{ name: 'bankaccount_id', referencedColumnName: 'id' }])
-  bankaccount: Bankaccounts;
+  bankaccount: Bankaccounts | null;
 
-  @ManyToOne(() => Categories, (categories) => categories.transactions)
+  @ManyToOne(() => Categories, (categories) => categories.transactions, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn([{ name: 'category_id', referencedColumnName: 'id' }])
   category?: Categories | null;
 
-  @ManyToOne(() => Groups, (groups) => groups.transactions)
+  @ManyToOne(() => Groups, (groups) => groups.transactions, {
+    nullable: false,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
   group: Groups;
 
   @ManyToOne(() => Imports, (imports) => imports.transactions, {
-    onDelete: 'CASCADE',
+    nullable: true,
+    onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn([{ name: 'import_id', referencedColumnName: 'id' }])
-  import: Imports;
+  import?: Imports | null;
 
-  constructor(transaction: Omit<Transaction, 'id' | 'createdAt'>) {
+  @OneToOne(
+    () => CreditCardBillReconciliations,
+    (reconciliation) => reconciliation.paymentTransaction,
+  )
+  billPaymentReconciliation?: CreditCardBillReconciliations | null;
+
+  constructor(transaction: Partial<Transactions>) {
     Object.assign(this, transaction);
   }
 }

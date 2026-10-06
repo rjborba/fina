@@ -1,45 +1,27 @@
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import {
-  Controller,
-  Get,
-  // Post,
-  Body,
-  // Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+  GroupMemberListOutputDto,
+  GroupMemberOutputDto,
+  GroupQueryInputDto,
+} from '../contracts/api-dtos';
+import { ZodSerializerDto } from 'nestjs-zod';
+import { AuthenticatedUser } from '../auth/authenticated-user';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { UserGroupsService } from './user-groups.service';
-// import { CreateUserGroupDto } from './dto/create-user-group.dto';
-// import { UpdateUserGroupDto } from './dto/update-user-group.dto';
 
 @Controller('user-groups')
 export class UserGroupsController {
   constructor(private readonly userGroupsService: UserGroupsService) {}
 
-  // @Post()
-  // create(@Body() createUserGroupDto: CreateUserGroupDto) {
-  //   return this.userGroupsService.create(createUserGroupDto);
-  // }
-
   @Get()
-  findAll() {
-    return this.userGroupsService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userGroupsService.findOne(+id);
-  }
-
-  // @Patch(':id')
-  // update(
-  //   @Param('id') id: string,
-  //   @Body() updateUserGroupDto: UpdateUserGroupDto,
-  // ) {
-  //   return this.userGroupsService.update(+id, updateUserGroupDto);
-  // }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userGroupsService.remove(+id);
+  @ApiOkResponse({ type: GroupMemberListOutputDto })
+  @ApiQuery({ name: 'groupId', type: String, required: true })
+  @ZodSerializerDto(GroupMemberOutputDto)
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GroupQueryInputDto,
+  ) {
+    return this.userGroupsService.findAll(user.id, query.groupId);
   }
 }

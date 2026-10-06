@@ -1,14 +1,10 @@
-import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
 import { createPaginationScheme } from "../pagination";
-import { TransactionSchema } from "./Transaction";
+import { TransactionOutputSchema } from "./TransactionApi.dto";
 
-const QueryTransactionOutputDtoSchema =
-  createPaginationScheme(TransactionSchema);
-
-export class QueryTransactionOutputDto extends createZodDto(
-  QueryTransactionOutputDtoSchema
-) {}
+export const QueryTransactionOutputDtoSchema = createPaginationScheme(
+  TransactionOutputSchema
+);
 
 export type QueryTransactionOutputDtoType = z.infer<
   typeof QueryTransactionOutputDtoSchema

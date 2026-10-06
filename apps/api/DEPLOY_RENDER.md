@@ -1,77 +1,76 @@
-# Deploying @fina/api to Render
+# Deploying `@fina/api` to Render
 
-This guide explains how to deploy the API service from this monorepo to Render.
+Render is the production host for the NestJS API. Vercel hosts only the Vite web
+application. The production web project must set:
 
-## Prerequisites
+```text
+VITE_API_URL=https://api.fina.rjborba.com
+```
 
-- A Render account
-- This repository connected to your Render account
+## Render service configuration
 
-## Deployment Options
+The existing Render service uses these settings:
 
-### Option 1: Using render.yaml (Recommended)
+| Setting           | Value                                                                  |
+| ----------------- | ---------------------------------------------------------------------- |
+| Service type      | Web Service                                                            |
+| Runtime           | Node                                                                   |
+| Repository        | `rjborba/fina`                                                         |
+| Branch            | `main`                                                                 |
+| Root directory    | `apps/api`                                                             |
+| Region            | Oregon (US West)                                                       |
+| Build command     | `pnpm install --frozen-lockfile && turbo run build --filter=@fina/api` |
+| Start command     | `pnpm start:prod`                                                      |
+| Custom API origin | `https://api.fina.rjborba.com`                                         |
 
-1. The `render.yaml` file in the root directory is already configured for deployment
-2. In Render Dashboard:
-   - Click "New +" → "Blueprint"
-   - Connect your GitHub/GitLab repository
-   - Render will automatically detect the `render.yaml` file
-   - Click "Apply"
+The API must listen on Render's `PORT`; Nest already reads that value from the
+validated environment. Keep auto-deploy limited to changes under `apps/api` and
+`packages/types`.
 
-### Option 2: Manual Service Configuration
+## Environment
 
-If you prefer to configure the service manually in Render's dashboard:
+Configure the production equivalents of every required variable documented in
+[`.env.example`](./.env.example). Store values only in Render's environment
+settings—never in this repository, deploy hooks, build commands, or logs.
 
-1. Create a new Web Service in Render
-2. Connect your repository
-3. Configure the service with these settings:
+At minimum, production needs database configuration, Supabase Auth
+configuration, and an explicit `CORS_ORIGINS=https://fina.rjborba.com` value.
+The API database role must be able to use the migrated application schema; the
+Supabase browser roles remain denied direct access.
 
-   **Build Command:**
+## Deployment procedure
 
-   ```bash
-   npm install -g pnpm@10.0.0 && \
-   pnpm install --frozen-lockfile && \
-   pnpm --filter @fina/types build && \
-   pnpm --filter @fina/api build
-   ```
+1. Run `pnpm verify` against the candidate commit.
+2. From that exact commit, inspect pending migrations with
+   `pnpm --filter @fina/api migration:show`, then apply them from a controlled
+   administrative job using `pnpm --filter @fina/api migration:run`.
+3. Deploy the same verified commit to the Render `fina-api` service.
+4. Confirm the Render deployment is healthy at its `onrender.com` hostname.
+5. Confirm TLS and an authenticated API request through
+   `https://api.fina.rjborba.com`.
+6. Deploy the Vercel web project with `VITE_API_URL` set to that API origin and
+   verify a complete authenticated browser journey.
 
-   **Start Command:**
+Application startup never synchronizes or migrates the schema automatically.
+Do not place `migration:run` in the normal start command: a failed migration
+must stop deployment before new application instances receive traffic.
+Never edit an applied migration or make application-schema changes in the
+Supabase Dashboard. The workflow for authoring and testing a new migration is
+documented in [README.md](./README.md#database-migrations).
 
-   ```bash
-   cd apps/api && pnpm start:prod
-   ```
+Production migrations should run from a manually approved release workflow,
+not automatically for every merge to `main`. The workflow should use a GitHub
+`production` environment, read the database URL from an environment secret, run
+`migration:show` and `migration:run` from the verified commit, and only then
+deploy the API. Use the Supabase direct connection for migrations, or the
+session-mode pooler when the runner cannot reach the direct IPv6 endpoint; do
+not use the transaction-mode pooler.
 
-   **Root Directory:** Leave blank (use repository root)
+## Current operational gap
 
-## Environment Variables
-
-Make sure to set these environment variables in Render:
-
-- `NODE_ENV=production`
-- Any database connection strings
-- Any API keys or secrets your application needs
-
-## Important Notes
-
-1. The build process must:
-
-   - Install pnpm (the package manager used by this monorepo)
-   - Build the `@fina/types` package first (dependency)
-   - Then build the API
-
-2. The monorepo uses pnpm workspaces, which is why we need to:
-   - Run commands from the repository root
-   - Use `--filter` flags to target specific packages
-   - Build dependencies before the main application
-
-## Troubleshooting
-
-If you encounter "module not found" errors for `@fina/types`:
-
-- Ensure the build command includes `pnpm --filter @fina/types build`
-- Check that the build is running from the repository root, not from `apps/api`
-
-If the build fails with pnpm errors:
-
-- Make sure pnpm version matches the one in package.json (10.0.0)
-- Ensure `pnpm install` runs with `--frozen-lockfile` flag
+The hosting dashboards were last inspected on 2026-09-21. At that time the
+Render service was connected to `main`, but the deployed artifacts were stale
+and the custom API domain failed TLS negotiation. Treat production as unhealthy
+until the deployment procedure above succeeds. The abandoned Vercel `fina-api`
+project is not a supported API target and should be removed separately after its
+deployment history is no longer needed.

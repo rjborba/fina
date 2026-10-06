@@ -7,12 +7,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
-import { Invite } from '@fina/types';
 
-@Index('invites_email_key', ['email'], { unique: true })
-@Index('invites_pkey', ['id'], { unique: true })
+@Index('invites_group_id_email_key', ['group', 'email'], { unique: true })
 @Entity('invites', { schema: 'public' })
-export class Invites implements Invite {
+export class Invites {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -22,13 +20,17 @@ export class Invites implements Invite {
   })
   createdAt: Date;
 
-  @Column('text', { name: 'email', unique: true })
+  @Column('text', { name: 'email' })
   email: string;
 
-  @Column('boolean', { name: 'pending' })
+  @Column('boolean', { name: 'pending', default: true })
   pending: boolean;
 
-  @ManyToOne(() => Groups, (groups) => groups.invites)
+  @ManyToOne(() => Groups, (groups) => groups.invites, {
+    nullable: false,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
   group: Groups;
 }

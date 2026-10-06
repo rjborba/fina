@@ -1,9 +1,9 @@
-import dayjs from "dayjs"
-import { FinaAPIFetcher } from "../FinaAPIFetcher"
+import { transactionsControllerFindAll } from "@/api/generated"
 import {
   QueryTransactionInputDto,
   QueryTransactionOutputDtoType
 } from "@fina/types"
+import dayjs from "dayjs"
 
 export const fetchTransactions = async ({
   page,
@@ -13,34 +13,19 @@ export const fetchTransactions = async ({
   endDate,
   categoryIdList,
   accountIdList,
+  accountType,
   search
 }: QueryTransactionInputDto): Promise<QueryTransactionOutputDtoType> => {
-  const getFormattedDate = (date?: Date) => {
-    if (!date) return undefined
-
-    return dayjs(date).format("YYYY-MM-DD")
-  }
-
-  const formattedStartDate = getFormattedDate(startDate)
-  const formattedEndDate = getFormattedDate(endDate)
-
-  const response = await FinaAPIFetcher.get<QueryTransactionOutputDtoType>(
-    "transactions",
-    {
-      groupId: groupId,
-      page: page ? page - 1 : undefined,
-      pageSize,
-      startDate: formattedStartDate,
-      endDate: formattedEndDate,
-      categoryIdList,
-      accountIdList,
-      search
-    }
-  )
-
-  if (response.status !== 200) {
-    throw new Error("Failed to fetch transactions")
-  }
-
-  return response.data
+  const response = await transactionsControllerFindAll({
+    groupId,
+    page: page ? page - 1 : undefined,
+    pageSize,
+    startDate: startDate ? dayjs(startDate).format("YYYY-MM-DD") : undefined,
+    endDate: endDate ? dayjs(endDate).format("YYYY-MM-DD") : undefined,
+    categoryIdList,
+    accountIdList,
+    accountType,
+    search
+  })
+  return response as QueryTransactionOutputDtoType
 }

@@ -1,5 +1,5 @@
 import dayjs from "dayjs"
-import { AtomWithLocalStorage } from "@/helpers/LocalStorageAtom"
+import { atom } from "jotai"
 
 const defaultTransactionFilter = {
   startDate: dayjs().startOf("month").toDate(),
@@ -10,7 +10,4 @@ const defaultTransactionFilter = {
 
 export type TransactionFilterType = typeof defaultTransactionFilter
 
-export const transactionFilterAtom = AtomWithLocalStorage(
-  "transactionFilter",
-  defaultTransactionFilter
-)
+export const transactionFilterAtom = atom(defaultTransactionFilter)

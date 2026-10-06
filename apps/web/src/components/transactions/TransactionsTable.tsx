@@ -1,29 +1,28 @@
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
-import { EditableSelect } from "@/data/transactions/EditableSelectCell"
-import { EditableText } from "@/data/transactions/EditableTextCell"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import type { TransactionOutput as Transaction } from "@fina/types"
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   Row,
-  SortingState,
+  type Table as TanStackTable,
   useReactTable
 } from "@tanstack/react-table"
-import { useVirtualizer } from "@tanstack/react-virtual"
+import { type Virtualizer, useVirtualizer } from "@tanstack/react-virtual"
 import dayjs from "dayjs"
-import {
-  ArrowDown,
-  ArrowUp,
-  Frown,
-  LucideCreditCard,
-  Trash
-} from "lucide-react"
-import { FC, useEffect, useMemo, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { ArrowUpRight } from "lucide-react"
+import React, {
+  type FC,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react"
 import {
   Table,
   TableBody,
@@ -33,21 +32,28 @@ import {
   TableRow
 } from "@/components/ui/table"
 import { TransactionDetailsModal } from "./TransactionDetailsModal"
+import { TransactionBulkActions } from "./TransactionBulkActions"
 import { Skeleton } from "../ui/skeleton"
-import React from "react"
+import {
+  selectTransactionRange,
+  toggleTransactionSelection
+} from "./transactionSelection"
+import { sortTransactions, type TransactionSortOption } from "./transactionSort"
+import { TransactionLedgerTransaction } from "./TransactionLedgerTransaction"
 
 export interface TransactionsTableProps {
   data?: Transaction[] | null
   totalCount: number
   pageIndex: number
   pageSize: number
+  sort: TransactionSortOption
   isLoading: boolean
   isError: boolean
   onUpdateTransaction: (
     id: string,
     transaction: Partial<Transaction>
   ) => Promise<void>
-  onDeleteTransaction: (id: string) => Promise<void>
+  onDeleteTransactions: (ids: string[]) => Promise<void>
 }
 
 const columnHelper = createColumnHelper<Transaction>()
@@ -55,68 +61,171 @@ const columnHelper = createColumnHelper<Transaction>()
 // Memoized TableRow to prevent unnecessary re-renders
 const MemoizedTableRow = React.memo(TableRow)
 
-import { useAtom } from "jotai"
-import { openSelectIdAtom } from "./OpenSelectAtom"
-import { CreateTransactionModal } from "../CreateTransactionModal"
-import { Transaction } from "@fina/types"
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL"
+})
 
-const CategoryCell: React.FC<{
-  row: Row<Transaction>
-  categories: { id: string; name: string }[]
-  onUpdateTransaction: TransactionsTableProps["onUpdateTransaction"]
-}> = ({ row, categories, onUpdateTransaction }) => {
-  const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom)
+const formatCurrency = (value: number) => currencyFormatter.format(value)
+const TRANSACTION_ROW_HEIGHT = 80
+
+interface TransactionLedgerProps {
+  table: TanStackTable<Transaction>
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>
+  selectedTransactionIds: Set<string>
+  onRowClick: (
+    event: MouseEvent<HTMLTableRowElement>,
+    transactionId: string
+  ) => void
+}
+
+const TransactionLedger = function TransactionLedger({
+  table,
+  rowVirtualizer,
+  selectedTransactionIds,
+  onRowClick
+}: TransactionLedgerProps) {
+  const { rows } = table.getRowModel()
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <EditableSelect
-        value={row.original.category?.id || null}
-        options={categories}
-        open={openSelectId === row.original.id}
-        onOpenChange={(open) => {
-          if (open) {
-            setOpenSelectId(row.original.id)
-          } else {
-            setOpenSelectId(null)
-          }
+    <Table className="transactions-table grid min-w-[760px] text-xs">
+      <TableHeader className="sticky top-0 z-10 grid bg-fina-lime">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <MemoizedTableRow
+            key={headerGroup.id}
+            className="flex w-full border-0"
+          >
+            {headerGroup.headers.map((header) => (
+              <TableHead
+                key={header.id}
+                data-column={header.column.id}
+                className="flex h-10 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink last:border-r-0"
+                style={{
+                  width: header.getSize(),
+                  flex:
+                    header.column.id === "transaction"
+                      ? `1 1 ${header.getSize()}px`
+                      : `0 0 ${header.getSize()}px`
+                }}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+              </TableHead>
+            ))}
+          </MemoizedTableRow>
+        ))}
+      </TableHeader>
+      <TableBody
+        className="relative grid"
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          position: "relative"
         }}
-        onChange={(value) => {
-          setOpenSelectId(null)
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index] as Row<Transaction>
+          const isSelected = selectedTransactionIds.has(row.original.id)
+          const isCreditCardTransaction =
+            row.original.bankaccount?.type === "credit"
 
-          if (!row.original.category) {
-            throw new Error("Category not found")
-          }
-          return onUpdateTransaction(row.original.id, {
-            category: { ...row.original.category, id: value! }
-          })
-        }}
-      />
-    </div>
+          return (
+            <MemoizedTableRow
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              aria-selected={isSelected}
+              className={cn(
+                "absolute left-0 flex w-full cursor-pointer select-none border-0",
+                isSelected
+                  ? "bg-fina-lime hover:bg-fina-lime"
+                  : "bg-fina-surface hover:bg-fina-yellow"
+              )}
+              style={{
+                height: `${TRANSACTION_ROW_HEIGHT}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+                boxShadow:
+                  isCreditCardTransaction && !isSelected
+                    ? "inset 5px 0 0 var(--fina-sky)"
+                    : undefined
+              }}
+              onClick={(event) => onRowClick(event, row.original.id)}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell
+                  key={cell.id}
+                  data-column={cell.column.id}
+                  className="flex h-full items-center border-b border-r border-fina-ink px-3 py-0 text-fina-ink last:border-r-0"
+                  style={{
+                    width: cell.column.getSize(),
+                    flex:
+                      cell.column.id === "transaction"
+                        ? `1 1 ${cell.column.getSize()}px`
+                        : `0 0 ${cell.column.getSize()}px`
+                  }}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </MemoizedTableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
   )
 }
+
+const NoTransactions = () => (
+  <div className="flex min-h-64 flex-col items-start justify-between bg-fina-lime p-6">
+    <span className="border-2 border-fina-ink bg-fina-surface px-2 py-1 font-mono text-[10px] font-black uppercase">
+      Ledger empty
+    </span>
+    <div className="flex w-full items-end justify-between gap-6">
+      <p className="max-w-xl text-3xl font-black uppercase leading-[0.9] tracking-[-0.06em] md:text-5xl">
+        No money moves in this period. Yet.
+      </p>
+      <ArrowUpRight className="size-12 shrink-0 md:size-20" strokeWidth={3} />
+    </div>
+  </div>
+)
+
+const TransactionsLoading = () => (
+  <div className="flex flex-col gap-2 bg-fina-surface p-4">
+    {Array.from({ length: 12 }).map((_, index) => (
+      <div key={index} className="flex h-20 gap-3">
+        <Skeleton className="h-full w-24 rounded-none bg-fina-ink/10" />
+        <div className="flex flex-1 flex-col gap-2 py-2">
+          <Skeleton className="h-5 w-3/5 rounded-none bg-fina-ink/10" />
+          <Skeleton className="h-4 w-4/5 rounded-none bg-fina-ink/10" />
+        </div>
+        <Skeleton className="h-full w-40 rounded-none bg-fina-ink/10" />
+      </div>
+    ))}
+  </div>
+)
+
+const TransactionsError = () => (
+  <div className="min-h-56 bg-fina-danger p-6 font-black uppercase">
+    We could not load the ledger. Try again in a moment.
+  </div>
+)
 
 const TransactionsTable: FC<TransactionsTableProps> = ({
   data,
   totalCount,
   pageIndex,
   pageSize,
+  sort,
   isLoading,
   isError,
   onUpdateTransaction,
-  onDeleteTransaction
+  onDeleteTransactions
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { selectedGroup } = useActiveGroup()
-
-  const [openCreateTransactionModal, setOpenCreateTransactionModal] =
-    useState(false)
-
-  const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: "date",
-      desc: true
-    }
-  ])
+  const { toast } = useToast()
 
   const { data: categoriesData } = useCategories({
     groupId: selectedGroup?.id?.toString()
@@ -126,168 +235,112 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     return (
       categoriesData?.map((category) => ({
         id: category.id,
-        name: category.name
+        name: category.name,
+        icon: category.icon,
+        color: category.color
       })) || []
     )
   }, [categoriesData])
 
+  const sortedData = useMemo(
+    () => sortTransactions(data || [], sort),
+    [data, sort]
+  )
+  const transactionIds = useMemo(
+    () => sortedData.map((transaction) => transaction.id),
+    [sortedData]
+  )
+  const transactionIdSet = useMemo(
+    () => new Set(transactionIds),
+    [transactionIds]
+  )
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<
+    Set<string>
+  >(() => new Set())
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(
+    null
+  )
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false)
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in any form element
-      if (
-        e.target instanceof HTMLElement &&
-        e.target.closest('input, textarea, select, [role="combobox"]')
-      ) {
-        return
-      }
-
-      if (e.key === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault()
-        // Only open the modal, don't toggle
-        if (!openCreateTransactionModal) {
-          setOpenCreateTransactionModal(true)
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    setSelectedTransactionIds(
+      (currentSelection) =>
+        new Set(
+          [...currentSelection].filter((transactionId) =>
+            transactionIdSet.has(transactionId)
+          )
+        )
+    )
+    setSelectionAnchorId((currentAnchor) =>
+      currentAnchor && transactionIdSet.has(currentAnchor)
+        ? currentAnchor
+        : null
+    )
+  }, [transactionIdSet])
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("calculatedDate", {
         id: "date",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-0"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Date
-              {column.getIsSorted() === "asc" && (
-                <ArrowDown className="ml-1 h-1 w-1" />
-              )}
-              {column.getIsSorted() === "desc" && (
-                <ArrowUp className="ml-1 h-1 w-1" />
-              )}
-            </Button>
-          )
-        },
+        header: "Date",
+        size: 88,
         cell: (info) => {
-          return dayjs(info.getValue()).format("DD/MM/YYYY")
+          return (
+            <span className="font-mono text-[11px] font-black">
+              {dayjs(info.getValue()).format("DD.MM.YY")}
+            </span>
+          )
         }
       }),
       columnHelper.accessor("description", {
-        id: "description",
-        header: "Description",
-        cell: ({ row }) => {
-          return (
-            <div className="">
-              <span>{row.original.description}</span>{" "}
-              {!!row.original.creditDueDate && (
-                <LucideCreditCard className="h-3 w-3 text-muted-foreground inline" />
-              )}
-            </div>
-          )
-        }
+        id: "transaction",
+        header: "Transaction",
+        size: 512,
+        cell: ({ row }) => (
+          <TransactionLedgerTransaction
+            transaction={row.original}
+            categories={categories}
+            onUpdateTransaction={onUpdateTransaction}
+          />
+        )
       }),
-      // Installments
-      columnHelper.accessor(
-        (row) => {
-          if (!row.installmentCurrent || !row.installmentTotal) {
-            return ""
-          }
-
-          return `${row.installmentCurrent}/${row.installmentTotal}`
-        },
-        {
-          id: "installment"
-        }
-      ),
       columnHelper.accessor("value", {
         id: "value",
         header: "Value",
-        cell: ({ row }) => {
-          if (!row.original.value) {
-            return ""
-          }
-
-          return <div>R$ {row.original.value.toFixed(2)}</div>
-        }
-      }),
-      columnHelper.accessor("category", {
-        header: "Category",
+        size: 160,
         cell: ({ row }) => {
           return (
-            <CategoryCell
-              row={row}
-              categories={categories}
-              onUpdateTransaction={onUpdateTransaction}
-            />
-          )
-        }
-      }),
-      columnHelper.accessor("observation", {
-        id: "observation",
-        header: "Observation",
-        cell: ({ row }) => {
-          return (
-            <div
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              <EditableText
-                value={row.original.observation || ""}
-                onChange={(value) => {
-                  return onUpdateTransaction(row.original.id, {
-                    observation: value
-                  })
-                }}
-              />
+            <div className="flex h-full items-center justify-end">
+              {row.original.value ? (
+                <div
+                  className={cn(
+                    "inline-flex whitespace-nowrap border border-fina-ink px-2.5 py-1.5 font-mono text-sm font-black",
+                    row.original.value > 0
+                      ? "bg-fina-lime text-fina-ink"
+                      : "bg-fina-ink text-white"
+                  )}
+                >
+                  {formatCurrency(row.original.value)}
+                </div>
+              ) : (
+                <span className="font-mono text-sm font-black">-</span>
+              )}
             </div>
-          )
-        }
-      }),
-      // Actions
-      columnHelper.display({
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => {
-          return (
-            <ConfirmationDialog
-              trigger={
-                <Button variant="ghost" size="icon">
-                  <Trash className="h-4 w-4" />
-                </Button>
-              }
-              title="Delete Transaction"
-              description="Are you sure you want to delete this transaction?"
-              onConfirm={() => onDeleteTransaction(row.original.id)}
-            />
           )
         }
       })
     ],
-    [categories, onUpdateTransaction, onDeleteTransaction]
+    [categories, onUpdateTransaction]
   )
 
   const table = useReactTable({
-    data: data || [],
+    data: sortedData,
     columns,
+    getRowId: (transaction) => transaction.id,
     manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     rowCount: totalCount,
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     state: {
-      sorting: sorting,
       pagination: {
         pageIndex,
         pageSize
@@ -295,179 +348,181 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     }
   })
 
-  const { rows } = table.getRowModel()
-
   const rowVirtualizer = useVirtualizer({
-    count: data?.length || 0,
-    estimateSize: () => 36,
+    count: sortedData.length,
+    estimateSize: () => TRANSACTION_ROW_HEIGHT,
+    getItemKey: (index) => sortedData[index]?.id || index,
     getScrollElement: () => tableContainerRef.current,
-    measureElement:
-      typeof window !== "undefined" &&
-      navigator.userAgent.indexOf("Firefox") === -1
-        ? (element) => element?.getBoundingClientRect().height
-        : undefined,
     overscan: 15
   })
 
   const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] =
     useState(false)
-
-  const [selectedTransactionIndex, setSelectedTransactionIndex] = useState<
-    number | null
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
   >(null)
+  const selectedTransactionIndex = selectedTransactionId
+    ? sortedData.findIndex(
+        (transaction) => transaction.id === selectedTransactionId
+      )
+    : -1
 
-  const RenderTable = () => {
-    return (
-      <Table className="text-xs">
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <MemoizedTableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} style={{ width: header.getSize() }}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </TableHead>
-              ))}
-            </MemoizedTableRow>
-          ))}
-        </TableHeader>
-        <TableBody
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`, //tells scrollbar how big the table is
-            position: "relative" //needed for absolute positioning of rows
-          }}
-        >
-          {rowVirtualizer
-            .getVirtualItems()
-            .map((virtualRow, virtualRowIndex) => {
-              const row = rows[virtualRow.index] as Row<Transaction>
+  const clearSelection = useCallback(() => {
+    setSelectedTransactionIds(new Set())
+    setSelectionAnchorId(null)
+  }, [])
 
-              return (
-                <MemoizedTableRow
-                  key={row.id}
-                  className="cursor-pointer"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${
-                      virtualRow.start - virtualRowIndex * virtualRow.size
-                    }px)`
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className="py-0"
-                      onClick={() => {
-                        setSelectedTransactionIndex(virtualRow.index)
-                        setIsTransactionsDetailsModalOpen(true)
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </MemoizedTableRow>
-              )
-            })}
-        </TableBody>
-      </Table>
-    )
-  }
-
-  const RenderNoTransactions = () => {
-    return (
-      <div className="flex items-center h-screen flex-col gap-2 pt-8">
-        <p className="text-muted-foreground">No transactions here</p>
-        <Frown className="h-24 w-24 text-muted" />
-      </div>
-    )
-  }
-
-  const RenderLoading = () => {
-    return (
-      <div className="flex flex-col gap-4">
-        {Array.from({ length: 12 }).map((_, index) => (
-          <div key={index} className="flex gap-2">
-            <Skeleton className="w-1/12 h-8" />
-            <Skeleton className="w-4/12 h-8" />
-            <Skeleton className="w-1/12 h-8" />
-            <Skeleton className="w-1/12 h-8" />
-            <Skeleton className="w-1/12 h-8" />
-            <Skeleton className="w-2/12 h-8" />
-            <Skeleton className="w-1/12 h-8" />
-            <Skeleton className="w-1/12 h-8" />
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const RenderError = () => {
-    return <div>Error</div>
-  }
-
-  const RenderContent = () => {
-    if (isError) {
-      return <RenderError />
+  useEffect(() => {
+    if (selectedTransactionIds.size === 0) {
+      return
     }
 
-    if (isLoading || data === undefined) {
-      return <RenderLoading />
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        clearSelection()
+      }
     }
 
-    if (data?.length === 0) {
-      return <RenderNoTransactions />
+    window.addEventListener("keydown", handleEscape, { capture: true })
+    return () =>
+      window.removeEventListener("keydown", handleEscape, { capture: true })
+  }, [clearSelection, selectedTransactionIds.size])
+
+  const selectAllTransactions = useCallback(() => {
+    setSelectedTransactionIds(new Set(transactionIds))
+  }, [transactionIds])
+
+  const deleteSelectedTransactions = useCallback(async () => {
+    const ids = [...selectedTransactionIds]
+
+    if (ids.length === 0) {
+      return
     }
 
-    return <RenderTable />
-  }
+    setIsDeletingSelected(true)
+
+    try {
+      await onDeleteTransactions(ids)
+      clearSelection()
+      toast({
+        title: `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted`
+      })
+    } catch {
+      toast({
+        title: "Could not delete the selected transactions",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDeletingSelected(false)
+    }
+  }, [clearSelection, onDeleteTransactions, selectedTransactionIds, toast])
+
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>, transactionId: string) => {
+      if (event.shiftKey) {
+        event.preventDefault()
+        setSelectedTransactionIds((currentSelection) =>
+          selectTransactionRange(
+            transactionIds,
+            selectionAnchorId,
+            transactionId,
+            currentSelection
+          )
+        )
+        setSelectionAnchorId((currentAnchor) =>
+          currentAnchor && transactionIdSet.has(currentAnchor)
+            ? currentAnchor
+            : transactionId
+        )
+        return
+      }
+
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        setSelectedTransactionIds((currentSelection) =>
+          toggleTransactionSelection(currentSelection, transactionId)
+        )
+        setSelectionAnchorId(transactionId)
+        return
+      }
+
+      setSelectedTransactionId(transactionId)
+      setIsTransactionsDetailsModalOpen(true)
+    },
+    [selectionAnchorId, transactionIds, transactionIdSet]
+  )
+
+  const handleNextTransaction = useCallback(() => {
+    setSelectedTransactionId((currentId) => {
+      const currentIndex = sortedData.findIndex(
+        (transaction) => transaction.id === currentId
+      )
+      if (currentIndex < 0) return currentId
+
+      const nextIndex = Math.min(currentIndex + 1, sortedData.length - 1)
+      return sortedData[nextIndex]?.id ?? currentId
+    })
+  }, [sortedData])
+
+  const handlePreviousTransaction = useCallback(() => {
+    setSelectedTransactionId((currentId) => {
+      const currentIndex = sortedData.findIndex(
+        (transaction) => transaction.id === currentId
+      )
+      if (currentIndex < 0) return currentId
+
+      return sortedData[Math.max(0, currentIndex - 1)]?.id ?? currentId
+    })
+  }, [sortedData])
+
+  const allTransactionsSelected =
+    transactionIds.length > 0 &&
+    selectedTransactionIds.size === transactionIds.length
+
+  const content = isError ? (
+    <TransactionsError />
+  ) : isLoading || data === undefined ? (
+    <TransactionsLoading />
+  ) : !data || data.length === 0 ? (
+    <NoTransactions />
+  ) : (
+    <TransactionLedger
+      table={table}
+      rowVirtualizer={rowVirtualizer}
+      selectedTransactionIds={selectedTransactionIds}
+      onRowClick={handleRowClick}
+    />
+  )
 
   return (
-    <div className="flex relative" ref={tableContainerRef}>
-      <div className={cn("p-4 flex-1 transition-all duration-300")}>
-        {RenderContent()}
-        {selectedTransactionIndex !== undefined &&
-          selectedTransactionIndex !== null && (
-            <TransactionDetailsModal
-              transaction={data ? data[selectedTransactionIndex] : null}
-              open={isTransactionsDetailsModalOpen}
-              onOpenChange={setIsTransactionsDetailsModalOpen}
-              totalTransactions={data?.length || 0}
-              currentTransactionIndex={selectedTransactionIndex}
-              onNextTransaction={() => {
-                if (selectedTransactionIndex === null) {
-                  return
-                }
-
-                setSelectedTransactionIndex(
-                  Math.min(
-                    data?.length ? data?.length - 1 : 0,
-                    selectedTransactionIndex + 1
-                  )
-                )
-              }}
-              onPreviousTransaction={() => {
-                if (selectedTransactionIndex === null) {
-                  return
-                }
-
-                setSelectedTransactionIndex(
-                  Math.max(0, selectedTransactionIndex - 1)
-                )
-              }}
-            />
-          )}
-        <CreateTransactionModal
-          open={openCreateTransactionModal}
-          onOpenChange={setOpenCreateTransactionModal}
-        />
+    <div
+      className="transactions-table-shell relative max-h-[78svh] min-h-64 overflow-auto border-2 border-fina-ink bg-fina-surface shadow-fina-lg"
+      ref={tableContainerRef}
+    >
+      <div className={cn("min-w-0 flex-1 transition-all duration-300")}>
+        {content}
+        {selectedTransactionIndex >= 0 && (
+          <TransactionDetailsModal
+            transaction={sortedData[selectedTransactionIndex] || null}
+            open={isTransactionsDetailsModalOpen}
+            onOpenChange={setIsTransactionsDetailsModalOpen}
+            totalTransactions={sortedData.length}
+            currentTransactionIndex={selectedTransactionIndex}
+            onNextTransaction={handleNextTransaction}
+            onPreviousTransaction={handlePreviousTransaction}
+          />
+        )}
       </div>
+      {selectedTransactionIds.size > 0 ? (
+        <TransactionBulkActions
+          selectedCount={selectedTransactionIds.size}
+          allSelected={allTransactionsSelected}
+          isDeleting={isDeletingSelected}
+          onSelectAll={selectAllTransactions}
+          onClearSelection={clearSelection}
+          onDelete={deleteSelectedTransactions}
+        />
+      ) : null}
     </div>
   )
 }

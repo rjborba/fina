@@ -1,0 +1,197 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class ImportSystem1790110800000 implements MigrationInterface {
+  name = 'ImportSystem1790110800000';
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      ALTER TABLE public.bankaccounts
+      ADD CONSTRAINT bankaccounts_id_group_id_unique UNIQUE (id, group_id)
+    `);
+    await queryRunner.query(`
+      ALTER TABLE public.imports
+        ADD COLUMN account_id bigint,
+        ADD COLUMN file_hash character(64),
+        ADD COLUMN file_size bigint,
+        ADD COLUMN source_fingerprint character(64),
+        ADD COLUMN config_version smallint,
+        ADD COLUMN mapping_config jsonb,
+        ADD COLUMN transaction_count integer,
+        ADD COLUMN excluded_row_count integer,
+        ADD COLUMN date_start date,
+        ADD COLUMN date_end date,
+        ADD COLUMN inflow_total double precision,
+        ADD COLUMN outflow_total double precision
+    `);
+    await queryRunner.query(`
+      UPDATE public.imports import_record
+      SET account_id = account_for_import.account_id
+      FROM (
+        SELECT import_id, min(bankaccount_id) AS account_id
+        FROM public.transactions
+        WHERE import_id IS NOT NULL
+        GROUP BY import_id
+      ) account_for_import
+      WHERE import_record.id = account_for_import.import_id
+    `);
+    await queryRunner.query(`
+      UPDATE public.imports import_record
+      SET account_id = account_for_group.account_id
+      FROM (
+        SELECT group_id, min(id) AS account_id
+        FROM public.bankaccounts
+        GROUP BY group_id
+      ) account_for_group
+      WHERE import_record.account_id IS NULL
+        AND import_record.group_id = account_for_group.group_id
+    `);
+    await queryRunner.query(`
+      UPDATE public.imports import_record
+      SET
+        file_hash = lpad(to_hex(import_record.id), 64, '0'),
+        file_size = 1,
+        source_fingerprint = repeat('0', 64),
+        config_version = 1,
+        mapping_config = '{
+          "version": 1,
+          "delimiter": ";",
+          "encoding": "utf-8",
+          "hasHeader": true,
+          "dateFormat": "DD/MM/YYYY",
+          "numberFormat": "decimal-comma",
+          "dateColumn": 0,
+          "descriptionColumns": [],
+          "installmentColumn": null,
+          "amountMode": "signed",
+          "amountColumn": 1,
+          "debitColumn": null,
+          "creditColumn": null,
+          "chargesPositive": false
+        }'::jsonb,
+        transaction_count = (
+          SELECT count(*)::integer
+          FROM public.transactions transaction_record
+          WHERE transaction_record.import_id = import_record.id
+        ),
+        excluded_row_count = 0,
+        date_start = (
+          SELECT min(transaction_record.date)::date
+          FROM public.transactions transaction_record
+          WHERE transaction_record.import_id = import_record.id
+        ),
+        date_end = (
+          SELECT max(transaction_record.date)::date
+          FROM public.transactions transaction_record
+          WHERE transaction_record.import_id = import_record.id
+        ),
+        inflow_total = 0,
+        outflow_total = 0
+    `);
+    await queryRunner.query(`
+      ALTER TABLE public.imports
+        ALTER COLUMN account_id SET NOT NULL,
+        ALTER COLUMN file_hash SET NOT NULL,
+        ALTER COLUMN file_size SET NOT NULL,
+        ALTER COLUMN source_fingerprint SET NOT NULL,
+        ALTER COLUMN config_version SET NOT NULL,
+        ALTER COLUMN mapping_config SET NOT NULL,
+        ALTER COLUMN transaction_count SET NOT NULL,
+        ALTER COLUMN excluded_row_count SET NOT NULL,
+        ALTER COLUMN inflow_total SET NOT NULL,
+        ALTER COLUMN outflow_total SET NOT NULL,
+        ADD CONSTRAINT imports_file_size_check
+          CHECK (file_size BETWEEN 1 AND 5242880),
+        ADD CONSTRAINT imports_transaction_count_check
+          CHECK (transaction_count BETWEEN 0 AND 5000),
+        ADD CONSTRAINT imports_excluded_row_count_check
+          CHECK (excluded_row_count >= 0),
+        ADD CONSTRAINT imports_file_hash_check
+          CHECK (file_hash ~ '^[a-f0-9]{64}$'),
+        ADD CONSTRAINT imports_source_fingerprint_check
+          CHECK (source_fingerprint ~ '^[a-f0-9]{64}$'),
+        ADD CONSTRAINT imports_account_group_fk
+          FOREIGN KEY (account_id, group_id)
+          REFERENCES public.bankaccounts(id, group_id)
+          ON UPDATE CASCADE ON DELETE CASCADE
+    `);
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX imports_active_file_unique
+      ON public.imports (group_id, account_id, file_hash)
+      WHERE removed = false
+    `);
+    await queryRunner.query(`
+      ALTER TABLE public.transactions ADD COLUMN source_row integer,
+      ADD CONSTRAINT transactions_source_row_check
+        CHECK (source_row IS NULL OR source_row > 0)
+    `);
+    await queryRunner.query(`
+      CREATE TABLE public.import_profiles (
+        id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        group_id bigint NOT NULL REFERENCES public.groups(id)
+          ON UPDATE CASCADE ON DELETE CASCADE,
+        account_id bigint NOT NULL,
+        source_fingerprint character(64) NOT NULL
+          CHECK (source_fingerprint ~ '^[a-f0-9]{64}$'),
+        config_version smallint NOT NULL,
+        mapping_config jsonb NOT NULL,
+        CONSTRAINT import_profiles_account_group_fk
+          FOREIGN KEY (account_id, group_id)
+          REFERENCES public.bankaccounts(id, group_id)
+          ON UPDATE CASCADE ON DELETE CASCADE,
+        UNIQUE (group_id, account_id, source_fingerprint)
+      )
+    `);
+    await queryRunner.query(`
+      CREATE INDEX import_profiles_group_fingerprint_idx
+      ON public.import_profiles (group_id, source_fingerprint)
+    `);
+    await queryRunner.query(`
+      ALTER TABLE public.import_profiles DISABLE ROW LEVEL SECURITY
+    `);
+    await queryRunner.query(`
+      REVOKE ALL PRIVILEGES ON public.import_profiles
+      FROM PUBLIC, anon, authenticated, service_role
+    `);
+    await queryRunner.query(`
+      REVOKE ALL PRIVILEGES ON SEQUENCE public.import_profiles_id_seq
+      FROM PUBLIC, anon, authenticated, service_role
+    `);
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('DROP TABLE public.import_profiles');
+    await queryRunner.query(`
+      ALTER TABLE public.transactions
+      DROP CONSTRAINT transactions_source_row_check,
+      DROP COLUMN source_row
+    `);
+    await queryRunner.query('DROP INDEX public.imports_active_file_unique');
+    await queryRunner.query(`
+      ALTER TABLE public.imports
+        DROP CONSTRAINT imports_account_group_fk,
+        DROP CONSTRAINT imports_source_fingerprint_check,
+        DROP CONSTRAINT imports_file_hash_check,
+        DROP CONSTRAINT imports_excluded_row_count_check,
+        DROP CONSTRAINT imports_transaction_count_check,
+        DROP CONSTRAINT imports_file_size_check,
+        DROP COLUMN outflow_total,
+        DROP COLUMN inflow_total,
+        DROP COLUMN date_end,
+        DROP COLUMN date_start,
+        DROP COLUMN excluded_row_count,
+        DROP COLUMN transaction_count,
+        DROP COLUMN mapping_config,
+        DROP COLUMN config_version,
+        DROP COLUMN source_fingerprint,
+        DROP COLUMN file_size,
+        DROP COLUMN file_hash,
+        DROP COLUMN account_id
+    `);
+    await queryRunner.query(`
+      ALTER TABLE public.bankaccounts
+      DROP CONSTRAINT bankaccounts_id_group_id_unique
+    `);
+  }
+}

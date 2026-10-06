@@ -1,7 +1,6 @@
 import {
   Column,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -9,11 +8,10 @@ import {
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
-import { Category } from '@fina/types';
+import type { CategoryColor, CategoryIcon } from '@fina/types';
 
-@Index('categories_pkey', ['id'], { unique: true })
 @Entity('categories', { schema: 'public' })
-export class Categories implements Category {
+export class Categories {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -26,7 +24,20 @@ export class Categories implements Category {
   @Column('text', { name: 'name' })
   name: string;
 
-  @ManyToOne(() => Groups, (groups) => groups.categories)
+  @Column('text', { name: 'icon', default: 'tag' })
+  icon: CategoryIcon;
+
+  @Column('text', { name: 'color', default: 'yellow' })
+  color: CategoryColor;
+
+  @Column('boolean', { name: 'removed', default: false })
+  removed: boolean;
+
+  @ManyToOne(() => Groups, (groups) => groups.categories, {
+    nullable: false,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
   group: Groups;
 

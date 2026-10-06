@@ -1,213 +1,372 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Brackets, Repository } from 'typeorm';
-import { Transactions } from './entities/transaction.entity';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-  Bankaccount,
-  Category,
-  Group,
-  Import,
-  Transaction,
   CreateTransactionInputDto,
   QueryTransactionInputDto,
+  TransactionOutput,
   UpdateTransactionInputDto,
 } from '@fina/types';
+import { Brackets, DataSource, Repository } from 'typeorm';
+import { AuthorizationService } from '../auth/authorization.service';
+import { Bankaccounts } from '../bankaccounts/entities/bankaccount.entity';
+import { Categories } from '../categories/entities/category.entity';
+import { Imports } from '../imports/entities/import.entity';
+import { Transactions } from './entities/transaction.entity';
+import {
+  toDateTimeOutput,
+  toNullableDateOutput,
+  toNullableDateTimeOutput,
+} from '../common/date-output';
+import { deriveBillDueDate } from '../common/bill-date';
 
 @Injectable()
 export class TransactionsService {
   constructor(
     @InjectRepository(Transactions)
-    private readonly transactionRepository: Repository<Transactions>,
+    private readonly transactions: Repository<Transactions>,
+    private readonly dataSource: DataSource,
+    private readonly authorization: AuthorizationService,
   ) {}
 
-  async create(createTransactionDto: CreateTransactionInputDto) {
-    const entity = new Transactions({
-      description: createTransactionDto.description,
-      value: createTransactionDto.value,
-      date: createTransactionDto.date,
-      installmentTotal: createTransactionDto.installmentTotal,
-      installmentCurrent: createTransactionDto.installmentCurrent,
-      creditDueDate: createTransactionDto.creditDueDate,
-      observation: createTransactionDto.observation,
-      removed: createTransactionDto.removed,
-      toBeConsideredAt: createTransactionDto.toBeConsideredAt,
-      calculatedDate: createTransactionDto.calculatedDate,
-      bankaccount: { id: createTransactionDto.bankaccountId } as Bankaccount,
-      category: { id: createTransactionDto.categoryId } as Category,
-      group: { id: createTransactionDto.groupId } as Group,
-      import: { id: createTransactionDto.importId } as Import,
-    });
-
-    return await this.transactionRepository.save(entity);
-  }
-
-  async createBulk(createTransactionDtos: CreateTransactionInputDto[]) {
-    const items = createTransactionDtos.map(
-      (createTransactionDto) =>
-        new Transactions({
-          description: createTransactionDto.description,
-          value: createTransactionDto.value,
-          date: createTransactionDto.date,
-          installmentTotal: createTransactionDto.installmentTotal,
-          installmentCurrent: createTransactionDto.installmentCurrent,
-          creditDueDate: createTransactionDto.creditDueDate,
-          observation: createTransactionDto.observation,
-          removed: createTransactionDto.removed,
-          toBeConsideredAt: createTransactionDto.toBeConsideredAt,
-          calculatedDate: createTransactionDto.calculatedDate,
-          bankaccount: {
-            id: createTransactionDto.bankaccountId,
-          } as Bankaccount,
-          category: { id: createTransactionDto.categoryId } as Category,
-          group: { id: createTransactionDto.groupId } as Group,
-          import: { id: createTransactionDto.importId } as Import,
-        }),
+  async create(
+    userId: string,
+    input: CreateTransactionInputDto,
+  ): Promise<TransactionOutput> {
+    const account = await this.assertReferences(userId, input);
+    if (!account) throw new NotFoundException('Resource not found');
+    const billDueDate = this.resolveBillDueDate(account, input.billMonth);
+    const saved = await this.transactions.save(
+      this.transactions.create({
+        description: input.description,
+        value: input.value,
+        date: input.date,
+        installmentTotal: input.installmentTotal,
+        installmentCurrent: input.installmentCurrent,
+        creditDueDate: billDueDate,
+        observation: input.observation,
+        removed: false,
+        toBeConsideredAt: billDueDate,
+        calculatedDate: input.date,
+        bankaccount: { id: input.bankaccountId },
+        category: input.categoryId ? { id: input.categoryId } : null,
+        group: { id: input.groupId },
+        import: input.importId ? { id: input.importId } : null,
+      }),
     );
-    const transactions = await this.transactionRepository.save(items);
-
-    return transactions;
+    return this.findOne(userId, saved.id);
   }
 
-  async findAll({
-    groupId,
-    page,
-    pageSize,
-    startDate,
-    endDate,
-    categoryIdList,
-    accountIdList,
-    search,
-  }: QueryTransactionInputDto) {
-    const qb = this.transactionRepository
+  async findAll(
+    userId: string,
+    {
+      groupId,
+      page,
+      pageSize,
+      startDate,
+      endDate,
+      categoryIdList,
+      accountIdList,
+      accountType,
+      search,
+    }: QueryTransactionInputDto,
+  ): Promise<{ data: TransactionOutput[]; totalCount: number }> {
+    await this.authorization.assertMember(userId, groupId);
+    const query = this.transactions
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
-      .leftJoinAndSelect('transaction.group', 'group')
-      .leftJoinAndSelect('transaction.import', 'import')
-      .where('group.id = :groupId', { groupId });
+      .innerJoinAndSelect('transaction.group', 'group_record')
+      .innerJoin(
+        'group_record.userGroups',
+        'membership',
+        'membership.user_id = :userId',
+        { userId },
+      )
+      .leftJoinAndSelect('transaction.import', 'import_record')
+      .leftJoinAndSelect(
+        'transaction.billPaymentReconciliation',
+        'bill_payment_reconciliation',
+      )
+      .where('group_record.id = :groupId', { groupId })
+      .andWhere('transaction.removed IS NOT TRUE');
 
     if (startDate) {
-      qb.andWhere(
-        new Brackets((qb1) => {
-          qb1
+      const startDateValue = startDate.toISOString().slice(0, 10);
+      query.andWhere(
+        new Brackets((outer) => {
+          outer
             .where('transaction.toBeConsideredAt >= :startDate', {
-              startDate,
+              startDate: startDateValue,
             })
             .orWhere(
-              new Brackets((qb2) => {
-                qb2
+              new Brackets((inner) => {
+                inner
                   .where('transaction.toBeConsideredAt IS NULL')
-                  .andWhere('transaction.date >= :startDate', { startDate });
+                  .andWhere('transaction.date >= :startDate', {
+                    startDate: startDateValue,
+                  });
               }),
             );
         }),
       );
     }
     if (endDate) {
-      qb.andWhere(
-        new Brackets((qb1) => {
-          qb1
-            .where('transaction.toBeConsideredAt <= :endDate', { endDate })
+      const endDateValue = endDate.toISOString().slice(0, 10);
+      query.andWhere(
+        new Brackets((outer) => {
+          outer
+            .where('transaction.toBeConsideredAt <= :endDate', {
+              endDate: endDateValue,
+            })
             .orWhere(
-              new Brackets((qb2) => {
-                qb2
+              new Brackets((inner) => {
+                inner
                   .where('transaction.toBeConsideredAt IS NULL')
-                  .andWhere('transaction.date <= :endDate', { endDate });
+                  .andWhere('transaction.date <= :endDate', {
+                    endDate: endDateValue,
+                  });
               }),
             );
         }),
       );
     }
-    if (categoryIdList && categoryIdList.length > 0) {
-      const withoutNull = categoryIdList.filter(
-        (current) => current !== null && current !== '-1',
-      );
+    if (categoryIdList?.length) {
+      const categoryIds = categoryIdList.filter((id) => id !== '-1');
       if (categoryIdList.includes('-1')) {
-        qb.andWhere(
-          new Brackets((qb1) => {
-            if (withoutNull.length > 0) {
-              qb1.where('category.id IN (:...withoutNull)', { withoutNull });
+        query.andWhere(
+          new Brackets((categories) => {
+            if (categoryIds.length) {
+              categories.where('category.id IN (:...categoryIds)', {
+                categoryIds,
+              });
             }
-            qb1.orWhere('category.id IS NULL');
+            categories.orWhere('category.id IS NULL');
           }),
         );
       } else {
-        qb.andWhere('category.id IN (:...categoryIdList)', {
-          categoryIdList: withoutNull,
-        });
+        query.andWhere('category.id IN (:...categoryIds)', { categoryIds });
       }
     }
-
-    if (accountIdList && accountIdList.length > 0) {
-      qb.andWhere('bankaccount.id IN (:...accountIdList)', { accountIdList });
+    if (accountIdList?.length) {
+      query.andWhere('bankaccount.id IN (:...accountIdList)', {
+        accountIdList,
+      });
+    }
+    if (accountType) {
+      query.andWhere('bankaccount.type = :accountType', { accountType });
     }
     if (search) {
-      qb.andWhere('transaction.description ILIKE :search', {
+      query.andWhere('transaction.description ILIKE :search', {
         search: `%${search}%`,
       });
     }
 
-    qb.orderBy('transaction.calculatedDate', 'DESC');
+    query.orderBy('transaction.calculatedDate', 'DESC');
+    if (pageSize) query.take(pageSize);
+    if (page !== undefined && pageSize) query.skip(page * pageSize);
 
-    if (pageSize) {
-      qb.take(pageSize);
-    }
-    if (page && pageSize) {
-      console.log(page, pageSize);
-      qb.skip(page * pageSize);
-    }
-
-    const [data, totalCount] = await qb.getManyAndCount();
-    return { data, totalCount };
+    const [data, totalCount] = await query.getManyAndCount();
+    return { data: data.map((item) => this.toOutput(item)), totalCount };
   }
 
-  async findOne(id: string): Promise<Transaction> {
-    const transaction = await this.transactionRepository.findOne({
-      where: { id },
-      relations: ['category', 'bankaccount', 'group', 'import'],
-    });
-
-    if (!transaction) {
-      throw new NotFoundException('Transaction not found');
-    }
-
-    return transaction;
+  async findOne(userId: string, id: string): Promise<TransactionOutput> {
+    return this.toOutput(await this.findEntity(userId, id));
   }
 
   async update(
+    userId: string,
     id: string,
-    updateTransactionDto: UpdateTransactionInputDto,
-  ): Promise<Transaction> {
-    await this.transactionRepository.update(id, {
-      description: updateTransactionDto.description,
-      value: updateTransactionDto.value,
-      date: updateTransactionDto.date,
-      installmentTotal: updateTransactionDto.installmentTotal,
-      installmentCurrent: updateTransactionDto.installmentCurrent,
-      creditDueDate: updateTransactionDto.creditDueDate,
-      observation: updateTransactionDto.observation,
-      removed: updateTransactionDto.removed,
-      toBeConsideredAt: updateTransactionDto.toBeConsideredAt,
-      calculatedDate: updateTransactionDto.calculatedDate,
-      // bankaccount: updateTransactionDto.bankaccountId
-      //   ? { id: updateTransactionDto.bankaccountId }
-      //   : undefined,
-      category: updateTransactionDto.categoryId
-        ? { id: updateTransactionDto.categoryId }
-        : undefined,
-      // group: updateTransactionDto.groupId
-      //   ? { id: updateTransactionDto.groupId }
-      //   : undefined,
-      // import: updateTransactionDto.importId
-      //   ? { id: updateTransactionDto.importId }
-      //   : undefined,
+    input: UpdateTransactionInputDto,
+  ): Promise<TransactionOutput> {
+    const current = await this.findEntity(userId, id);
+    await this.assertReferences(userId, {
+      groupId: current.group.id,
+      bankaccountId: input.bankaccountId,
+      categoryId: input.categoryId,
     });
 
-    return this.findOne(id);
+    if (input.description !== undefined)
+      current.description = input.description;
+    if (input.value !== undefined) current.value = input.value;
+    if (input.date !== undefined) current.date = input.date;
+    if (input.installmentTotal !== undefined) {
+      current.installmentTotal = input.installmentTotal;
+    }
+    if (input.installmentCurrent !== undefined) {
+      current.installmentCurrent = input.installmentCurrent;
+    }
+    if (input.creditDueDate !== undefined) {
+      current.creditDueDate = input.creditDueDate;
+    }
+    if (input.observation !== undefined)
+      current.observation = input.observation;
+    if (input.toBeConsideredAt !== undefined) {
+      current.toBeConsideredAt = input.toBeConsideredAt;
+    }
+    if (input.calculatedDate !== undefined) {
+      current.calculatedDate = input.calculatedDate;
+    }
+    if (input.bankaccountId !== undefined) {
+      current.bankaccount = input.bankaccountId
+        ? ({ id: input.bankaccountId } as Bankaccounts)
+        : null;
+    }
+    if (input.categoryId !== undefined) {
+      current.category = input.categoryId
+        ? ({ id: input.categoryId } as Categories)
+        : null;
+    }
+    await this.transactions.save(current);
+    return this.findOne(userId, id);
   }
 
-  async remove(id: number) {
-    await this.transactionRepository.delete(id);
-    return { data: 'success' };
+  async remove(userId: string, id: string): Promise<{ id: string }> {
+    const transaction = await this.findEntity(userId, id);
+    await this.transactions.update(
+      { id, group: { id: transaction.group.id } },
+      { removed: true },
+    );
+    return { id };
+  }
+
+  private async findEntity(userId: string, id: string): Promise<Transactions> {
+    const transaction = await this.transactions
+      .createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.category', 'category')
+      .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
+      .innerJoinAndSelect('transaction.group', 'group_record')
+      .leftJoinAndSelect('transaction.import', 'import_record')
+      .leftJoinAndSelect(
+        'transaction.billPaymentReconciliation',
+        'bill_payment_reconciliation',
+      )
+      .innerJoin(
+        'group_record.userGroups',
+        'membership',
+        'membership.user_id = :userId',
+        { userId },
+      )
+      .where('transaction.id = :id', { id })
+      .andWhere('transaction.removed IS NOT TRUE')
+      .getOne();
+    if (!transaction) throw new NotFoundException('Resource not found');
+    return transaction;
+  }
+
+  private async assertReferences(
+    userId: string,
+    input: {
+      groupId: string;
+      bankaccountId?: string | null;
+      categoryId?: string | null;
+      importId?: string | null;
+    },
+  ): Promise<Bankaccounts | null> {
+    await this.authorization.assertMember(userId, input.groupId);
+    const [account, category, importRecord] = await Promise.all([
+      input.bankaccountId
+        ? this.dataSource.getRepository(Bankaccounts).findOne({
+            where: {
+              id: input.bankaccountId,
+              group: { id: input.groupId },
+              removed: false,
+            },
+          })
+        : Promise.resolve(null),
+      input.categoryId
+        ? this.dataSource.getRepository(Categories).exists({
+            where: {
+              id: input.categoryId,
+              group: { id: input.groupId },
+              removed: false,
+            },
+          })
+        : Promise.resolve(true),
+      input.importId
+        ? this.dataSource.getRepository(Imports).exists({
+            where: {
+              id: input.importId,
+              group: { id: input.groupId },
+              removed: false,
+            },
+          })
+        : Promise.resolve(true),
+    ]);
+    if ((input.bankaccountId && !account) || !category || !importRecord) {
+      throw new NotFoundException('Resource not found');
+    }
+    return account;
+  }
+
+  private resolveBillDueDate(
+    account: Bankaccounts,
+    billMonth: string | null,
+  ): string | null {
+    if (account.type === 'credit' && billMonth === null) {
+      throw new BadRequestException(
+        'Bill month is required for credit card transactions',
+      );
+    }
+    if (account.type !== 'credit' && billMonth !== null) {
+      throw new BadRequestException(
+        'Bill month is only allowed for credit card transactions',
+      );
+    }
+    if (account.type !== 'credit') return null;
+    if (!account.dueDate) {
+      throw new BadRequestException(
+        'Credit card account must have a configured due day',
+      );
+    }
+    return deriveBillDueDate(account.dueDate, billMonth as string);
+  }
+
+  private toOutput(transaction: Transactions): TransactionOutput {
+    return {
+      id: transaction.id,
+      createdAt: toDateTimeOutput(transaction.createdAt),
+      description: transaction.description,
+      value: transaction.value,
+      date: toNullableDateTimeOutput(transaction.date),
+      installmentTotal: transaction.installmentTotal ?? null,
+      installmentCurrent: transaction.installmentCurrent ?? null,
+      creditDueDate: toNullableDateOutput(transaction.creditDueDate),
+      observation: transaction.observation ?? null,
+      toBeConsideredAt: toNullableDateOutput(transaction.toBeConsideredAt),
+      calculatedDate: toNullableDateOutput(transaction.calculatedDate),
+      billPayment: transaction.billPaymentReconciliation
+        ? {
+            creditAccountId:
+              transaction.billPaymentReconciliation.creditAccountId,
+            billMonth: toNullableDateOutput(
+              transaction.billPaymentReconciliation.billMonth,
+            )!.slice(0, 7),
+          }
+        : null,
+      bankaccount: transaction.bankaccount
+        ? {
+            id: transaction.bankaccount.id,
+            name: transaction.bankaccount.name,
+            type: transaction.bankaccount.type,
+            dueDate: transaction.bankaccount.dueDate,
+          }
+        : null,
+      category: transaction.category
+        ? {
+            id: transaction.category.id,
+            name: transaction.category.name,
+            icon: transaction.category.icon,
+            color: transaction.category.color,
+          }
+        : null,
+      group: { id: transaction.group.id, name: transaction.group.name },
+      import: transaction.import
+        ? { id: transaction.import.id, fileName: transaction.import.fileName }
+        : null,
+    };
   }
 }

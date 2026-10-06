@@ -2,6 +2,7 @@ import { FC } from "react"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
@@ -22,6 +23,8 @@ import { useCategories } from "@/data/categories/useCategories"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { toast } from "@/hooks/use-toast"
 import { CreateTransactionInputDtoType } from "@fina/types"
+import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { BillMonthPicker } from "@/components/BillMonthPicker"
 
 interface CreateTransactionModalProps {
   onOpenChange?: (open: boolean) => void
@@ -37,7 +40,8 @@ type FormData = {
   bankaccount_id: string
   installment_current: string
   installment_total: string
-  group_id?: number
+  bill_month: string
+  group_id?: string
 }
 
 export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
@@ -53,11 +57,6 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
   })
   const { addMutation } = useTransactionMutation()
 
-  const isCreditCardAccount = (accountId: string) => {
-    const account = bankAccounts?.find((acc) => acc.id.toString() === accountId)
-    return account?.type === "credit"
-  }
-
   const form = useForm<FormData>({
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
@@ -68,9 +67,15 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       bankaccount_id: "",
       installment_current: "",
       installment_total: "",
+      bill_month: "",
       group_id: selectedGroup?.id
     }
   })
+  const selectedAccountId = form.watch("bankaccount_id")
+  const selectedAccount = bankAccounts?.find(
+    (account) => account.id.toString() === selectedAccountId
+  )
+  const creditCardSelected = selectedAccount?.type === "credit"
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -81,11 +86,13 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       if (!data.group_id) {
         throw new Error("Group ID is required")
       }
+      if (selectedAccount?.type === "credit" && !data.bill_month) {
+        throw new Error("Bill month is required")
+      }
 
       const transactionData: CreateTransactionInputDtoType = {
         date: data.date ? new Date(data.date) : null,
-        creditDueDate:
-          selectedAccount?.type === "credit" ? selectedAccount.dueDate : null,
+        billMonth: selectedAccount?.type === "credit" ? data.bill_month : null,
         description: data.description,
         value: data.value ? parseFloat(data.value) : null,
         categoryId: data.category_id ? data.category_id : null,
@@ -106,8 +113,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       })
       form.reset()
       onOpenChange?.(false)
-    } catch (error) {
-      console.error("Failed to create transaction:", error)
+    } catch {
       toast({
         title: "Failed to create transaction",
         variant: "destructive"
@@ -125,15 +131,21 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Transaction</DialogTitle>
+          <DialogDescription>
+            Add a transaction to the selected account.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="bankaccount_id">Account</Label>
             <Select
-              onValueChange={(value) => form.setValue("bankaccount_id", value)}
-              value={form.watch("bankaccount_id")}
+              onValueChange={(value) => {
+                form.setValue("bankaccount_id", value)
+                form.setValue("bill_month", "")
+              }}
+              value={selectedAccountId}
             >
-              <SelectTrigger>
+              <SelectTrigger id="bankaccount_id">
                 <SelectValue placeholder="Select an account" />
               </SelectTrigger>
               <SelectContent>
@@ -174,14 +186,21 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               }
               value={form.watch("category_id")}
             >
-              <SelectTrigger>
+              <SelectTrigger id="category_id">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="-">-</SelectItem>
                 {categories?.map((category) => (
                   <SelectItem key={category.id} value={category.id.toString()}>
-                    {category.name}
+                    <span className="flex items-center gap-2">
+                      <CategoryAppearance
+                        icon={category.icon}
+                        color={category.color}
+                        className="size-6 border"
+                      />
+                      {category.name}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -193,26 +212,41 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             <Input id="observation" {...form.register("observation")} />
           </div>
 
-          {isCreditCardAccount(form.watch("bankaccount_id")) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="installment_current">Current Installment</Label>
-                <Input
-                  id="installment_current"
-                  type="number"
-                  {...form.register("installment_current")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="installment_total">Total Installments</Label>
-                <Input
-                  id="installment_total"
-                  type="number"
-                  {...form.register("installment_total")}
-                />
+          {creditCardSelected ? (
+            <div className="space-y-4">
+              <BillMonthPicker
+                id="bill_month"
+                value={form.watch("bill_month")}
+                dueDate={selectedAccount?.dueDate}
+                onValueChange={(value) =>
+                  form.setValue("bill_month", value, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  })
+                }
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="installment_current">
+                    Current Installment
+                  </Label>
+                  <Input
+                    id="installment_current"
+                    type="number"
+                    {...form.register("installment_current")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="installment_total">Total Installments</Label>
+                  <Input
+                    id="installment_total"
+                    type="number"
+                    {...form.register("installment_total")}
+                  />
+                </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           <Button type="submit" className="w-full">
             Create Transaction

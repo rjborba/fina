@@ -69,21 +69,6 @@
 }
 
 @layer base {
-  @media (prefers-color-scheme: light) {
-    :root {
-      color: #213547;
-      background-color: #ffffff;
-    }
-    a:hover {
-      color: #747bff;
-    }
-    button {
-      background-color: #f9f9f9;
-    }
-  }
-}
-
-@layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -172,6 +157,18 @@
   --font-sans: Inter, sans-serif;
   --font-mono: JetBrains Mono, monospace;
   --font-serif: Source Serif 4, serif;
+  --color-fina-ink: var(--fina-ink);
+  --color-fina-canvas: var(--fina-canvas);
+  --color-fina-surface: var(--fina-surface);
+  --color-fina-grid: var(--fina-grid);
+  --color-fina-lime: var(--fina-lime);
+  --color-fina-violet: var(--fina-violet);
+  --color-fina-sky: var(--fina-sky);
+  --color-fina-yellow: var(--fina-yellow);
+  --color-fina-danger: var(--fina-danger);
+  --shadow-fina-sm: var(--fina-shadow-sm);
+  --shadow-fina-md: var(--fina-shadow-md);
+  --shadow-fina-lg: var(--fina-shadow-lg);
   --radius: 0.375rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
@@ -372,5 +369,169 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Neo-brutalist application shell. Transactions is the first fully composed
+   surface; these tokens intentionally establish the direction for the rest. */
+:root {
+  /* Stable Fina brand tokens. These do not change in dark mode, so branded
+     components keep their intended contrast in every application theme. */
+  --fina-ink: #050505;
+  --fina-canvas: #f6f5ef;
+  --fina-surface: #ffffff;
+  --fina-grid: #e8e7e2;
+  --fina-lime: #c7ff00;
+  --fina-violet: #7c3cff;
+  --fina-sky: #aee8ff;
+  --fina-yellow: #fff3a6;
+  --fina-danger: #ff6767;
+  --fina-shadow-sm: 3px 3px 0 var(--fina-ink);
+  --fina-shadow-md: 4px 4px 0 var(--fina-ink);
+  --fina-shadow-lg: 6px 6px 0 var(--fina-ink);
+
+  --background: #f6f5ef;
+  --foreground: #050505;
+  --card: #ffffff;
+  --card-foreground: #050505;
+  --popover: #ffffff;
+  --popover-foreground: #050505;
+  --primary: #c7ff00;
+  --primary-foreground: #050505;
+  --secondary: #e8e7e2;
+  --secondary-foreground: #050505;
+  --muted: #deddd7;
+  --muted-foreground: #484848;
+  --accent: #fff3a6;
+  --accent-foreground: #050505;
+  --border: #050505;
+  --input: #050505;
+  --ring: #7c3cff;
+  --radius: 0rem;
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #c7ff00;
+  --sidebar-primary-foreground: #050505;
+  --sidebar-accent: #c7ff00;
+  --sidebar-accent-foreground: #050505;
+  --sidebar-border: #050505;
+  --sidebar-ring: #c7ff00;
+}
+
+.dark {
+  --background: #181818;
+  --foreground: #f6f5ef;
+  --card: #242424;
+  --card-foreground: #f6f5ef;
+  --popover: #242424;
+  --popover-foreground: #f6f5ef;
+  --primary: #c7ff00;
+  --primary-foreground: #050505;
+  --secondary: #303030;
+  --secondary-foreground: #ffffff;
+  --muted: #303030;
+  --muted-foreground: #b8b8b8;
+  --accent: #7c3cff;
+  --accent-foreground: #ffffff;
+  --border: #f6f5ef;
+  --input: #f6f5ef;
+  --ring: #c7ff00;
+  --radius: 0rem;
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #c7ff00;
+  --sidebar-primary-foreground: #050505;
+  --sidebar-accent: #c7ff00;
+  --sidebar-accent-foreground: #050505;
+  --sidebar-border: #050505;
+  --sidebar-ring: #c7ff00;
+}
+
+html {
+  background: #050505;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings:
+    'ss01' on,
+    'cv11' on;
+}
+
+button,
+a,
+input,
+[role='button'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fina-shell {
+  background-color: var(--fina-grid);
+  background-image: linear-gradient(rgb(0 0 0 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 0 0 / 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.fina-main {
+  min-height: 100svh;
+  overflow-x: clip;
+}
+
+.transactions-hero {
+  background-color: var(--fina-canvas);
+  background-image: radial-gradient(var(--fina-ink) 0.7px, transparent 0.7px);
+  background-size: 10px 10px;
+}
+
+.transactions-table-shell {
+  scrollbar-color: var(--fina-ink) var(--fina-lime);
+  scrollbar-width: auto;
+}
+
+.transactions-table-shell::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.transactions-table-shell::-webkit-scrollbar-track {
+  background: var(--fina-lime);
+  border-left: 1px solid var(--fina-ink);
+  border-top: 1px solid var(--fina-ink);
+}
+
+.transactions-table-shell::-webkit-scrollbar-thumb {
+  background: var(--fina-ink);
+  border: 2px solid var(--fina-lime);
+}
+
+.transactions-table [data-column='date'] {
+  min-width: 88px;
+}
+
+.transactions-table [data-column='transaction'] {
+  min-width: 512px;
+}
+
+.transactions-table [data-column='value'] {
+  min-width: 160px;
+}
+
+@media (max-width: 767px) {
+  .transactions-table {
+    min-width: 760px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

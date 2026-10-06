@@ -15,6 +15,10 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts --pretty",
+    "migration:run": "typeorm-ts-node-commonjs -d src/database/data-source.ts migration:run",
+    "migration:revert": "typeorm-ts-node-commonjs -d src/database/data-source.ts migration:revert",
+    "migration:show": "typeorm-ts-node-commonjs -d src/database/data-source.ts migration:show",
     "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
@@ -33,6 +37,7 @@
     ]
   },
   "dependencies": {
+    "@fina/types": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -41,7 +46,6 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@fina/types": "workspace:*",
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.2.0",
     "nestjs-zod": "^4.3.1",
@@ -64,7 +68,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
-    "@testcontainers/postgresql": "12.1.0",
+    "dotenv": "16.4.7",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -89,7 +93,7 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

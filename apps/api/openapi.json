@@ -19,9 +19,26 @@
       "post": {
         "operationId": "TransactionsController_create",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransactionInputDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -30,10 +47,100 @@
       },
       "get": {
         "operationId": "TransactionsController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "checkout",
+                "credit"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountIdList",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "categoryIdList",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryTransactionOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -56,7 +163,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -87,7 +201,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -108,7 +229,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteTransactionOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -120,9 +248,26 @@
       "post": {
         "operationId": "CategoriesController_create",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryInputDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -143,7 +288,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -166,19 +318,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Categories"
-        ]
-      },
-      "patch": {
-        "operationId": "CategoriesController_update",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -199,7 +346,54 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteCategoryOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/categories/{id}/appearance": {
+      "patch": {
+        "operationId": "CategoriesController_updateAppearance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryAppearanceInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -208,12 +402,48 @@
       }
     },
     "/groups": {
+      "post": {
+        "operationId": "GroupsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Groups"
+        ]
+      },
       "get": {
         "operationId": "GroupsController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -236,7 +466,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -255,9 +492,26 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteGroupInputDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteGroupOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -281,7 +535,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankaccountOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -302,7 +563,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankaccountListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -325,7 +593,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteBankaccountOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -336,25 +611,11 @@
     "/user-groups": {
       "get": {
         "operationId": "UserGroupsController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UserGroups"
-        ]
-      }
-    },
-    "/user-groups/{id}": {
-      "get": {
-        "operationId": "UserGroupsController_findOne",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
             "required": true,
-            "in": "path",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -362,28 +623,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UserGroups"
-        ]
-      },
-      "delete": {
-        "operationId": "UserGroupsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberListOutputDto"
+                }
+              }
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
           }
         },
         "tags": [
@@ -392,12 +639,57 @@
       }
     },
     "/invites": {
+      "post": {
+        "operationId": "InvitesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Invites"
+        ]
+      },
       "get": {
         "operationId": "InvitesController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -405,9 +697,30 @@
         ]
       }
     },
-    "/invites/{id}": {
+    "/invites/mine": {
       "get": {
-        "operationId": "InvitesController_findOne",
+        "operationId": "InvitesController_findMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteListOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Invites"
+        ]
+      }
+    },
+    "/invites/{id}/accept": {
+      "post": {
+        "operationId": "InvitesController_accept",
         "parameters": [
           {
             "name": "id",
@@ -420,13 +733,22 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInviteOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
           "Invites"
         ]
-      },
+      }
+    },
+    "/invites/{id}": {
       "delete": {
         "operationId": "InvitesController_remove",
         "parameters": [
@@ -441,11 +763,49 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteInviteOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
           "Invites"
+        ]
+      }
+    },
+    "/imports/preview": {
+      "post": {
+        "operationId": "ImportsController_preview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewImportInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewImportOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Imports"
         ]
       }
     },
@@ -456,16 +816,36 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/CreateImportInputDto"
+                "type": "object",
+                "required": [
+                  "payload",
+                  "file"
+                ],
+                "properties": {
+                  "payload": {
+                    "$ref": "#/components/schemas/CreateImportInputDto"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -486,7 +866,52 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportListOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Imports"
+        ]
+      }
+    },
+    "/imports/profiles": {
+      "get": {
+        "operationId": "ImportsController_findProfiles",
+        "parameters": [
+          {
+            "name": "fingerprint",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportProfileListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -509,7 +934,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -530,7 +962,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteImportOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -538,26 +977,74 @@
         ]
       }
     },
-    "/users": {
+    "/credit-card-bills": {
       "get": {
-        "operationId": "UsersController_findAll",
-        "parameters": [],
+        "operationId": "CreditCardBillsController_findAll",
+        "parameters": [
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardBillListOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "Users"
+          "CreditCardBills"
         ]
       }
     },
-    "/users/{id}": {
+    "/credit-card-bills/{accountId}/{billMonth}": {
       "get": {
-        "operationId": "UsersController_findOne",
+        "operationId": "CreditCardBillsController_findOne",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billMonth",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
             "required": true,
             "in": "path",
             "schema": {
@@ -567,18 +1054,89 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardBillDetailDto"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "Users"
+          "CreditCardBills"
+        ]
+      }
+    },
+    "/credit-card-bills/{accountId}/{billMonth}/reconciliation": {
+      "post": {
+        "operationId": "CreditCardBillsController_reconcile",
+        "parameters": [
+          {
+            "name": "billMonth",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileCreditCardBillInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardBillDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CreditCardBills"
         ]
       },
       "delete": {
-        "operationId": "UsersController_remove",
+        "operationId": "CreditCardBillsController_unlink",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billMonth",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
             "required": true,
             "in": "path",
             "schema": {
@@ -588,11 +1146,18 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlinkCreditCardBillOutputDto"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "Users"
+          "CreditCardBills"
         ]
       }
     }
@@ -622,6 +1187,496 @@
       }
     },
     "schemas": {
+      "CreateTransactionInputDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "number",
+            "nullable": true
+          },
+          "date": {
+            "nullable": true
+          },
+          "installmentTotal": {
+            "type": "integer",
+            "nullable": true
+          },
+          "installmentCurrent": {
+            "type": "string",
+            "nullable": true
+          },
+          "observation": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankaccountId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "categoryId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "nullable": true
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "importId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "nullable": true
+          },
+          "billMonth": {
+            "type": "string",
+            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
+            "nullable": true
+          }
+        },
+        "required": [
+          "description",
+          "value",
+          "date",
+          "bankaccountId",
+          "groupId",
+          "billMonth"
+        ]
+      },
+      "TransactionOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "number",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "installmentTotal": {
+            "type": "number",
+            "nullable": true
+          },
+          "installmentCurrent": {
+            "type": "string",
+            "nullable": true
+          },
+          "creditDueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "observation": {
+            "type": "string",
+            "nullable": true
+          },
+          "toBeConsideredAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "calculatedDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "billPayment": {
+            "type": "object",
+            "properties": {
+              "creditAccountId": {
+                "type": "string"
+              },
+              "billMonth": {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              }
+            },
+            "required": [
+              "creditAccountId",
+              "billMonth"
+            ],
+            "nullable": true
+          },
+          "bankaccount": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "dueDate": {
+                "type": "integer",
+                "minimum": 1,
+                "exclusiveMinimum": false,
+                "maximum": 31,
+                "exclusiveMaximum": false,
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type",
+              "dueDate"
+            ],
+            "nullable": true
+          },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string",
+                "enum": [
+                  "tag",
+                  "shopping-cart",
+                  "utensils",
+                  "car",
+                  "house",
+                  "heart-pulse",
+                  "plane",
+                  "gamepad-2",
+                  "briefcase",
+                  "book-open",
+                  "coffee",
+                  "dumbbell",
+                  "gift",
+                  "paw-print",
+                  "shirt",
+                  "smartphone",
+                  "music",
+                  "baby",
+                  "wrench",
+                  "wallet-cards",
+                  "bike",
+                  "camera",
+                  "graduation-cap",
+                  "sparkles"
+                ]
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "yellow",
+                  "lime",
+                  "sky",
+                  "violet",
+                  "danger",
+                  "amber",
+                  "orange",
+                  "rose",
+                  "pink",
+                  "fuchsia",
+                  "indigo",
+                  "teal"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "icon",
+              "color"
+            ],
+            "nullable": true
+          },
+          "group": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "import": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "fileName"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "description",
+          "value",
+          "date",
+          "installmentTotal",
+          "installmentCurrent",
+          "creditDueDate",
+          "observation",
+          "toBeConsideredAt",
+          "calculatedDate",
+          "billPayment",
+          "bankaccount",
+          "category",
+          "group",
+          "import"
+        ]
+      },
+      "QueryTransactionOutputDto": {
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "type": "number"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "value": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "installmentTotal": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "installmentCurrent": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "creditDueDate": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "observation": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "toBeConsideredAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "calculatedDate": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "billPayment": {
+                  "type": "object",
+                  "properties": {
+                    "creditAccountId": {
+                      "type": "string"
+                    },
+                    "billMonth": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+                    }
+                  },
+                  "required": [
+                    "creditAccountId",
+                    "billMonth"
+                  ],
+                  "nullable": true
+                },
+                "bankaccount": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "dueDate": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "exclusiveMinimum": false,
+                      "maximum": 31,
+                      "exclusiveMaximum": false,
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "dueDate"
+                  ],
+                  "nullable": true
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "icon": {
+                      "type": "string",
+                      "enum": [
+                        "tag",
+                        "shopping-cart",
+                        "utensils",
+                        "car",
+                        "house",
+                        "heart-pulse",
+                        "plane",
+                        "gamepad-2",
+                        "briefcase",
+                        "book-open",
+                        "coffee",
+                        "dumbbell",
+                        "gift",
+                        "paw-print",
+                        "shirt",
+                        "smartphone",
+                        "music",
+                        "baby",
+                        "wrench",
+                        "wallet-cards",
+                        "bike",
+                        "camera",
+                        "graduation-cap",
+                        "sparkles"
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "yellow",
+                        "lime",
+                        "sky",
+                        "violet",
+                        "danger",
+                        "amber",
+                        "orange",
+                        "rose",
+                        "pink",
+                        "fuchsia",
+                        "indigo",
+                        "teal"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "icon",
+                    "color"
+                  ],
+                  "nullable": true
+                },
+                "group": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "import": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "fileName"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "createdAt",
+                "description",
+                "value",
+                "date",
+                "installmentTotal",
+                "installmentCurrent",
+                "creditDueDate",
+                "observation",
+                "toBeConsideredAt",
+                "calculatedDate",
+                "billPayment",
+                "bankaccount",
+                "category",
+                "group",
+                "import"
+              ]
+            }
+          }
+        },
+        "required": [
+          "totalCount",
+          "data"
+        ]
+      },
       "UpdateTransactionInputDto": {
         "type": "object",
         "properties": {
@@ -637,7 +1692,7 @@
             "nullable": true
           },
           "installmentTotal": {
-            "type": "number",
+            "type": "integer",
             "nullable": true
           },
           "installmentCurrent": {
@@ -651,34 +1706,446 @@
             "type": "string",
             "nullable": true
           },
-          "removed": {
-            "type": "boolean",
-            "nullable": true
-          },
           "toBeConsideredAt": {
-            "type": "string",
             "nullable": true
           },
           "calculatedDate": {
             "nullable": true
           },
           "bankaccountId": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d+$",
+            "nullable": true
           },
           "categoryId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "nullable": true
+          }
+        }
+      },
+      "DeleteTransactionOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CreateCategoryInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "icon": {
+            "type": "string",
+            "enum": [
+              "tag",
+              "shopping-cart",
+              "utensils",
+              "car",
+              "house",
+              "heart-pulse",
+              "plane",
+              "gamepad-2",
+              "briefcase",
+              "book-open",
+              "coffee",
+              "dumbbell",
+              "gift",
+              "paw-print",
+              "shirt",
+              "smartphone",
+              "music",
+              "baby",
+              "wrench",
+              "wallet-cards",
+              "bike",
+              "camera",
+              "graduation-cap",
+              "sparkles"
+            ],
+            "default": "tag"
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "yellow",
+              "lime",
+              "sky",
+              "violet",
+              "danger",
+              "amber",
+              "orange",
+              "rose",
+              "pink",
+              "fuchsia",
+              "indigo",
+              "teal"
+            ],
+            "default": "yellow"
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          }
+        },
+        "required": [
+          "name",
+          "groupId"
+        ]
+      },
+      "CategoryOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "enum": [
+              "tag",
+              "shopping-cart",
+              "utensils",
+              "car",
+              "house",
+              "heart-pulse",
+              "plane",
+              "gamepad-2",
+              "briefcase",
+              "book-open",
+              "coffee",
+              "dumbbell",
+              "gift",
+              "paw-print",
+              "shirt",
+              "smartphone",
+              "music",
+              "baby",
+              "wrench",
+              "wallet-cards",
+              "bike",
+              "camera",
+              "graduation-cap",
+              "sparkles"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "yellow",
+              "lime",
+              "sky",
+              "violet",
+              "danger",
+              "amber",
+              "orange",
+              "rose",
+              "pink",
+              "fuchsia",
+              "indigo",
+              "teal"
+            ]
           },
           "groupId": {
             "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "name",
+          "icon",
+          "color",
+          "groupId"
+        ]
+      },
+      "CategoryListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "name": {
+              "type": "string"
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "tag",
+                "shopping-cart",
+                "utensils",
+                "car",
+                "house",
+                "heart-pulse",
+                "plane",
+                "gamepad-2",
+                "briefcase",
+                "book-open",
+                "coffee",
+                "dumbbell",
+                "gift",
+                "paw-print",
+                "shirt",
+                "smartphone",
+                "music",
+                "baby",
+                "wrench",
+                "wallet-cards",
+                "bike",
+                "camera",
+                "graduation-cap",
+                "sparkles"
+              ]
+            },
+            "color": {
+              "type": "string",
+              "enum": [
+                "yellow",
+                "lime",
+                "sky",
+                "violet",
+                "danger",
+                "amber",
+                "orange",
+                "rose",
+                "pink",
+                "fuchsia",
+                "indigo",
+                "teal"
+              ]
+            },
+            "groupId": {
+              "type": "string"
+            }
           },
-          "importId": {
+          "required": [
+            "id",
+            "createdAt",
+            "name",
+            "icon",
+            "color",
+            "groupId"
+          ]
+        }
+      },
+      "UpdateCategoryAppearanceInputDto": {
+        "type": "object",
+        "properties": {
+          "icon": {
+            "type": "string",
+            "enum": [
+              "tag",
+              "shopping-cart",
+              "utensils",
+              "car",
+              "house",
+              "heart-pulse",
+              "plane",
+              "gamepad-2",
+              "briefcase",
+              "book-open",
+              "coffee",
+              "dumbbell",
+              "gift",
+              "paw-print",
+              "shirt",
+              "smartphone",
+              "music",
+              "baby",
+              "wrench",
+              "wallet-cards",
+              "bike",
+              "camera",
+              "graduation-cap",
+              "sparkles"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "yellow",
+              "lime",
+              "sky",
+              "violet",
+              "danger",
+              "amber",
+              "orange",
+              "rose",
+              "pink",
+              "fuchsia",
+              "indigo",
+              "teal"
+            ]
+          }
+        },
+        "required": [
+          "icon",
+          "color"
+        ]
+      },
+      "DeleteCategoryOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "string"
           }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CreateGroupInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "GroupOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isOwner": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "name",
+          "isOwner"
+        ]
+      },
+      "GroupListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "name": {
+              "type": "string"
+            },
+            "isOwner": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "createdAt",
+            "name",
+            "isOwner"
+          ]
         }
+      },
+      "DeleteGroupInputDto": {
+        "type": "object",
+        "properties": {
+          "confirmName": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "confirmName"
+        ]
+      },
+      "DeleteGroupOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
       },
       "CreateBankaccountInputDto": {
         "type": "object",
         "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "dueDate": {
+            "type": "integer",
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "maximum": 31,
+            "exclusiveMaximum": false,
+            "nullable": true
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "dueDate",
+          "groupId"
+        ]
+      },
+      "BankaccountOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "name": {
             "type": "string"
           },
@@ -686,16 +2153,24 @@
             "type": "string"
           },
           "dueDate": {
+            "type": "integer",
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "maximum": 31,
+            "exclusiveMaximum": false,
             "nullable": true
           },
           "groupId": {
             "type": "string"
           },
           "userId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
+          "id",
+          "createdAt",
           "name",
           "type",
           "dueDate",
@@ -703,20 +2178,1288 @@
           "userId"
         ]
       },
+      "BankaccountListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "dueDate": {
+              "type": "integer",
+              "minimum": 1,
+              "exclusiveMinimum": false,
+              "maximum": 31,
+              "exclusiveMaximum": false,
+              "nullable": true
+            },
+            "groupId": {
+              "type": "string"
+            },
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "id",
+            "createdAt",
+            "name",
+            "type",
+            "dueDate",
+            "groupId",
+            "userId"
+          ]
+        }
+      },
+      "DeleteBankaccountOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "GroupMemberListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "membershipId": {
+              "type": "string"
+            },
+            "joinedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "member"
+              ]
+            },
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string",
+              "nullable": true
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "nullable": true
+            },
+            "avatar": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "required": [
+            "membershipId",
+            "joinedAt",
+            "role",
+            "userId",
+            "name",
+            "email",
+            "avatar"
+          ]
+        }
+      },
+      "CreateInviteInputDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "groupId",
+          "email"
+        ]
+      },
+      "InviteOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "pending": {
+            "type": "boolean"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "groupName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "email",
+          "pending",
+          "groupId",
+          "groupName"
+        ]
+      },
+      "InviteListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "pending": {
+              "type": "boolean"
+            },
+            "groupId": {
+              "type": "string"
+            },
+            "groupName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "createdAt",
+            "email",
+            "pending",
+            "groupId",
+            "groupName"
+          ]
+        }
+      },
+      "AcceptInviteOutputDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupId"
+        ]
+      },
+      "DeleteInviteOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "CreateImportInputDto": {
         "type": "object",
         "properties": {
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "accountId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "billMonth": {
+            "type": "string",
+            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "fileSize": {
+            "type": "integer",
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "maximum": 5242880,
+            "exclusiveMaximum": false
+          },
+          "fileHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "sourceFingerprint": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "excludedRowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false,
+            "maximum": 1000000,
+            "exclusiveMaximum": false
+          },
+          "config": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "delimiter": {
+                "type": "string",
+                "enum": [
+                  ",",
+                  ";",
+                  "\t",
+                  "|"
+                ]
+              },
+              "encoding": {
+                "type": "string",
+                "enum": [
+                  "utf-8",
+                  "windows-1252"
+                ]
+              },
+              "hasHeader": {
+                "type": "boolean"
+              },
+              "dateFormat": {
+                "type": "string",
+                "enum": [
+                  "DD/MM/YYYY",
+                  "MM/DD/YYYY",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DDTHH:mm:ss"
+                ]
+              },
+              "numberFormat": {
+                "type": "string",
+                "enum": [
+                  "decimal-comma",
+                  "decimal-point"
+                ]
+              },
+              "dateColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false
+              },
+              "descriptionColumns": {
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false
+                }
+              },
+              "installmentColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "amountMode": {
+                "type": "string",
+                "enum": [
+                  "signed",
+                  "debit-credit"
+                ]
+              },
+              "amountColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "debitColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "creditColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "chargesPositive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "version",
+              "delimiter",
+              "encoding",
+              "hasHeader",
+              "dateFormat",
+              "numberFormat",
+              "dateColumn",
+              "descriptionColumns",
+              "installmentColumn",
+              "amountMode",
+              "amountColumn",
+              "debitColumn",
+              "creditColumn",
+              "chargesPositive"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceRow": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 1000000,
+                  "exclusiveMaximum": false
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": -1000000000000,
+                  "exclusiveMinimum": false,
+                  "maximum": 1000000000000,
+                  "exclusiveMaximum": false
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "nullable": true
+                },
+                "installmentCurrent": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 10000,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "installmentTotal": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 10000,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "sourceRow",
+                "date",
+                "amount",
+                "description",
+                "installmentCurrent",
+                "installmentTotal"
+              ]
+            }
+          }
+        },
+        "required": [
+          "groupId",
+          "accountId",
+          "billMonth",
+          "fileName",
+          "fileSize",
+          "fileHash",
+          "sourceFingerprint",
+          "excludedRowCount",
+          "config",
+          "rows"
+        ]
+      },
+      "PreviewImportInputDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "accountId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "billMonth": {
+            "type": "string",
+            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "fileSize": {
+            "type": "integer",
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "maximum": 5242880,
+            "exclusiveMaximum": false
+          },
+          "fileHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "sourceFingerprint": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "excludedRowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false,
+            "maximum": 1000000,
+            "exclusiveMaximum": false
+          },
+          "config": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "delimiter": {
+                "type": "string",
+                "enum": [
+                  ",",
+                  ";",
+                  "\t",
+                  "|"
+                ]
+              },
+              "encoding": {
+                "type": "string",
+                "enum": [
+                  "utf-8",
+                  "windows-1252"
+                ]
+              },
+              "hasHeader": {
+                "type": "boolean"
+              },
+              "dateFormat": {
+                "type": "string",
+                "enum": [
+                  "DD/MM/YYYY",
+                  "MM/DD/YYYY",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DDTHH:mm:ss"
+                ]
+              },
+              "numberFormat": {
+                "type": "string",
+                "enum": [
+                  "decimal-comma",
+                  "decimal-point"
+                ]
+              },
+              "dateColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false
+              },
+              "descriptionColumns": {
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false
+                }
+              },
+              "installmentColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "amountMode": {
+                "type": "string",
+                "enum": [
+                  "signed",
+                  "debit-credit"
+                ]
+              },
+              "amountColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "debitColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "creditColumn": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
+              },
+              "chargesPositive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "version",
+              "delimiter",
+              "encoding",
+              "hasHeader",
+              "dateFormat",
+              "numberFormat",
+              "dateColumn",
+              "descriptionColumns",
+              "installmentColumn",
+              "amountMode",
+              "amountColumn",
+              "debitColumn",
+              "creditColumn",
+              "chargesPositive"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceRow": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 1000000,
+                  "exclusiveMaximum": false
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": -1000000000000,
+                  "exclusiveMinimum": false,
+                  "maximum": 1000000000000,
+                  "exclusiveMaximum": false
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "nullable": true
+                },
+                "installmentCurrent": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 10000,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "installmentTotal": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false,
+                  "maximum": 10000,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "sourceRow",
+                "date",
+                "amount",
+                "description",
+                "installmentCurrent",
+                "installmentTotal"
+              ]
+            }
+          }
+        },
+        "required": [
+          "groupId",
+          "accountId",
+          "billMonth",
+          "fileName",
+          "fileSize",
+          "fileHash",
+          "sourceFingerprint",
+          "excludedRowCount",
+          "config",
+          "rows"
+        ]
+      },
+      "PreviewImportOutputDto": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "includedRowCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "excludedRowCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "errorCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "warningCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "dateStart": {
+                "type": "string",
+                "nullable": true
+              },
+              "dateEnd": {
+                "type": "string",
+                "nullable": true
+              },
+              "inflowCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "inflowTotal": {
+                "type": "number"
+              },
+              "outflowCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "outflowTotal": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "includedRowCount",
+              "excludedRowCount",
+              "errorCount",
+              "warningCount",
+              "dateStart",
+              "dateEnd",
+              "inflowCount",
+              "inflowTotal",
+              "outflowCount",
+              "outflowTotal"
+            ]
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceRow": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "exclusiveMinimum": false
+                },
+                "field": {
+                  "type": "string",
+                  "enum": [
+                    "date",
+                    "description",
+                    "amount",
+                    "installment"
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "warning"
+                  ]
+                }
+              },
+              "required": [
+                "sourceRow",
+                "code",
+                "message",
+                "severity"
+              ]
+            }
+          },
+          "duplicate": {
+            "type": "object",
+            "properties": {
+              "importId": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "importId",
+              "fileName",
+              "createdAt"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "valid",
+          "summary",
+          "issues",
+          "duplicate"
+        ]
+      },
+      "ImportOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "fileName": {
             "type": "string"
           },
           "groupId": {
             "type": "string"
           },
+          "accountId": {
+            "type": "string"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "billDueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "excludedRowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "dateStart": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateEnd": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "fileName",
+          "groupId",
+          "accountId",
+          "accountName",
+          "billDueDate",
+          "transactionCount",
+          "excludedRowCount",
+          "dateStart",
+          "dateEnd"
+        ]
+      },
+      "ImportListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "fileName": {
+              "type": "string"
+            },
+            "groupId": {
+              "type": "string"
+            },
+            "accountId": {
+              "type": "string"
+            },
+            "accountName": {
+              "type": "string"
+            },
+            "billDueDate": {
+              "type": "string",
+              "nullable": true
+            },
+            "transactionCount": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": false
+            },
+            "excludedRowCount": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": false
+            },
+            "dateStart": {
+              "type": "string",
+              "nullable": true
+            },
+            "dateEnd": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "required": [
+            "id",
+            "createdAt",
+            "fileName",
+            "groupId",
+            "accountId",
+            "accountName",
+            "billDueDate",
+            "transactionCount",
+            "excludedRowCount",
+            "dateStart",
+            "dateEnd"
+          ]
+        }
+      },
+      "ImportProfileListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "accountId": {
+              "type": "string"
+            },
+            "accountName": {
+              "type": "string"
+            },
+            "accountType": {
+              "type": "string"
+            },
+            "sourceFingerprint": {
+              "type": "string"
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 1
+                },
+                "delimiter": {
+                  "type": "string",
+                  "enum": [
+                    ",",
+                    ";",
+                    "\t",
+                    "|"
+                  ]
+                },
+                "encoding": {
+                  "type": "string",
+                  "enum": [
+                    "utf-8",
+                    "windows-1252"
+                  ]
+                },
+                "hasHeader": {
+                  "type": "boolean"
+                },
+                "dateFormat": {
+                  "type": "string",
+                  "enum": [
+                    "DD/MM/YYYY",
+                    "MM/DD/YYYY",
+                    "YYYY-MM-DD",
+                    "YYYY-MM-DDTHH:mm:ss"
+                  ]
+                },
+                "numberFormat": {
+                  "type": "string",
+                  "enum": [
+                    "decimal-comma",
+                    "decimal-point"
+                  ]
+                },
+                "dateColumn": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false
+                },
+                "descriptionColumns": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false,
+                    "maximum": 500,
+                    "exclusiveMaximum": false
+                  }
+                },
+                "installmentColumn": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "amountMode": {
+                  "type": "string",
+                  "enum": [
+                    "signed",
+                    "debit-credit"
+                  ]
+                },
+                "amountColumn": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "debitColumn": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "creditColumn": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false,
+                  "nullable": true
+                },
+                "chargesPositive": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "version",
+                "delimiter",
+                "encoding",
+                "hasHeader",
+                "dateFormat",
+                "numberFormat",
+                "dateColumn",
+                "descriptionColumns",
+                "installmentColumn",
+                "amountMode",
+                "amountColumn",
+                "debitColumn",
+                "creditColumn",
+                "chargesPositive"
+              ]
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "accountId",
+            "accountName",
+            "accountType",
+            "sourceFingerprint",
+            "config",
+            "updatedAt"
+          ]
+        }
+      },
+      "DeleteImportOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "CreditCardBillListOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "accountId": {
+              "type": "string"
+            },
+            "accountName": {
+              "type": "string"
+            },
+            "billMonth": {
+              "type": "string",
+              "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+            },
+            "dueDate": {
+              "type": "string"
+            },
+            "transactionCount": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": false
+            },
+            "total": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "empty",
+                "needs-reconciliation",
+                "reconciled",
+                "needs-review"
+              ]
+            },
+            "payment": {
+              "type": "object",
+              "properties": {
+                "transactionId": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "value": {
+                  "type": "number"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                },
+                "accountName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "transactionId",
+                "description",
+                "value",
+                "date",
+                "accountId",
+                "accountName"
+              ],
+              "nullable": true
+            }
+          },
+          "required": [
+            "accountId",
+            "accountName",
+            "billMonth",
+            "dueDate",
+            "transactionCount",
+            "total",
+            "status",
+            "payment"
+          ]
+        }
+      },
+      "CreditCardBillDetailDto": {
+        "type": "object",
+        "properties": {
+          "bill": {
+            "type": "object",
+            "properties": {
+              "accountId": {
+                "type": "string"
+              },
+              "accountName": {
+                "type": "string"
+              },
+              "billMonth": {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              },
+              "dueDate": {
+                "type": "string"
+              },
+              "transactionCount": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+              },
+              "total": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "empty",
+                  "needs-reconciliation",
+                  "reconciled",
+                  "needs-review"
+                ]
+              },
+              "payment": {
+                "type": "object",
+                "properties": {
+                  "transactionId": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "accountId": {
+                    "type": "string"
+                  },
+                  "accountName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "transactionId",
+                  "description",
+                  "value",
+                  "date",
+                  "accountId",
+                  "accountName"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "accountId",
+              "accountName",
+              "billMonth",
+              "dueDate",
+              "transactionCount",
+              "total",
+              "status",
+              "payment"
+            ]
+          },
           "transactions": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
                 "description": {
                   "type": "string",
                   "nullable": true
@@ -726,6 +3469,8 @@
                   "nullable": true
                 },
                 "date": {
+                  "type": "string",
+                  "format": "date-time",
                   "nullable": true
                 },
                 "installmentTotal": {
@@ -737,14 +3482,11 @@
                   "nullable": true
                 },
                 "creditDueDate": {
+                  "type": "string",
                   "nullable": true
                 },
                 "observation": {
                   "type": "string",
-                  "nullable": true
-                },
-                "removed": {
-                  "type": "boolean",
                   "nullable": true
                 },
                 "toBeConsideredAt": {
@@ -752,33 +3494,244 @@
                   "nullable": true
                 },
                 "calculatedDate": {
-                  "nullable": true
-                },
-                "bankaccountId": {
-                  "type": "string"
-                },
-                "categoryId": {
                   "type": "string",
                   "nullable": true
                 },
-                "groupId": {
+                "billPayment": {
+                  "type": "object",
+                  "properties": {
+                    "creditAccountId": {
+                      "type": "string"
+                    },
+                    "billMonth": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+                    }
+                  },
+                  "required": [
+                    "creditAccountId",
+                    "billMonth"
+                  ],
+                  "nullable": true
+                },
+                "bankaccount": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "dueDate": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "exclusiveMinimum": false,
+                      "maximum": 31,
+                      "exclusiveMaximum": false,
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "dueDate"
+                  ],
+                  "nullable": true
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "icon": {
+                      "type": "string",
+                      "enum": [
+                        "tag",
+                        "shopping-cart",
+                        "utensils",
+                        "car",
+                        "house",
+                        "heart-pulse",
+                        "plane",
+                        "gamepad-2",
+                        "briefcase",
+                        "book-open",
+                        "coffee",
+                        "dumbbell",
+                        "gift",
+                        "paw-print",
+                        "shirt",
+                        "smartphone",
+                        "music",
+                        "baby",
+                        "wrench",
+                        "wallet-cards",
+                        "bike",
+                        "camera",
+                        "graduation-cap",
+                        "sparkles"
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "yellow",
+                        "lime",
+                        "sky",
+                        "violet",
+                        "danger",
+                        "amber",
+                        "orange",
+                        "rose",
+                        "pink",
+                        "fuchsia",
+                        "indigo",
+                        "teal"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "icon",
+                    "color"
+                  ],
+                  "nullable": true
+                },
+                "group": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "import": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "fileName"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "createdAt",
+                "description",
+                "value",
+                "date",
+                "installmentTotal",
+                "installmentCurrent",
+                "creditDueDate",
+                "observation",
+                "toBeConsideredAt",
+                "calculatedDate",
+                "billPayment",
+                "bankaccount",
+                "category",
+                "group",
+                "import"
+              ]
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transactionId": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "value": {
+                  "type": "number"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                },
+                "accountName": {
                   "type": "string"
                 }
               },
               "required": [
+                "transactionId",
                 "description",
                 "value",
                 "date",
-                "bankaccountId",
-                "groupId"
+                "accountId",
+                "accountName"
               ]
             }
           }
         },
         "required": [
-          "fileName",
+          "bill",
+          "transactions",
+          "candidates"
+        ]
+      },
+      "ReconcileCreditCardBillInputDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "paymentTransactionId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          }
+        },
+        "required": [
           "groupId",
-          "transactions"
+          "paymentTransactionId"
+        ]
+      },
+      "UnlinkCreditCardBillOutputDto": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "billMonth": {
+            "type": "string",
+            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+          }
+        },
+        "required": [
+          "accountId",
+          "billMonth"
         ]
       }
     }

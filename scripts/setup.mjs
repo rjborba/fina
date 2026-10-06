@@ -24,7 +24,5 @@ run("corepack", ["prepare", `pnpm@${requiredPnpm}`, "--activate"]);
 run("pnpm", ["install", "--frozen-lockfile"]);
 
 console.log("Setup complete.");
-console.log("Create apps/api/.env and apps/web/.env from their safe examples.");
-console.log(
-  "Use only local/test credentials; never use production credentials locally.",
-);
+console.log("Run `pnpm infra:start` to configure local Supabase and the apps.");
+console.log("Never use production credentials locally.");

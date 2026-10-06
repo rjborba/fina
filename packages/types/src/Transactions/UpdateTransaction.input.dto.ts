@@ -1,27 +1,13 @@
 import { z } from "zod";
-import { createZodDto } from "nestjs-zod";
-import { TransactionSchema } from "./Transaction";
+import { TransactionWriteFieldsSchema } from "./CreateTransaction.input.dto";
 
-export const UpdateTransactionInputDtoSchema = TransactionSchema.omit({
-  id: true,
-  createdAt: true,
-  bankaccount: true,
-  category: true,
-  group: true,
-  import: true
-})
-  .extend({
-    bankaccountId: z.string(),
-    categoryId: z.string(),
-    groupId: z.string(),
-    importId: z.string()
-  })
-  .partial();
-
-export class UpdateTransactionInputDto extends createZodDto(
-  UpdateTransactionInputDtoSchema
-) {}
+export const UpdateTransactionInputDtoSchema =
+  TransactionWriteFieldsSchema.extend({
+    bankaccountId: z.string().regex(/^\d+$/).nullable(),
+    categoryId: z.string().regex(/^\d+$/).nullable()
+  }).partial();
 
 export type UpdateTransactionInputDtoType = z.infer<
   typeof UpdateTransactionInputDtoSchema
 >;
+export type UpdateTransactionInputDto = UpdateTransactionInputDtoType;

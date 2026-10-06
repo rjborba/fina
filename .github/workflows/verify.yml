@@ -18,23 +18,6 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: fina_test
-          POSTGRES_PASSWORD: fina_test
-          POSTGRES_DB: fina_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U fina_test -d fina_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      TEST_DATABASE_URL: postgresql://fina_test:fina_test@127.0.0.1:5432/fina_test
 
     steps:
       - name: Check out repository
@@ -53,5 +36,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start local Supabase
+        run: pnpm infra:start
+
       - name: Verify repository
         run: pnpm verify
+
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm infra:stop

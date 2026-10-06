@@ -1,24 +1,13 @@
-import {
-  Column,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Bankaccounts } from '../../bankaccounts/entities/bankaccount.entity';
 import { Categories } from '../../categories/entities/category.entity';
-import { Users } from '../../users/entities/user.entity';
 import { Imports } from '../../imports/entities/import.entity';
 import { Invites } from '../../invites/entities/invite.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
 import { UserGroup } from '../../user-groups/entities/user-group.entity';
-import { Group } from '@fina/types';
 
-@Index('group_pkey', ['id'], { unique: true })
 @Entity('groups', { schema: 'public' })
-export class Groups implements Group {
+export class Groups {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -36,10 +25,6 @@ export class Groups implements Group {
 
   @OneToMany(() => Categories, (categories) => categories.group)
   categories: Categories[];
-
-  @ManyToOne(() => Users, (users: Users) => users.groups)
-  @JoinColumn([{ name: 'creator_id', referencedColumnName: 'id' }])
-  creator: Users;
 
   @OneToMany(() => Imports, (imports) => imports.group)
   imports: Imports[];

@@ -6,6 +6,7 @@ const validEnvironment = {
   DATABASE_USER: 'fina_test',
   DATABASE_PASSWORD: 'local-test-password',
   DATABASE_NAME: 'fina_test',
+  SUPABASE_URL: 'https://fina-test.supabase.co',
   SUPABASE_JWT_SECRET: 'local-test-jwt-secret',
   CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',
 };
@@ -20,6 +21,22 @@ describe('validateEnvironment', () => {
       'http://localhost:5173',
       'http://127.0.0.1:5173',
     ]);
+  });
+
+  it('accepts and normalizes the existing Supabase connection-string variable', () => {
+    const databaseUrl = [
+      'postgresql:',
+      '//fina_test:local-test-password@127.0.0.1:5432/fina_test',
+    ].join('');
+    const environment = validateEnvironment({
+      NODE_ENV: 'development',
+      SUPABASE_DB_URI: databaseUrl,
+      SUPABASE_URL: 'https://fina-test.supabase.co',
+      SUPABASE_JWT_SECRET: 'local-test-jwt-secret',
+    });
+
+    expect(environment.DATABASE_URL).toBe(databaseUrl);
+    expect(environment.CORS_ORIGINS).toEqual(['http://localhost:5173']);
   });
 
   it('rejects wildcard CORS configuration', () => {

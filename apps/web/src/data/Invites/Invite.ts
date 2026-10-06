@@ -1,3 +1,3 @@
-import { Database } from "@/database.types"
+import type { InviteOutputDto } from "@/api/generated"
 
-export type Invite = Database["public"]["Tables"]["invites"]["Row"]
+export type Invite = InviteOutputDto

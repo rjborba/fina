@@ -1,7 +1,6 @@
 import {
   Column,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -10,11 +9,9 @@ import {
 import { Groups } from '../../groups/entities/group.entity';
 import { Users } from '../../users/entities/user.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
-import { Bankaccount } from '@fina/types';
 
-@Index('accounts_pkey', ['id'], { unique: true })
 @Entity('bankaccounts', { schema: 'public' })
-export class Bankaccounts implements Bankaccount {
+export class Bankaccounts {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id: string;
 
@@ -30,23 +27,28 @@ export class Bankaccounts implements Bankaccount {
   @Column('text', { name: 'type', nullable: false })
   type: string;
 
-  @Column('date', { name: 'due_date', nullable: true })
-  dueDate: Date | null;
+  @Column('smallint', { name: 'due_date', nullable: true })
+  dueDate: number | null;
 
-  @ManyToOne(() => Groups, (groups) => groups.bankaccounts)
+  @Column('boolean', { name: 'removed', default: false })
+  removed: boolean;
+
+  @ManyToOne(() => Groups, (groups) => groups.bankaccounts, {
+    nullable: false,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn([{ name: 'group_id', referencedColumnName: 'id' }])
   group: Groups;
 
-  @ManyToOne(() => Users, (users) => users.bankaccounts)
+  @ManyToOne(() => Users, (users) => users.bankaccounts, { nullable: false })
   @JoinColumn([{ name: 'user_id', referencedColumnName: 'id' }])
   user: Users;
 
   @OneToMany(() => Transactions, (transactions) => transactions.bankaccount)
   transactions: Transactions[];
 
-  constructor(
-    bankaccount: Omit<Bankaccounts, 'id' | 'createdAt' | 'transactions'>,
-  ) {
+  constructor(bankaccount: Partial<Bankaccounts>) {
     Object.assign(this, bankaccount);
   }
 }

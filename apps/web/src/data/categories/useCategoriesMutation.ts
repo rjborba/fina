@@ -1,27 +1,33 @@
-import { useQueryClient } from "@tanstack/react-query"
-
 import {
-  CreateCategoryInputDtoType,
-  CreateCategoryOutputDtoType,
-  RemoveCategoryOutputDtoType
-} from "@fina/types"
-import { FinaAPIFetcher } from "../FinaAPIFetcher"
+  categoriesControllerCreate,
+  categoriesControllerRemove,
+  categoriesControllerUpdateAppearance,
+  CreateCategoryInputDto,
+  UpdateCategoryAppearanceInputDto
+} from "@/api/generated"
+import { useQueryClient } from "@tanstack/react-query"
 
 export const useCategoriesMutation = () => {
   const queryClient = useQueryClient()
-
-  const addCategory = async (category: CreateCategoryInputDtoType) => {
-    await FinaAPIFetcher.post<CreateCategoryOutputDtoType>(
-      "categories",
-      category
-    )
+  const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["categories"] })
-  }
 
+  const addCategory = async (input: CreateCategoryInputDto) => {
+    await categoriesControllerCreate({ requestBody: input })
+    await invalidate()
+  }
   const removeCategory = async (id: string) => {
-    await FinaAPIFetcher.delete<RemoveCategoryOutputDtoType>(`categories/${id}`)
-    queryClient.invalidateQueries({ queryKey: ["categories"] })
+    await categoriesControllerRemove({ id })
+    await invalidate()
   }
 
-  return { addCategory, removeCategory }
+  const updateCategoryAppearance = async (
+    id: string,
+    input: UpdateCategoryAppearanceInputDto
+  ) => {
+    await categoriesControllerUpdateAppearance({ id, requestBody: input })
+    await invalidate()
+  }
+
+  return { addCategory, removeCategory, updateCategoryAppearance }
 }

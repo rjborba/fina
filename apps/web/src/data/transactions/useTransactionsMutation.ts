@@ -1,34 +1,47 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import supabase from "@/supabaseClient"
+import {
+  transactionsControllerCreate,
+  transactionsControllerRemove,
+  transactionsControllerUpdate
+} from "@/api/generated"
 import {
   CreateTransactionInputDtoType,
-  CreateTransactionOutputDto,
-  Transaction,
+  QueryTransactionOutputDtoType,
+  TransactionOutput,
   UpdateTransactionInputDtoSchema
 } from "@fina/types"
-import { FinaAPIFetcher } from "../FinaAPIFetcher"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+
+const DELETE_BATCH_SIZE = 10
+
+export const updateTransactionInPage = (
+  page: QueryTransactionOutputDtoType | undefined,
+  id: string,
+  transaction: Partial<TransactionOutput>
+) => {
+  if (!page) {
+    return page
+  }
+
+  return {
+    ...page,
+    data: page.data.map((current) =>
+      current.id === id ? { ...current, ...transaction } : current
+    )
+  }
+}
 
 export const useTransactionMutation = () => {
   const queryClient = useQueryClient()
 
   const addMutation = useMutation({
     retry: 0,
-    mutationFn: async (
-      transactionOrTransactions:
-        | CreateTransactionInputDtoType
-        | CreateTransactionInputDtoType[]
-    ) => {
-      const response = await FinaAPIFetcher.post<
-        CreateTransactionOutputDto | CreateTransactionOutputDto[]
-      >(`transactions`, transactionOrTransactions)
-
-      return response.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+    mutationFn: (input: CreateTransactionInputDtoType) =>
+      transactionsControllerCreate({ requestBody: input }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+      ])
     }
   })
 
@@ -39,100 +52,94 @@ export const useTransactionMutation = () => {
       transaction
     }: {
       id: string
-      transaction: Partial<Transaction>
+      transaction: Partial<TransactionOutput>
     }) => {
-      const updateTransactionDTO = {
-        ...transaction,
-        categoryId: transaction.category?.id,
-        bankaccountId: transaction.bankaccount?.id,
-        groupId: transaction.group?.id,
-        importId: transaction.import?.id
+      const update = {
+        description: transaction.description,
+        value: transaction.value,
+        date: transaction.date,
+        installmentTotal: transaction.installmentTotal,
+        installmentCurrent: transaction.installmentCurrent,
+        creditDueDate: transaction.creditDueDate,
+        observation: transaction.observation,
+        toBeConsideredAt: transaction.toBeConsideredAt,
+        calculatedDate: transaction.calculatedDate,
+        categoryId:
+          transaction.category === null ? null : transaction.category?.id,
+        bankaccountId:
+          transaction.bankaccount === null ? null : transaction.bankaccount?.id
       }
+      const validated = UpdateTransactionInputDtoSchema.parse(update)
+      return transactionsControllerUpdate({ id, requestBody: validated })
+    },
+    onMutate: async ({ id, transaction }) => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] })
 
-      const validated =
-        UpdateTransactionInputDtoSchema.safeParse(updateTransactionDTO)
+      const previousTransactions =
+        queryClient.getQueriesData<QueryTransactionOutputDtoType>({
+          queryKey: ["transactions"]
+        })
 
-      if (!validated.success) {
-        throw new Error("Invalid transaction update")
-      }
-
-      await FinaAPIFetcher.patch<Transaction>(
-        `transactions/${id}`,
-        updateTransactionDTO
+      queryClient.setQueriesData<QueryTransactionOutputDtoType>(
+        { queryKey: ["transactions"] },
+        (page) => updateTransactionInPage(page, id, transaction)
       )
 
-      return transaction
+      return { previousTransactions }
     },
-    onMutate: async ({ id, transaction: updatedTransactionFields }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["transactions"],
-        exact: false
-      })
-
-      const previous = queryClient.getQueriesData<{
-        data: Transaction[]
-      }>({
-        queryKey: ["transactions"],
-        exact: false
-      })
-
-      queryClient.setQueriesData<{
-        data: Transaction[]
-        totalCount: number
-      }>({ queryKey: ["transactions"], exact: false }, (old) => {
-        if (!old) {
-          return { data: [], totalCount: 0 }
-        }
-
-        const oldTransactions = old.data
-
-        return {
-          data: oldTransactions.map((item) =>
-            item.id === id ? { ...item, ...updatedTransactionFields } : item
-          ),
-          totalCount: old.totalCount
-        }
-      })
-
-      return { previous }
+    onError: (_error, _variables, context) => {
+      for (const [queryKey, data] of context?.previousTransactions || []) {
+        queryClient.setQueryData(queryKey, data)
+      }
     },
-
-    onError: (_err, _vars, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
+    onSuccess: (updatedTransaction) => {
+      queryClient.setQueriesData<QueryTransactionOutputDtoType>(
+        { queryKey: ["transactions"] },
+        (page) =>
+          updateTransactionInPage(
+            page,
+            updatedTransaction.id,
+            updatedTransaction
+          )
+      )
     },
-
-    onSettled: () => {
-      // Do I really need to invalidate the query if we've got a success mutation?
-      // queryClient.invalidateQueries({
-      //   queryKey: ["transactions"],
-      //   exact: false,
-      // });
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+      ])
     }
   })
 
   const removeMutation = useMutation({
     retry: 0,
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .update({ removed: true })
-        .eq("id", Number(id))
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+    mutationFn: (id: string) => transactionsControllerRemove({ id }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+      ])
     }
   })
 
-  return {
-    addMutation,
-    updateMutation,
-    removeMutation
-  }
+  const removeManyMutation = useMutation({
+    retry: 0,
+    mutationFn: async (ids: string[]) => {
+      for (let index = 0; index < ids.length; index += DELETE_BATCH_SIZE) {
+        await Promise.all(
+          ids
+            .slice(index, index + DELETE_BATCH_SIZE)
+            .map((id) => transactionsControllerRemove({ id }))
+        )
+      }
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+      ])
+    }
+  })
+
+  return { addMutation, updateMutation, removeMutation, removeManyMutation }
 }

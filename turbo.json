@@ -18,13 +18,7 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false,
-      "passThroughEnv": [
-        "TEST_DATABASE_URL",
-        "DOCKER_CONFIG",
-        "DOCKER_HOST",
-        "TESTCONTAINERS_RYUK_DISABLED",
-        "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"
-      ]
+      "passThroughEnv": ["TEST_DATABASE_URL"]
     },
     "test:e2e": {
       "dependsOn": ["^build"],

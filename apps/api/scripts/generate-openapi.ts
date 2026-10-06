@@ -9,6 +9,7 @@ const safeGenerationEnvironment = {
   DATABASE_PASSWORD: 'local-openapi-only',
   DATABASE_NAME: 'fina_openapi_test',
   DATABASE_SSL: 'false',
+  SUPABASE_URL: 'https://local-openapi.supabase.co',
   SUPABASE_JWT_SECRET: 'local-openapi-jwt-secret',
   CORS_ORIGINS: 'http://localhost:5173',
 };

@@ -279,8 +279,57 @@ function SidebarTrigger({
   )
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
+function SidebarRail({
+  className,
+  onClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  ...props
+}: React.ComponentProps<"button">) {
+  const { setOpen, toggleSidebar } = useSidebar()
+  const dragStartXRef = React.useRef<number | null>(null)
+  const didDragRef = React.useRef(false)
+  const suppressNextClickRef = React.useRef(false)
+
+  const resetDrag = React.useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      dragStartXRef.current = null
+      didDragRef.current = false
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+    },
+    []
+  )
+
+  const finishDrag = React.useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      const dragStartX = dragStartXRef.current
+
+      if (dragStartX !== null) {
+        const dragDistance = event.clientX - dragStartX
+        const side = event.currentTarget
+          .closest<HTMLElement>("[data-side]")
+          ?.getAttribute("data-side")
+
+        if (Math.abs(dragDistance) >= 24) {
+          const draggedTowardContent =
+            side === "right" ? dragDistance < 0 : dragDistance > 0
+
+          setOpen(draggedTowardContent)
+          suppressNextClickRef.current = true
+        } else if (didDragRef.current) {
+          suppressNextClickRef.current = true
+        }
+      }
+
+      resetDrag(event)
+    },
+    [resetDrag, setOpen]
+  )
 
   return (
     <button
@@ -288,10 +337,55 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      onClick={(event) => {
+        onClick?.(event)
+        if (event.defaultPrevented) {
+          return
+        }
+
+        if (suppressNextClickRef.current) {
+          suppressNextClickRef.current = false
+          return
+        }
+
+        toggleSidebar()
+      }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event)
+        if (event.defaultPrevented || event.button !== 0) {
+          return
+        }
+
+        dragStartXRef.current = event.clientX
+        didDragRef.current = false
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event)
+        if (dragStartXRef.current === null) {
+          return
+        }
+
+        if (Math.abs(event.clientX - dragStartXRef.current) >= 4) {
+          didDragRef.current = true
+        }
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event)
+        if (event.defaultPrevented) {
+          resetDrag(event)
+          return
+        }
+
+        finishDrag(event)
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event)
+        resetDrag(event)
+      }}
+      title="Click or drag to toggle sidebar"
       className={cn(
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
+        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 touch-none select-none transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",

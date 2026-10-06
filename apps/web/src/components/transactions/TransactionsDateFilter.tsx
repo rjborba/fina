@@ -39,10 +39,12 @@ export const TransactionsDateFilter: FC = () => {
   }, [date])
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-h-12 items-stretch border-2 border-fina-ink bg-fina-surface shadow-fina-md">
       <Button
-        variant="ghost"
+        variant="fina-ghost"
         size="icon"
+        aria-label="Previous month"
+        className="h-auto w-10 border-r-2 border-fina-ink hover:bg-fina-lime"
         onClick={() => {
           if (isFullMonth) {
             const baseDate = dayjs(date?.from).subtract(1, "month")
@@ -58,11 +60,14 @@ export const TransactionsDateFilter: FC = () => {
           }
         }}
       >
-        <ChevronLeftIcon className="size-2" />
+        <ChevronLeftIcon className="size-4" />
       </Button>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" className="w-auto">
+          <Button
+            variant="fina-ghost"
+            className="h-auto min-w-36 px-4 hover:bg-fina-grid"
+          >
             <div className="flex items-center justify-center flex-col gap-0">
               {!isFullMonth ? (
                 <div className="flex gap-2 items-center">
@@ -86,10 +91,10 @@ export const TransactionsDateFilter: FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-center flex-col gap-0">
-                  <div className="text-sm">
+                  <div className="font-black uppercase leading-none">
                     {dayjs(date?.to).format("MMMM")}
                   </div>
-                  <div className="text-xs">
+                  <div className="font-mono text-[10px] font-bold">
                     {dayjs(date?.to).format("YYYY")}
                   </div>
                 </div>
@@ -97,21 +102,23 @@ export const TransactionsDateFilter: FC = () => {
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
+        <PopoverContent className="w-auto rounded-none border-2 border-fina-ink p-0 shadow-fina-lg">
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={date?.from}
             selected={date}
             onSelect={setDate}
-            numberOfMonths={2}
+            numberOfMonths={1}
           />
         </PopoverContent>
       </Popover>
 
       <Button
-        variant="ghost"
+        variant="fina-ghost"
         size="icon"
+        aria-label="Next month"
+        className="h-auto w-10 border-l-2 border-fina-ink hover:bg-fina-lime"
         onClick={() => {
           if (isFullMonth) {
             const baseDate = dayjs(date?.from).add(1, "month")
@@ -127,7 +134,7 @@ export const TransactionsDateFilter: FC = () => {
           }
         }}
       >
-        <ChevronRightIcon className="size-2" />
+        <ChevronRightIcon className="size-4" />
       </Button>
     </div>
   )
