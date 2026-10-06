@@ -48,7 +48,8 @@ the user's shell configuration rather than running this repository's script.
 
 `pnpm infra:start` starts the repository-root Supabase stack, generates ignored
 `apps/api/.env.local` and `apps/web/.env.local` files from its local credentials,
-and applies the TypeORM migrations. It does not modify an existing `.env` file.
+builds the shared contracts required by migration tooling, and applies the
+TypeORM migrations. It does not modify an existing `.env` file.
 The first run downloads the required Docker images. Start the applications after
 the infrastructure is ready:
 

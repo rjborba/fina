@@ -132,6 +132,8 @@ if (command === "start") {
   runSupabase(["start", "--output-format", "json"]);
   const environment = localEnvironment();
   configureApplications(environment);
+  console.log("Building shared contracts required by TypeORM migrations...");
+  run(pnpm, ["--filter", "@fina/types", "build"], { stdio: "inherit" });
   console.log("Applying TypeORM migrations to local Supabase PostgreSQL...");
   run(pnpm, ["--filter", "@fina/api", "migration:run"], {
     env: {
