@@ -27,6 +27,14 @@ The API must listen on Render's `PORT`; Nest already reads that value from the
 validated environment. Keep auto-deploy limited to changes under `apps/api` and
 `packages/types`.
 
+The production TypeScript build compiles only `apps/api/src`, with that directory
+as its source root, and emits `apps/api/dist/main.js` for `pnpm start:prod`.
+Incremental compiler metadata stays under `dist` so Nest clears it together with
+the build output and repeated builds recreate the entry point.
+CLI helpers under `apps/api/scripts`, including OpenAPI generation, run separately
+and must not change the production output layout. Run `pnpm build:api` from the
+repository root and confirm that entry point exists before deploying.
+
 ## Environment
 
 Configure the production equivalents of every required variable documented in
@@ -68,9 +76,13 @@ not use the transaction-mode pooler.
 
 ## Current operational gap
 
-The hosting dashboards were last inspected on 2026-09-21. At that time the
-Render service was connected to `main`, but the deployed artifacts were stale
-and the custom API domain failed TLS negotiation. Treat production as unhealthy
-until the deployment procedure above succeeds. The abandoned Vercel `fina-api`
-project is not a supported API target and should be removed separately after its
+The Render dashboard was inspected on 2026-10-05. The deployment of `8509f39`
+built successfully but failed at startup: the compiler included the OpenAPI
+helper and emitted `dist/src/main.js`, while `pnpm start:prod` expected
+`dist/main.js`. The production build now has an explicit source root and input
+scope to preserve that entry point. Deploy the corrected commit using the
+procedure above; the last successful Render deployment is still `f327937`, and
+the custom API domain still fails TLS negotiation. Treat production as unhealthy
+until the deployment procedure succeeds. The abandoned Vercel `fina-api` project
+is not a supported API target and should be removed separately after its
 deployment history is no longer needed.
