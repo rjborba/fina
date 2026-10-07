@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest"
-import { cleanup, render, screen, within } from "@testing-library/react"
+import {
+  cleanup,
+  render,
+  screen,
+  within,
+  fireEvent
+} from "@testing-library/react"
 import type { CreditCardBillSummary, TransactionOutput } from "@fina/types"
 import { getDefaultStore } from "jotai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -12,10 +18,13 @@ import { Transactions } from "./Transactions"
 const mocks = vi.hoisted(() => ({
   updateTransaction: vi.fn(),
   removeTransactions: vi.fn(),
+  includePayment: false,
+  changedBill: false,
   transactionQueries: [] as Array<{
     accountType?: "checkout" | "credit"
     search?: string
     categoryIdList?: string[]
+    dateBasis?: string
   }>
 }))
 
@@ -32,6 +41,9 @@ const checkingTransaction = {
   toBeConsideredAt: null,
   calculatedDate: "2026-02-10",
   billPayment: null,
+  reviewMonth: "2026-02",
+  cashFlowDate: "2026-02-10",
+  cashFlowStatus: "confirmed",
   bankaccount: {
     id: "checking-account",
     name: "Checking",
@@ -53,13 +65,17 @@ const creditTransaction = {
     type: "credit",
     dueDate: 5
   },
-  creditDueDate: "2026-03-05"
+  creditDueDate: "2026-03-05",
+  cashFlowDate: "2026-03-05",
+  cashFlowStatus: "scheduled"
 } satisfies TransactionOutput
 
 const bill = {
   accountId: "credit-account",
   accountName: "Main card",
   billMonth: "2026-03",
+  reviewMonth: "2026-02",
+  cashFlowDate: "2026-03-05",
   dueDate: "2026-03-05",
   transactionCount: 1,
   total: -40,
@@ -98,10 +114,17 @@ vi.mock("@/data/transactions/useTransactions", () => ({
       return { data: undefined, isLoading: false, isError: false }
     }
 
-    const data =
+    const data: TransactionOutput[] =
       query.accountType === "checkout"
         ? [checkingTransaction]
         : [checkingTransaction, creditTransaction]
+    if (mocks.includePayment)
+      data.push({
+        ...checkingTransaction,
+        id: "payment",
+        description: "Linked payment",
+        billPayment: { creditAccountId: "credit-account", billMonth: "2026-01" }
+      })
 
     return {
       data: { data, totalCount: data.length },
@@ -113,7 +136,25 @@ vi.mock("@/data/transactions/useTransactions", () => ({
 
 vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
   useCreditCardBills: (_query: unknown, enabled = true) => ({
-    data: enabled ? [bill] : [],
+    data: enabled
+      ? [
+          mocks.changedBill
+            ? {
+                ...bill,
+                total: -100,
+                status: "needs-review",
+                payment: {
+                  transactionId: "payment",
+                  accountId: "checking-account",
+                  accountName: "Checking",
+                  description: "Synthetic payment",
+                  date: "2026-03-04",
+                  value: -40
+                }
+              }
+            : bill
+        ]
+      : [],
     isLoading: false,
     isError: false
   })
@@ -173,6 +214,8 @@ describe("Transactions cash-flow ledger", () => {
   beforeEach(() => {
     localStorage.clear()
     mocks.transactionQueries.length = 0
+    mocks.includePayment = false
+    mocks.changedBill = false
     getDefaultStore().set(transactionFilterAtom, {
       startDate: new Date("2026-03-01T00:00:00.000Z"),
       endDate: new Date("2026-03-31T23:59:59.999Z"),
@@ -188,6 +231,7 @@ describe("Transactions cash-flow ledger", () => {
 
   it("renders checking and credit-card purchases in one inline ledger", async () => {
     localStorage.setItem("inlineCreditCardTransactions", "true")
+    localStorage.setItem("ledgerDateBasis:v1", '"monthly-review"')
 
     render(
       <MemoryRouter>
@@ -229,7 +273,7 @@ describe("Transactions cash-flow ledger", () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Filter" })).toBeVisible()
     expect(screen.getByTestId("transactions-filter")).toBeInTheDocument()
-    expect(screen.getByText("Category breakdown")).toBeInTheDocument()
+    expect(screen.getByText("Purchase categories")).toBeInTheDocument()
     expect(screen.queryByText("Checking transactions")).not.toBeInTheDocument()
     expect(screen.queryByText("Credit card bills")).not.toBeInTheDocument()
     expect(screen.getByTestId("visible-entry-count")).toHaveTextContent("2")
@@ -260,4 +304,67 @@ describe("Transactions cash-flow ledger", () => {
     expect(transactionQuery).not.toHaveProperty("accountType")
     expect(screen.getByText("Main card bill")).toBeVisible()
   })
+
+  it("uses the actual paid amount in cash flow even when purchases in the bill change", () => {
+    mocks.changedBill = true
+    localStorage.setItem("inlineCreditCardTransactions", "true")
+    render(
+      <MemoryRouter>
+        <Transactions />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId("grouped-ledger")).toBeVisible()
+    expect(
+      screen.queryByRole("switch", { name: "Inline credit card transactions" })
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Totals" }))
+    const summary = screen.getByRole("dialog", { name: "Period totals" })
+    expect(within(summary).getByText("Net flow")).toBeVisible()
+    expect(within(summary).getByText(/-R\$\s80,00/)).toBeVisible()
+    expect(within(summary).queryByText(/-R\$\s140,00/)).not.toBeInTheDocument()
+  })
+
+  it("switches the requested date basis and persists only the view preference", async () => {
+    render(
+      <MemoryRouter>
+        <Transactions />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId("grouped-ledger")).toBeVisible()
+    expect(mocks.transactionQueries.at(-1)?.dateBasis).toBe("cash-flow")
+    fireEvent.click(screen.getByRole("button", { name: "Monthly review" }))
+    expect(mocks.transactionQueries.at(-1)?.dateBasis).toBe("monthly-review")
+    expect(
+      screen.getByRole("button", { name: "Monthly review" })
+    ).toHaveAttribute("aria-pressed", "true")
+    expect(localStorage.getItem("ledgerDateBasis:v1")).toBe('"monthly-review"')
+    fireEvent.click(screen.getByRole("button", { name: "Cash flow" }))
+    expect(mocks.transactionQueries.at(-1)?.dateBasis).toBe("cash-flow")
+  })
+
+  it.each([true, false])(
+    "excludes linked checking payments from another bill month in review mode (inline %s)",
+    async (inline) => {
+      mocks.includePayment = true
+      localStorage.setItem(
+        "inlineCreditCardTransactions",
+        JSON.stringify(inline)
+      )
+      localStorage.setItem("ledgerDateBasis:v1", '"monthly-review"')
+      render(
+        <MemoryRouter>
+          <Transactions />
+        </MemoryRouter>
+      )
+      await screen.findByTestId(
+        inline ? "transactions-table" : "grouped-ledger"
+      )
+      expect(screen.queryByText("Linked payment")).not.toBeInTheDocument()
+      expect(screen.getByTestId("visible-entry-count")).toHaveTextContent("2")
+      fireEvent.click(screen.getByRole("button", { name: "Totals" }))
+      const summary = screen.getByRole("dialog", { name: "Period totals" })
+      expect(within(summary).getByText("Review balance")).toBeVisible()
+      expect(within(summary).getByText(/-R\$\s80,00/)).toBeVisible()
+    }
+  )
 })

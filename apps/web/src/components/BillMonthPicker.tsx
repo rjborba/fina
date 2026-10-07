@@ -35,6 +35,9 @@ type BillMonthPickerProps = {
   onValueChange: (value: string) => void
   dueDate?: number | null
   className?: string
+  label?: string
+  description?: string
+  disabled?: boolean
 }
 
 export const BillMonthPicker = ({
@@ -42,7 +45,10 @@ export const BillMonthPicker = ({
   value,
   onValueChange,
   dueDate,
-  className
+  className,
+  label = "Bill due in",
+  description = "File names are never used to choose a bill.",
+  disabled = false
 }: BillMonthPickerProps) => {
   const [open, setOpen] = useState(false)
   const selectedYear = value ? Number(value.slice(0, 4)) : null
@@ -55,7 +61,7 @@ export const BillMonthPicker = ({
   return (
     <div className={cn("space-y-2", className)}>
       <label className="text-sm font-bold" htmlFor={id}>
-        Bill month
+        {label}
       </label>
       <Popover
         open={open}
@@ -70,6 +76,7 @@ export const BillMonthPicker = ({
             type="button"
             variant="outline"
             aria-required="true"
+            disabled={disabled}
             className={cn(
               "h-auto w-full justify-between rounded-none border-2 border-fina-ink bg-fina-surface px-3 py-3 text-left shadow-fina-sm hover:-translate-y-0.5 hover:bg-fina-yellow hover:shadow-fina-md",
               !value && "text-fina-ink/55"
@@ -81,7 +88,7 @@ export const BillMonthPicker = ({
               </span>
               <span className="flex flex-col">
                 <span className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/45">
-                  Credit card bill
+                  {label}
                 </span>
                 <span className="text-base font-black tracking-[-0.02em] text-fina-ink">
                   {selectedMonth === null || selectedYear === null
@@ -109,7 +116,7 @@ export const BillMonthPicker = ({
             </Button>
             <div className="text-center">
               <div className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/50">
-                Bill year
+                Year
               </div>
               <div className="text-lg font-black">{displayYear}</div>
             </div>
@@ -158,13 +165,11 @@ export const BillMonthPicker = ({
           <div className="border-t-2 border-fina-ink bg-fina-grid px-4 py-3 text-xs font-semibold text-fina-ink/65">
             {dueDay
               ? `Due day ${dueDay}. Fina combines it with the selected month.`
-              : "Due day comes from account settings."}
+              : "Choose the calendar month for this view."}
           </div>
         </PopoverContent>
       </Popover>
-      <p className="text-xs font-semibold text-fina-ink/55">
-        File names are never used to choose a bill.
-      </p>
+      <p className="text-xs font-semibold text-fina-ink/55">{description}</p>
     </div>
   )
 }

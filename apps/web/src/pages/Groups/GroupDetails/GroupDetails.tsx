@@ -25,6 +25,7 @@ import { useInvites } from "@/data/Invites/useInvites"
 import { useInvitesMutation } from "@/data/Invites/useInvitesMutation"
 import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup"
 import { toast } from "@/hooks/use-toast"
+import { ReviewSettings } from "./ReviewSettings"
 
 export function GroupDetails() {
   const [inviteEmail, setInviteEmail] = useState("")
@@ -90,6 +91,10 @@ export function GroupDetails() {
       />
 
       <main className="space-y-8 p-5 md:p-8">
+        <ReviewSettings
+          key={`${group.id}:${group.creditCardReviewMonthOffset}`}
+          group={group}
+        />
         <section aria-labelledby="people-title">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>

@@ -47,10 +47,18 @@ import {
   UpdateCategoryAppearanceInputDtoSchema,
   UpdateTransactionInputDtoSchema,
   UnlinkCreditCardBillOutputSchema,
+  UpdateCreditCardBillReviewMonthInputSchema,
+  UpdateGroupReviewSettingsInputSchema,
 } from '@fina/types';
 import { createZodDto } from 'nestjs-zod';
 
 export class GroupOutputDto extends createZodDto(GroupOutputSchema) {}
+export class UpdateGroupReviewSettingsInputDto extends createZodDto(
+  UpdateGroupReviewSettingsInputSchema,
+) {}
+export class UpdateCreditCardBillReviewMonthInputDto extends createZodDto(
+  UpdateCreditCardBillReviewMonthInputSchema,
+) {}
 export class GroupListOutputDto extends createZodDto(GroupListOutputSchema) {}
 export class CreateGroupInputDto extends createZodDto(CreateGroupInputSchema) {}
 export class DeleteGroupInputDto extends createZodDto(DeleteGroupInputSchema) {}

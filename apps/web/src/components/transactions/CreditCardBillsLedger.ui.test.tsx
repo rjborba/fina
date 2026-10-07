@@ -67,6 +67,9 @@ const checkingTransaction = {
   toBeConsideredAt: null,
   calculatedDate: "2026-06-09",
   billPayment: null,
+  reviewMonth: "2026-06",
+  cashFlowDate: "2026-06-20",
+  cashFlowStatus: "confirmed",
   bankaccount: {
     id: "checking-account",
     name: "Checking",
@@ -87,6 +90,8 @@ const bill = {
   accountId: "credit-account",
   accountName: "Main card",
   billMonth: "2026-06",
+  reviewMonth: "2026-06",
+  cashFlowDate: "2026-06-27",
   dueDate: "2026-06-27",
   transactionCount: 3,
   total: -100,
@@ -97,6 +102,8 @@ const bill = {
 const emptyBill = {
   ...bill,
   billMonth: "2026-12",
+  reviewMonth: "2026-12",
+  cashFlowDate: "2026-12-27",
   dueDate: "2026-12-27",
   transactionCount: 0,
   total: 0,

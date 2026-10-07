@@ -22,6 +22,43 @@ import {
   toNullableDateTimeOutput,
 } from '../common/date-output';
 import { deriveBillDueDate } from '../common/bill-date';
+import { ensureBillReviewMonth } from '../common/review-month';
+import { CreditCardBillReviews } from '../credit-card-bills/entities/credit-card-bill-review.entity';
+import { CreditCardBillReconciliations } from '../credit-card-bills/entities/credit-card-bill-reconciliation.entity';
+import {
+  legacyTimestampTimezone,
+  transactionOccurrenceDate,
+  transactionOccurrenceDateSql,
+  utcTimestampTransformer,
+} from '../common/utc-timestamp';
+
+const OCCURRENCE_DATE_SQL = transactionOccurrenceDateSql(
+  'transaction',
+  ':legacyTimestampTimezone',
+);
+const PAYMENT_OCCURRENCE_DATE_SQL = transactionOccurrenceDateSql(
+  'bill_cash_flow_payment',
+  ':legacyTimestampTimezone',
+);
+
+const REVIEW_MONTH_SQL = `CASE WHEN bankaccount.type = 'credit' THEN
+  coalesce(bill_review.review_month, date_trunc('month', transaction.credit_due_date)::date)
+  ELSE coalesce(transaction.review_month, date_trunc('month', ${OCCURRENCE_DATE_SQL})::date) END`;
+const BILL_REVIEW_JOIN = `bill_review.group_id = transaction.group_id
+  AND bill_review.credit_account_id = transaction.bankaccount_id
+  AND bill_review.bill_month = date_trunc('month', transaction.credit_due_date)::date`;
+const CASH_FLOW_DATE_SQL = `CASE WHEN bankaccount.type = 'credit' THEN
+  coalesce(${PAYMENT_OCCURRENCE_DATE_SQL}, bill_cash_flow_payment.calculated_date, bill_cash_flow_payment.to_be_considered_at, transaction.credit_due_date, ${OCCURRENCE_DATE_SQL})
+  ELSE coalesce(transaction.to_be_considered_at, ${OCCURRENCE_DATE_SQL}) END`;
+const BILL_RECONCILIATION_JOIN = `card_reconciliation.group_id = transaction.group_id
+  AND card_reconciliation.credit_account_id = transaction.bankaccount_id
+  AND card_reconciliation.bill_month = date_trunc('month', transaction.credit_due_date)::date`;
+const BILL_PAYMENT_JOIN = `bill_cash_flow_payment.id = card_reconciliation.payment_transaction_id
+  AND bill_cash_flow_payment.group_id = transaction.group_id AND bill_cash_flow_payment.removed IS NOT TRUE
+  AND bill_cash_flow_payment.value IS NOT NULL
+  AND EXISTS (SELECT 1 FROM public.bankaccounts payment_account
+    WHERE payment_account.id = bill_cash_flow_payment.bankaccount_id
+      AND payment_account.group_id = transaction.group_id AND payment_account.type = 'checkout')`;
 
 @Injectable()
 export class TransactionsService {
@@ -39,24 +76,40 @@ export class TransactionsService {
     const account = await this.assertReferences(userId, input);
     if (!account) throw new NotFoundException('Resource not found');
     const billDueDate = this.resolveBillDueDate(account, input.billMonth);
-    const saved = await this.transactions.save(
-      this.transactions.create({
-        description: input.description,
-        value: input.value,
-        date: input.date,
-        installmentTotal: input.installmentTotal,
-        installmentCurrent: input.installmentCurrent,
-        creditDueDate: billDueDate,
-        observation: input.observation,
-        removed: false,
-        toBeConsideredAt: billDueDate,
-        calculatedDate: input.date,
-        bankaccount: { id: input.bankaccountId },
-        category: input.categoryId ? { id: input.categoryId } : null,
-        group: { id: input.groupId },
-        import: input.importId ? { id: input.importId } : null,
-      }),
-    );
+    const saved = await this.dataSource.transaction(async (manager) => {
+      if (account.type === 'credit') {
+        await ensureBillReviewMonth(
+          manager,
+          input.groupId,
+          account.id,
+          input.billMonth!,
+          input.reviewMonth,
+        );
+      }
+      return manager.getRepository(Transactions).save(
+        manager.getRepository(Transactions).create({
+          description: input.description,
+          value: input.value,
+          date: utcTimestampTransformer.to(input.date) as Date | null,
+          dateIsUtc: true,
+          installmentTotal: input.installmentTotal,
+          installmentCurrent: input.installmentCurrent,
+          creditDueDate: billDueDate,
+          observation: input.observation,
+          removed: false,
+          toBeConsideredAt: billDueDate,
+          calculatedDate: toNullableDateOutput(input.date),
+          reviewMonth:
+            account.type !== 'credit' && input.reviewMonth
+              ? `${input.reviewMonth}-01`
+              : null,
+          bankaccount: { id: input.bankaccountId },
+          category: input.categoryId ? { id: input.categoryId } : null,
+          group: { id: input.groupId },
+          import: input.importId ? { id: input.importId } : null,
+        }),
+      );
+    });
     return this.findOne(userId, saved.id);
   }
 
@@ -72,13 +125,32 @@ export class TransactionsService {
       accountIdList,
       accountType,
       search,
+      dateBasis,
     }: QueryTransactionInputDto,
+    billMonth?: string,
   ): Promise<{ data: TransactionOutput[]; totalCount: number }> {
     await this.authorization.assertMember(userId, groupId);
     const query = this.transactions
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
+      .leftJoinAndMapOne(
+        'transaction.billReview',
+        CreditCardBillReviews,
+        'bill_review',
+        BILL_REVIEW_JOIN,
+      )
+      .leftJoin(
+        CreditCardBillReconciliations,
+        'card_reconciliation',
+        BILL_RECONCILIATION_JOIN,
+      )
+      .leftJoinAndMapOne(
+        'transaction.billCashFlowPayment',
+        Transactions,
+        'bill_cash_flow_payment',
+        BILL_PAYMENT_JOIN,
+      )
       .innerJoinAndSelect('transaction.group', 'group_record')
       .innerJoin(
         'group_record.userGroups',
@@ -92,47 +164,37 @@ export class TransactionsService {
         'bill_payment_reconciliation',
       )
       .where('group_record.id = :groupId', { groupId })
-      .andWhere('transaction.removed IS NOT TRUE');
+      .setParameter('legacyTimestampTimezone', legacyTimestampTimezone())
+      .andWhere('transaction.removed IS NOT TRUE')
+      .andWhere('bill_payment_reconciliation.id IS NULL');
 
-    if (startDate) {
-      const startDateValue = startDate.toISOString().slice(0, 10);
+    if (billMonth)
       query.andWhere(
-        new Brackets((outer) => {
-          outer
-            .where('transaction.toBeConsideredAt >= :startDate', {
-              startDate: startDateValue,
-            })
-            .orWhere(
-              new Brackets((inner) => {
-                inner
-                  .where('transaction.toBeConsideredAt IS NULL')
-                  .andWhere('transaction.date >= :startDate', {
-                    startDate: startDateValue,
-                  });
-              }),
-            );
-        }),
+        "date_trunc('month', transaction.credit_due_date)::date = :billMonth",
+        { billMonth: `${billMonth}-01` },
       );
+
+    if (dateBasis === 'monthly-review') {
+      if (startDate)
+        query.andWhere(`${REVIEW_MONTH_SQL} >= :reviewStartDate`, {
+          reviewStartDate: startDate.toISOString().slice(0, 10),
+        });
+      if (endDate)
+        query.andWhere(`${REVIEW_MONTH_SQL} <= :reviewEndDate`, {
+          reviewEndDate: endDate.toISOString().slice(0, 10),
+        });
     }
-    if (endDate) {
+    if (startDate && dateBasis !== 'monthly-review') {
+      const startDateValue = startDate.toISOString().slice(0, 10);
+      query.andWhere(`${CASH_FLOW_DATE_SQL} >= :startDate`, {
+        startDate: startDateValue,
+      });
+    }
+    if (endDate && dateBasis !== 'monthly-review') {
       const endDateValue = endDate.toISOString().slice(0, 10);
-      query.andWhere(
-        new Brackets((outer) => {
-          outer
-            .where('transaction.toBeConsideredAt <= :endDate', {
-              endDate: endDateValue,
-            })
-            .orWhere(
-              new Brackets((inner) => {
-                inner
-                  .where('transaction.toBeConsideredAt IS NULL')
-                  .andWhere('transaction.date <= :endDate', {
-                    endDate: endDateValue,
-                  });
-              }),
-            );
-        }),
-      );
+      query.andWhere(`${CASH_FLOW_DATE_SQL} <= :endDate`, {
+        endDate: endDateValue,
+      });
     }
     if (categoryIdList?.length) {
       const categoryIds = categoryIdList.filter((id) => id !== '-1');
@@ -183,16 +245,51 @@ export class TransactionsService {
     input: UpdateTransactionInputDto,
   ): Promise<TransactionOutput> {
     const current = await this.findEntity(userId, id);
-    await this.assertReferences(userId, {
+    const nextAccount = await this.assertReferences(userId, {
       groupId: current.group.id,
       bankaccountId: input.bankaccountId,
       categoryId: input.categoryId,
     });
 
+    if (
+      input.reviewMonth !== undefined &&
+      (current.bankaccount?.type === 'credit' || nextAccount?.type === 'credit')
+    ) {
+      throw new BadRequestException({
+        code: 'BILL_REVIEW_MONTH_REQUIRED',
+        message:
+          'Change the reference month on the credit card bill so every purchase stays in the same review.',
+      });
+    }
+    if (input.reviewMonth !== undefined)
+      current.reviewMonth = `${input.reviewMonth}-01`;
+
+    if (
+      (current.bankaccount?.type === 'credit' ||
+        nextAccount?.type === 'credit') &&
+      ((input.creditDueDate !== undefined &&
+        toNullableDateOutput(input.creditDueDate) !==
+          toNullableDateOutput(current.creditDueDate)) ||
+        (input.toBeConsideredAt !== undefined &&
+          toNullableDateOutput(input.toBeConsideredAt) !==
+            toNullableDateOutput(current.toBeConsideredAt)) ||
+        (input.bankaccountId !== undefined &&
+          input.bankaccountId !== current.bankaccount?.id))
+    ) {
+      throw new BadRequestException({
+        code: 'BILL_IDENTITY_IMMUTABLE',
+        message:
+          'A credit card purchase must keep its account and bill due date. Change the reference month on the bill, or remove and recreate a purchase assigned to the wrong bill.',
+      });
+    }
+
     if (input.description !== undefined)
       current.description = input.description;
     if (input.value !== undefined) current.value = input.value;
-    if (input.date !== undefined) current.date = input.date;
+    if (input.date !== undefined) {
+      current.date = utcTimestampTransformer.to(input.date) as Date | null;
+      current.dateIsUtc = true;
+    }
     if (input.installmentTotal !== undefined) {
       current.installmentTotal = input.installmentTotal;
     }
@@ -200,15 +297,15 @@ export class TransactionsService {
       current.installmentCurrent = input.installmentCurrent;
     }
     if (input.creditDueDate !== undefined) {
-      current.creditDueDate = input.creditDueDate;
+      current.creditDueDate = toNullableDateOutput(input.creditDueDate);
     }
     if (input.observation !== undefined)
       current.observation = input.observation;
     if (input.toBeConsideredAt !== undefined) {
-      current.toBeConsideredAt = input.toBeConsideredAt;
+      current.toBeConsideredAt = toNullableDateOutput(input.toBeConsideredAt);
     }
     if (input.calculatedDate !== undefined) {
-      current.calculatedDate = input.calculatedDate;
+      current.calculatedDate = toNullableDateOutput(input.calculatedDate);
     }
     if (input.bankaccountId !== undefined) {
       current.bankaccount = input.bankaccountId
@@ -220,7 +317,24 @@ export class TransactionsService {
         ? ({ id: input.categoryId } as Categories)
         : null;
     }
-    await this.transactions.save(current);
+    await this.dataSource.transaction(async (manager) => {
+      const account =
+        nextAccount ??
+        (input.bankaccountId === null ? null : current.bankaccount);
+      const billMonth = toNullableDateOutput(current.creditDueDate)?.slice(
+        0,
+        7,
+      );
+      if (account?.type === 'credit' && billMonth) {
+        await ensureBillReviewMonth(
+          manager,
+          current.group.id,
+          account.id,
+          billMonth,
+        );
+      }
+      await manager.getRepository(Transactions).save(current);
+    });
     return this.findOne(userId, id);
   }
 
@@ -238,6 +352,23 @@ export class TransactionsService {
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
+      .leftJoinAndMapOne(
+        'transaction.billReview',
+        CreditCardBillReviews,
+        'bill_review',
+        BILL_REVIEW_JOIN,
+      )
+      .leftJoin(
+        CreditCardBillReconciliations,
+        'card_reconciliation',
+        BILL_RECONCILIATION_JOIN,
+      )
+      .leftJoinAndMapOne(
+        'transaction.billCashFlowPayment',
+        Transactions,
+        'bill_cash_flow_payment',
+        BILL_PAYMENT_JOIN,
+      )
       .innerJoinAndSelect('transaction.group', 'group_record')
       .leftJoinAndSelect('transaction.import', 'import_record')
       .leftJoinAndSelect(
@@ -331,13 +462,49 @@ export class TransactionsService {
       createdAt: toDateTimeOutput(transaction.createdAt),
       description: transaction.description,
       value: transaction.value,
-      date: toNullableDateTimeOutput(transaction.date),
+      date: toNullableDateTimeOutput(transactionOccurrenceDate(transaction)),
       installmentTotal: transaction.installmentTotal ?? null,
       installmentCurrent: transaction.installmentCurrent ?? null,
       creditDueDate: toNullableDateOutput(transaction.creditDueDate),
       observation: transaction.observation ?? null,
       toBeConsideredAt: toNullableDateOutput(transaction.toBeConsideredAt),
       calculatedDate: toNullableDateOutput(transaction.calculatedDate),
+      reviewMonth:
+        transaction.bankaccount?.type === 'credit'
+          ? ((
+              toNullableDateOutput(transaction.billReview?.reviewMonth) ??
+              toNullableDateOutput(transaction.creditDueDate)
+            )?.slice(0, 7) ?? null)
+          : ((
+              toNullableDateOutput(transaction.reviewMonth) ??
+              toNullableDateOutput(transactionOccurrenceDate(transaction))
+            )?.slice(0, 7) ?? null),
+      cashFlowDate:
+        transaction.bankaccount?.type === 'credit'
+          ? (toNullableDateOutput(
+              transactionOccurrenceDate(transaction.billCashFlowPayment),
+            ) ??
+            toNullableDateOutput(
+              transaction.billCashFlowPayment?.calculatedDate,
+            ) ??
+            toNullableDateOutput(
+              transaction.billCashFlowPayment?.toBeConsideredAt,
+            ) ??
+            toNullableDateOutput(transaction.creditDueDate) ??
+            toNullableDateOutput(transactionOccurrenceDate(transaction)))
+          : (toNullableDateOutput(transaction.toBeConsideredAt) ??
+            toNullableDateOutput(transactionOccurrenceDate(transaction))),
+      cashFlowStatus:
+        transaction.bankaccount?.type === 'credit'
+          ? transaction.billCashFlowPayment &&
+            (transaction.billCashFlowPayment.date ??
+              transaction.billCashFlowPayment.calculatedDate ??
+              transaction.billCashFlowPayment.toBeConsideredAt)
+            ? 'confirmed'
+            : 'scheduled'
+          : (transaction.toBeConsideredAt ?? transaction.date)
+            ? 'confirmed'
+            : null,
       billPayment: transaction.billPaymentReconciliation
         ? {
             creditAccountId:

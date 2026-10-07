@@ -29,6 +29,7 @@ import { ImportProfiles } from './imports/entities/import-profile.entity';
 import { ImportFiles } from './imports/entities/import-file.entity';
 import { CreditCardBillReconciliations } from './credit-card-bills/entities/credit-card-bill-reconciliation.entity';
 import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.module';
+import { CreditCardBillReviews } from './credit-card-bills/entities/credit-card-bill-review.entity';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.mod
             ImportProfiles,
             Invites,
             CreditCardBillReconciliations,
+            CreditCardBillReviews,
           ],
           synchronize: false,
           logging: false,

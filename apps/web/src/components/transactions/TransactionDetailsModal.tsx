@@ -31,6 +31,7 @@ import React, {
 } from "react"
 
 import { Button } from "../ui/button"
+import { TransactionReviewMonth } from "./TransactionReviewMonth"
 import {
   Dialog,
   DialogContent,
@@ -270,6 +271,11 @@ export function TransactionDetailsModal({
       transaction.category.name)
     : null
   const accountIsCredit = accountData?.type === "credit"
+  const billMonth = (
+    transaction?.creditDueDate ??
+    transaction?.toBeConsideredAt ??
+    transaction?.calculatedDate
+  )?.slice(0, 7)
   const AccountIcon = accountIsCredit ? CreditCard : Landmark
   const hasInstallment = Boolean(
     transaction?.installmentCurrent && transaction.installmentTotal
@@ -378,6 +384,31 @@ export function TransactionDetailsModal({
                   />
                 </div>
               ) : null}
+              {transaction?.reviewMonth ? (
+                <div className="border-b-2 border-r-2 border-fina-ink">
+                  <DetailCell
+                    icon={<CalendarDays className="size-3.5" />}
+                    label="Review month"
+                    value={
+                      <div>
+                        {dayjs(`${transaction.reviewMonth}-01`).format(
+                          "MMMM YYYY"
+                        )}
+                        {accountIsCredit &&
+                        transaction.bankaccount &&
+                        billMonth ? (
+                          <a
+                            className="mt-2 block text-xs font-bold underline underline-offset-2"
+                            href={`/credit-card-bills/${transaction.bankaccount.id}/${billMonth}`}
+                          >
+                            Change month for the whole bill
+                          </a>
+                        ) : null}
+                      </div>
+                    }
+                  />
+                </div>
+              ) : null}
               {hasInstallment ? (
                 <div className="border-b-2 border-r-2 border-fina-ink">
                   <DetailCell
@@ -443,6 +474,19 @@ export function TransactionDetailsModal({
               ) : null}
             </div>
           </section>
+
+          {transaction && !accountIsCredit && !transaction.billPayment ? (
+            <TransactionReviewMonth
+              key={`${transaction.id}:${transaction.reviewMonth}`}
+              reviewMonth={transaction.reviewMonth}
+              onSave={async (reviewMonth) => {
+                await updateTransaction({
+                  id: transaction.id,
+                  transaction: { reviewMonth }
+                })
+              }}
+            />
+          ) : null}
 
           <section
             aria-labelledby="transaction-category-title"

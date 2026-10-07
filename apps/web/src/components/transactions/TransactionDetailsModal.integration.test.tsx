@@ -62,6 +62,9 @@ const initialTransaction: TransactionOutput = {
   toBeConsideredAt: "2026-10-05",
   calculatedDate: "2026-09-27",
   billPayment: null,
+  reviewMonth: "2026-06",
+  cashFlowDate: "2026-09-27",
+  cashFlowStatus: "scheduled",
   bankaccount: {
     id: "2",
     name: "Test card",

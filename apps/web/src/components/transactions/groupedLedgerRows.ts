@@ -20,7 +20,8 @@ export type GroupedLedgerRow =
 export function buildGroupedLedgerRows(
   transactions: readonly TransactionOutput[],
   bills: readonly CreditCardBillSummary[],
-  sort: TransactionSortOption
+  sort: TransactionSortOption,
+  dateBasis: "cash-flow" | "monthly-review" = "cash-flow"
 ): GroupedLedgerRow[] {
   const linkedPaymentIds = new Set(
     bills.flatMap((bill) => (bill.payment ? [bill.payment.transactionId] : []))
@@ -30,6 +31,7 @@ export function buildGroupedLedgerRows(
       .filter(
         (transaction) =>
           transaction.bankaccount?.type !== "credit" &&
+          !transaction.billPayment &&
           !linkedPaymentIds.has(transaction.id)
       )
       .map(
@@ -37,10 +39,15 @@ export function buildGroupedLedgerRows(
           kind: "transaction",
           key: `transaction-${transaction.id}`,
           date:
-            transaction.toBeConsideredAt ??
-            transaction.calculatedDate ??
-            transaction.date?.slice(0, 10) ??
-            "",
+            dateBasis === "monthly-review"
+              ? transaction.reviewMonth
+                ? `${transaction.reviewMonth}-01`
+                : ""
+              : (transaction.cashFlowDate ??
+                transaction.toBeConsideredAt ??
+                transaction.calculatedDate ??
+                transaction.date?.slice(0, 10) ??
+                ""),
           value: transaction.value ?? 0,
           transaction
         })
@@ -49,8 +56,14 @@ export function buildGroupedLedgerRows(
       (bill): GroupedLedgerRow => ({
         kind: "bill",
         key: `bill-${bill.accountId}-${bill.billMonth}`,
-        date: bill.dueDate,
-        value: bill.total,
+        date:
+          dateBasis === "monthly-review"
+            ? `${bill.reviewMonth}-01`
+            : bill.cashFlowDate,
+        value:
+          dateBasis === "monthly-review"
+            ? bill.total
+            : (bill.payment?.value ?? bill.total),
         bill
       })
     )

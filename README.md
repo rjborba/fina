@@ -75,7 +75,7 @@ pnpm lint                # lint every applicable workspace
 pnpm typecheck           # type-check every workspace
 pnpm test                # unit tests
 pnpm test:integration    # disposable database in local Supabase PostgreSQL
-pnpm test:e2e            # API/browser journeys (browser journey is deferred)
+pnpm test:e2e            # API and isolated Playwright browser journeys
 pnpm build               # production builds
 pnpm --filter @fina/api migration:generate \
   src/database/migrations/DescribeTheChange # generate a local migration
@@ -89,14 +89,38 @@ pnpm secrets:check       # masked secret scan
 pnpm verify              # complete repository-health contract
 ```
 
-`pnpm test:e2e` exposes the existing API E2E surface separately. The import
-experience currently has pure parser and React Testing Library journey coverage;
-a Playwright browser harness remains deferred until isolated Auth plus database
-fixtures can be provisioned without touching the development database.
+Before the first browser run, install its browser with
+`pnpm exec playwright install chromium` (CI uses `--with-deps`).
+`pnpm test:e2e` builds the API, runs its authentication checks, and then runs
+Playwright against a loopback-only application on port 4180. Each run creates a
+unique `fina_browser_test_*` database, applies the committed TypeORM migrations,
+and uses an isolated identity fixture with locally signed tokens. It never
+touches development or production Auth/application records. The database is
+dropped when the harness exits; browser traces, videos, and saved sessions are
+disabled so tokens are not written to test artifacts.
 The integration-test runner requires `pnpm infra:start`. It creates a unique
 `fina_test_*` database, runs the migration and API boundary suite with locally
 signed JWT fixtures, and drops that database even when the suite fails. CI uses
 the same local Supabase path.
+
+## Monthly review and cash flow
+
+Use **Monthly review** to classify expenses by their household reference month.
+When importing a card statement, **Bill due in** identifies the actual bill;
+**Include in monthly review** assigns all its purchases to your chosen month.
+For example, a bill due in July can belong to June's review, including any July
+purchases or older installments on that bill.
+
+In group details, owners can set **Credit-card bills belong to → Previous
+month** for future bills. Existing assignments stay unchanged. Open a bill and
+use **Move whole bill** to correct its reference month. Checking transactions
+normally use their purchase month and can have a separate review-month override.
+
+**Cash flow** shows each card bill once: an unpaid bill is scheduled on its due
+date; a confirmed checking payment uses its actual date and amount. Bill details
+retain the purchase breakdown. A bill that changes after payment is flagged for
+review, while the actual payment amount remains unchanged in cash-flow totals.
+Expense responsibility splits and reimbursement balances are a later increment.
 
 ## Deployment
 
@@ -109,11 +133,20 @@ The production topology is intentionally split:
   bypass the Nest API.
 
 The web project's production `VITE_API_URL` must equal the Render API origin.
+It also requires `VITE_SUPABASE_URL` and the project's public anon key in
+`VITE_SUPABASE_KEY`; never use a service-role key in browser configuration.
+The Vercel project uses Node 24.x and the repository pins Node 24.21.0.
 The API deployment settings and operational checks are documented in
 [`apps/api/DEPLOY_RENDER.md`](./apps/api/DEPLOY_RENDER.md). The repository does
 not support deploying the API as a Vercel Function.
 
-CI runs `pnpm verify` on pushes to `main` and pull requests. Hosting platforms
+CI runs `pnpm verify` and `pnpm test:e2e` on pushes to `main` and pull requests. Hosting platforms
 can still deploy independently of that workflow unless their dashboards enforce
 the `verify` job as a deployment check. Confirm that gate before treating a
 successful Git push as production-ready.
+
+For coupled API/web releases, hold Vercel custom-domain auto-assignment until
+the migration and matching Render commit are healthy. Build the production web
+deployment without assigning domains, then explicitly promote it and restore
+the project's normal auto-assignment setting. This avoids serving a new web
+contract against the previous API during rollout.

@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { Server } from 'node:http';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { InitialSchema1789960612000 } from '../src/database/migrations/1789960612000-InitialSchema';
 import { ProvisionInitialGroup1790104136223 } from '../src/database/migrations/1790104136223-ProvisionInitialGroup';
 import { ImportSystem1790110800000 } from '../src/database/migrations/1790110800000-ImportSystem';
@@ -18,6 +18,24 @@ import { CreditCardBillReconciliation1790650000000 } from '../src/database/migra
 import { AddCreditCardBillAttribution1790730000000 } from '../src/database/migrations/1790730000000-AddCreditCardBillAttribution';
 import { StoreBankAccountDueDay1790810000000 } from '../src/database/migrations/1790810000000-StoreBankAccountDueDay';
 import { RemoveCreditCardBillAttribution1790900000000 } from '../src/database/migrations/1790900000000-RemoveCreditCardBillAttribution';
+import { AddMonthlyReview1791000000000 } from '../src/database/migrations/1791000000000-AddMonthlyReview';
+
+const migrations = [
+  InitialSchema1789960612000,
+  ProvisionInitialGroup1790104136223,
+  ImportSystem1790110800000,
+  StoreImportFiles1790280000000,
+  CategoryAppearance1790553422000,
+  ExpandCategoryAppearance1790555400000,
+  GroupOwnedTransactions1790557104292,
+  BackfillTransactionGroups1790559700000,
+  AddImportBillDueDate1790562000000,
+  CreditCardBillReconciliation1790650000000,
+  AddCreditCardBillAttribution1790730000000,
+  StoreBankAccountDueDay1790810000000,
+  RemoveCreditCardBillAttribution1790900000000,
+  AddMonthlyReview1791000000000,
+];
 
 describe('backend-only PostgreSQL boundary', () => {
   const testSecret = 'local-integration-jwt-secret';
@@ -115,22 +133,27 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: [
-        InitialSchema1789960612000,
-        ProvisionInitialGroup1790104136223,
-        ImportSystem1790110800000,
-        StoreImportFiles1790280000000,
-        CategoryAppearance1790553422000,
-        ExpandCategoryAppearance1790555400000,
-        GroupOwnedTransactions1790557104292,
-        BackfillTransactionGroups1790559700000,
-        AddImportBillDueDate1790562000000,
-        CreditCardBillReconciliation1790650000000,
-        AddCreditCardBillAttribution1790730000000,
-        StoreBankAccountDueDay1790810000000,
-        RemoveCreditCardBillAttribution1790900000000,
-      ],
+      migrations: migrations.slice(0, -1),
     });
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+
+    await dataSource.query(
+      `INSERT INTO public.transactions (
+         description, date, credit_due_date, bankaccount_id, group_id, removed
+       ) SELECT 'Synthetic legacy review entry', entry.purchase_date,
+           entry.due_date, account.id, account.group_id, entry.removed
+         FROM public.bankaccounts account
+         CROSS JOIN (VALUES
+           ('2026-06-18'::date, '2026-07-05'::date, false),
+           ('2026-07-01'::date, '2026-07-05'::date, false),
+           ('2025-12-12'::date, '2026-01-05'::date, true)
+         ) AS entry(purchase_date, due_date, removed)
+         WHERE account.group_id = $1`,
+      [legacyGroupId],
+    );
+    await dataSource.destroy();
+    dataSource = new DataSource({ ...dataSourceOptions, migrations });
     await dataSource.initialize();
     await dataSource.runMigrations();
 
@@ -166,6 +189,7 @@ describe('backend-only PostgreSQL boundary', () => {
       'bankaccounts',
       'categories',
       'credit_card_bill_reconciliations',
+      'credit_card_bill_reviews',
       'groups',
       'import_files',
       'import_profiles',
@@ -179,7 +203,7 @@ describe('backend-only PostgreSQL boundary', () => {
     const migrationCount = await dataSource.query<Array<{ count: number }>>(
       'SELECT count(*)::integer AS count FROM migrations',
     );
-    expect(migrationCount[0]?.count).toBe(13);
+    expect(migrationCount[0]?.count).toBe(14);
 
     const columns = await dataSource.query<
       Array<{ table_name: string; column_name: string }>
@@ -337,6 +361,100 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.query('DELETE FROM public.groups WHERE id IN ($1, $2)', [
       incorrectGroupId,
       accountGroupId,
+    ]);
+  });
+
+  it('backfills review months without shifting history and constrains the new tenant metadata', async () => {
+    const migratedBills = await dataSource.query<
+      Array<{ bill_month: string; review_month: string; offset: number }>
+    >(`
+      SELECT review.bill_month::text, review.review_month::text,
+        group_record.credit_card_review_month_offset AS offset
+      FROM public.credit_card_bill_reviews review
+      JOIN public.groups group_record ON group_record.id = review.group_id
+      WHERE group_record.name = 'Legacy due day'
+      ORDER BY review.bill_month
+    `);
+    expect(migratedBills).toEqual([
+      { bill_month: '2026-01-01', review_month: '2026-01-01', offset: 0 },
+      { bill_month: '2026-07-01', review_month: '2026-07-01', offset: 0 },
+    ]);
+    const legacyDates = await dataSource.query<
+      Array<{ date: string; date_is_utc: boolean }>
+    >(`
+      SELECT transaction_record.date::date::text AS date, transaction_record.date_is_utc
+      FROM public.transactions transaction_record
+      JOIN public.groups group_record ON group_record.id = transaction_record.group_id
+      WHERE group_record.name = 'Legacy due day' ORDER BY transaction_record.date
+    `);
+    expect(legacyDates).toEqual([
+      { date: '2025-12-12', date_is_utc: false },
+      { date: '2026-06-18', date_is_utc: false },
+      { date: '2026-07-01', date_is_utc: false },
+    ]);
+
+    const fixture = await reviewFixture();
+    await expect(
+      dataSource.query(
+        `UPDATE public.groups SET credit_card_review_month_offset = 1 WHERE id = $1`,
+        [fixture.groupId],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      dataSource.query(
+        `INSERT INTO public.credit_card_bill_reviews
+           (group_id, credit_account_id, bill_month, review_month)
+         VALUES ($1, $2, '2026-07-02', '2026-06-01')`,
+        [fixture.groupId, fixture.creditAccountId],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      dataSource.query(
+        `INSERT INTO public.transactions (group_id, review_month)
+         VALUES ($1, '2026-06-02')`,
+        [fixture.groupId],
+      ),
+    ).rejects.toThrow();
+    await dataSource.query(
+      `INSERT INTO public.credit_card_bill_reviews
+         (group_id, credit_account_id, bill_month, review_month)
+       VALUES ($1, $2, '2026-07-01', '2026-06-01')`,
+      [fixture.groupId, fixture.creditAccountId],
+    );
+    await expect(
+      dataSource.query(
+        `INSERT INTO public.credit_card_bill_reviews
+           (group_id, credit_account_id, bill_month, review_month)
+         VALUES ($1, $2, '2026-07-01', '2026-05-01')`,
+        [fixture.groupId, fixture.creditAccountId],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      dataSource.query(
+        `INSERT INTO public.credit_card_bill_reviews
+           (group_id, credit_account_id, bill_month, review_month)
+         VALUES ($1, $2, '2026-07-01', '2026-06-02')`,
+        [fixture.groupId, fixture.creditAccountId],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      dataSource.query(
+        `INSERT INTO public.credit_card_bill_reviews
+           (group_id, credit_account_id, bill_month, review_month)
+         VALUES ($1, $2, '2026-07-01', '2026-06-01')`,
+        [fixture.groupId, fixture.otherCreditAccountId],
+      ),
+    ).rejects.toThrow();
+    const indexes = await dataSource.query<Array<{ indexname: string }>>(`
+      SELECT indexname FROM pg_indexes
+      WHERE schemaname = 'public' AND indexname IN (
+        'credit_card_bill_reviews_group_month_idx',
+        'transactions_group_review_month_idx'
+      ) ORDER BY indexname
+    `);
+    expect(indexes.map(({ indexname }) => indexname)).toEqual([
+      'credit_card_bill_reviews_group_month_idx',
+      'transactions_group_review_month_idx',
     ]);
   });
 
@@ -660,6 +778,12 @@ describe('backend-only PostgreSQL boundary', () => {
        ) VALUES ($1, $2, '2026-01-01', $3, -5)`,
       [groupId, creditAccountId, paymentTransactionId],
     );
+    await dataSource.query(
+      `INSERT INTO public.credit_card_bill_reviews (
+         group_id, credit_account_id, bill_month, review_month
+       ) VALUES ($1, $2, '2026-01-01', '2025-12-01')`,
+      [groupId, creditAccountId],
+    );
 
     await dataSource.query('DELETE FROM public.groups WHERE id = $1', [
       groupId,
@@ -671,6 +795,7 @@ describe('backend-only PostgreSQL boundary', () => {
          SELECT group_id FROM public.bankaccounts
          UNION ALL SELECT group_id FROM public.categories
          UNION ALL SELECT group_id FROM public.credit_card_bill_reconciliations
+         UNION ALL SELECT group_id FROM public.credit_card_bill_reviews
          UNION ALL SELECT group_id FROM public.imports
          UNION ALL SELECT group_id FROM public.import_profiles
          UNION ALL SELECT group_id FROM public.invites
@@ -1508,13 +1633,7 @@ describe('backend-only PostgreSQL boundary', () => {
     }>(inlinePaymentResponse).data.find(
       (transaction) => transaction.id === paymentTransaction.id,
     );
-    expect(inlinePayment).toMatchObject({
-      id: paymentTransaction.id,
-      billPayment: {
-        creditAccountId,
-        billMonth: '2026-10',
-      },
-    });
+    expect(inlinePayment).toBeUndefined();
 
     const [creditTransaction] = await dataSource.query<Array<{ id: string }>>(
       `SELECT id FROM public.transactions WHERE import_id = $1`,
@@ -1678,6 +1797,949 @@ describe('backend-only PostgreSQL boundary', () => {
     expect(rolledBackFile[0]?.count).toBe(0);
   });
 
+  it('keeps bill review months independent from purchases, cash flow, payments, and later defaults', async () => {
+    const fixture = await reviewFixture();
+    const {
+      groupId,
+      creditAccountId,
+      checkingAccountId,
+      ownerToken,
+      memberToken,
+    } = fixture;
+    const billPath = `/credit-card-bills/${creditAccountId}/2026-07`;
+    const purchaseDates = ['2026-06-18', '2026-07-01', '2026-01-10'];
+    const purchaseIds: string[] = [];
+    for (const date of purchaseDates) {
+      const response = await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(
+          reviewTransaction(groupId, creditAccountId, {
+            date,
+            billMonth: '2026-07',
+          }),
+        )
+        .expect(201);
+      const purchase = responseBody<{ id: string; reviewMonth: string }>(
+        response,
+      );
+      purchaseIds.push(purchase.id);
+      expect(purchase.reviewMonth).toBe('2026-07');
+    }
+
+    await request(httpServer)
+      .patch(`/groups/${groupId}/review-settings`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(200);
+    const unchanged = await request(httpServer)
+      .get(`${billPath}?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ bill: { reviewMonth: string } }>(unchanged).bill
+        .reviewMonth,
+    ).toBe('2026-07');
+
+    const changed = await request(httpServer)
+      .patch(`${billPath}/review-month`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId, reviewMonth: '2026-06' })
+      .expect(200);
+    const changedBill = responseBody<{
+      bill: unknown;
+      transactions: Array<{ id: string; reviewMonth: string }>;
+    }>(changed);
+    expect(changedBill.bill).toMatchObject({
+      billMonth: '2026-07',
+      dueDate: '2026-07-05',
+      reviewMonth: '2026-06',
+    });
+    expect(changedBill.transactions.map(({ id }) => id).sort()).toEqual(
+      [...purchaseIds].sort(),
+    );
+    expect(
+      changedBill.transactions.every(
+        ({ reviewMonth }) => reviewMonth === '2026-06',
+      ),
+    ).toBe(true);
+    const persistedPurchases = await dataSource.query<
+      Array<{ purchase_date: string; due_date: string }>
+    >(
+      `SELECT date::date::text AS purchase_date, credit_due_date::text AS due_date
+       FROM public.transactions WHERE id = ANY($1::bigint[]) ORDER BY date`,
+      [purchaseIds],
+    );
+    expect(persistedPurchases).toEqual(
+      [...purchaseDates]
+        .sort()
+        .map((purchase_date) => ({ purchase_date, due_date: '2026-07-05' })),
+    );
+    const conflictingPurchase = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, creditAccountId, {
+          billMonth: '2026-07',
+          reviewMonth: '2026-07',
+        }),
+      )
+      .expect(409);
+    expect(responseBody<{ code: string }>(conflictingPurchase).code).toBe(
+      'BILL_REVIEW_MONTH_CONFLICT',
+    );
+
+    const juneReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(juneReview)
+        .data.map(({ id }) => id)
+        .sort(),
+    ).toEqual([...purchaseIds].sort());
+    const partialMonthReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-02&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<{ data: unknown[] }>(partialMonthReview).data).toEqual(
+      [],
+    );
+    const julyCashFlow = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-07-01&endDate=2026-07-31`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(julyCashFlow)
+        .data.map(({ id }) => id)
+        .sort(),
+    ).toEqual([...purchaseIds].sort());
+    const juneBills = await request(httpServer)
+      .get(
+        `/credit-card-bills?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<Array<{ billMonth: string; reviewMonth: string }>>(
+        juneBills,
+      ),
+    ).toEqual([
+      expect.objectContaining({ billMonth: '2026-07', reviewMonth: '2026-06' }),
+    ]);
+
+    for (const [billMonth, expectedReviewMonth] of [
+      ['2026-08', '2026-07'],
+      ['2027-01', '2026-12'],
+    ]) {
+      const response = await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(reviewTransaction(groupId, creditAccountId, { billMonth }))
+        .expect(201);
+      expect(responseBody<{ reviewMonth: string }>(response).reviewMonth).toBe(
+        expectedReviewMonth,
+      );
+    }
+    const payment = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, checkingAccountId, {
+          date: '2026-06-30',
+          value: -30,
+        }),
+      )
+      .expect(201);
+    const paymentId = responseBody<{ id: string }>(payment).id;
+    await request(httpServer)
+      .post(`${billPath}/reconciliation`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId, paymentTransactionId: paymentId })
+      .expect(200);
+    const julyReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-07-01&endDate=2026-07-31`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(julyReview).data.map(
+        ({ id }) => id,
+      ),
+    ).not.toContain(paymentId);
+    const cashPayment = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    const paidPurchases = responseBody<{
+      data: Array<{ id: string; cashFlowDate: string }>;
+    }>(cashPayment).data;
+    expect(paidPurchases.map(({ id }) => id).sort()).toEqual(
+      [...purchaseIds].sort(),
+    );
+    expect(
+      paidPurchases.every(({ cashFlowDate }) => cashFlowDate === '2026-06-30'),
+    ).toBe(true);
+    const paidJuneReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(paidJuneReview)
+        .data.map(({ id }) => id)
+        .sort(),
+    ).toEqual([...purchaseIds].sort());
+    const paidBill = await request(httpServer)
+      .get(`${billPath}?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<{ bill: unknown }>(paidBill).bill).toMatchObject({
+      dueDate: '2026-07-05',
+      cashFlowDate: '2026-06-30',
+      reviewMonth: '2026-06',
+      payment: { transactionId: paymentId },
+    });
+    const julyPaidBills = await request(httpServer)
+      .get(
+        `/credit-card-bills?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-07-01&endDate=2026-07-31`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<Array<{ billMonth: string }>>(julyPaidBills).map(
+        ({ billMonth }) => billMonth,
+      ),
+    ).not.toContain('2026-07');
+    const junePaidBills = await request(httpServer)
+      .get(
+        `/credit-card-bills?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<Array<{ billMonth: string }>>(junePaidBills)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          billMonth: '2026-07',
+          cashFlowDate: '2026-06-30',
+        }),
+      ]),
+    );
+  });
+
+  it('authorizes review settings and bill edits without tenant disclosure and supports bank overrides', async () => {
+    const fixture = await reviewFixture();
+    const {
+      groupId,
+      otherGroupId,
+      creditAccountId,
+      otherCreditAccountId,
+      checkingAccountId,
+      ownerToken,
+      memberToken,
+      outsiderToken,
+    } = fixture;
+    const settingsPath = `/groups/${groupId}/review-settings`;
+    const billPath = `/credit-card-bills/${creditAccountId}/2026-07/review-month`;
+    await request(httpServer)
+      .patch(settingsPath)
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(401);
+    await request(httpServer)
+      .patch(billPath)
+      .send({ groupId, reviewMonth: '2026-06' })
+      .expect(401);
+    await request(httpServer)
+      .patch(settingsPath)
+      .set('Authorization', 'Bearer invalid')
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(401);
+    await request(httpServer)
+      .patch(settingsPath)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(403);
+    await request(httpServer)
+      .patch(settingsPath)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ creditCardReviewMonthOffset: 1 })
+      .expect(400);
+    const denied = await request(httpServer)
+      .patch(settingsPath)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(404);
+    const missing = await request(httpServer)
+      .patch('/groups/999999999/review-settings')
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ creditCardReviewMonthOffset: -1 })
+      .expect(404);
+    const stableError = (response: request.Response) => {
+      const { code, message, requestId } = responseBody<{
+        code: string;
+        message: string;
+        requestId: string;
+      }>(response);
+      expect(requestId).toEqual(expect.any(String));
+      return { code, message };
+    };
+    expect(stableError(denied)).toEqual(stableError(missing));
+
+    await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, creditAccountId, { billMonth: '2026-07' }),
+      )
+      .expect(201);
+    const foreignBill = await request(httpServer)
+      .patch(billPath)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ groupId, reviewMonth: '2026-06' })
+      .expect(404);
+    const unknownBill = await request(httpServer)
+      .patch('/credit-card-bills/999999999/2026-07/review-month')
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ groupId, reviewMonth: '2026-06' })
+      .expect(404);
+    expect(stableError(foreignBill)).toEqual(stableError(unknownBill));
+    await request(httpServer)
+      .patch(billPath)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId: otherGroupId, reviewMonth: '2026-06' })
+      .expect(404);
+    await request(httpServer)
+      .patch(`/credit-card-bills/${otherCreditAccountId}/2026-07/review-month`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId, reviewMonth: '2026-06' })
+      .expect(404);
+    await request(httpServer)
+      .patch(billPath)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId, reviewMonth: '2026-13' })
+      .expect(400);
+    await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, otherCreditAccountId, {
+          billMonth: '2026-07',
+          reviewMonth: '2026-06',
+        }),
+      )
+      .expect(404);
+
+    const bankResponse = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, checkingAccountId, { date: '2026-07-01' }),
+      )
+      .expect(201);
+    const bankTransaction = responseBody<{ id: string; reviewMonth: string }>(
+      bankResponse,
+    );
+    expect(bankTransaction.reviewMonth).toBe('2026-07');
+    const initialBankReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&accountType=checkout&dateBasis=monthly-review&startDate=2026-07-01&endDate=2026-07-31`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(initialBankReview).data,
+    ).toEqual([expect.objectContaining({ id: bankTransaction.id })]);
+    const override = await request(httpServer)
+      .patch(`/transactions/${bankTransaction.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ reviewMonth: '2026-06' })
+      .expect(200);
+    expect(responseBody<{ reviewMonth: string }>(override).reviewMonth).toBe(
+      '2026-06',
+    );
+    await request(httpServer)
+      .patch(`/transactions/${bankTransaction.id}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ reviewMonth: '2026-05' })
+      .expect(404);
+    const checkingReview = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&accountType=checkout&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(checkingReview).data,
+    ).toEqual([expect.objectContaining({ id: bankTransaction.id })]);
+    const checkingCashFlow = await request(httpServer)
+      .get(
+        `/transactions?groupId=${groupId}&accountType=checkout&dateBasis=cash-flow&startDate=2026-07-01&endDate=2026-07-31`,
+      )
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string }> }>(checkingCashFlow).data,
+    ).toEqual([expect.objectContaining({ id: bankTransaction.id })]);
+    const movedDate = await request(httpServer)
+      .patch(`/transactions/${bankTransaction.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ date: '2026-08-09' })
+      .expect(200);
+    expect(
+      responseBody<{ reviewMonth: string; cashFlowDate: string }>(movedDate),
+    ).toMatchObject({ reviewMonth: '2026-06', cashFlowDate: '2026-08-09' });
+    const [{ persisted_date: persistedDate }] = await dataSource.query<
+      Array<{ persisted_date: string }>
+    >(
+      'SELECT date::date::text AS persisted_date FROM public.transactions WHERE id = $1',
+      [bankTransaction.id],
+    );
+    expect(persistedDate).toBe('2026-08-09');
+  });
+
+  it('persists bill review assignment atomically across imports, conflicts, reimports, and concurrent writers', async () => {
+    const { groupId, creditAccountId, memberToken } = await reviewFixture();
+    const content = Buffer.from(
+      'Date;Description;Amount\n2026-06-18;Synthetic review import;10',
+    );
+    const payload = importPayload({
+      groupId,
+      accountId: creditAccountId,
+      billMonth: '2026-07',
+      reviewMonth: '2026-06',
+      fileContent: content,
+    });
+    const initial = await postImport(memberToken, payload, content).expect(201);
+    const initialImportId = responseBody<{ id: string }>(initial).id;
+    const billPath = `/credit-card-bills/${creditAccountId}/2026-07`;
+    await request(httpServer)
+      .patch(`${billPath}/review-month`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ groupId, reviewMonth: '2026-05' })
+      .expect(200);
+    const conflictContent = Buffer.from(
+      'Date;Description;Amount\n2026-06-19;Synthetic conflicting import;10',
+    );
+    const conflictPayload = importPayload({
+      groupId,
+      accountId: creditAccountId,
+      billMonth: '2026-07',
+      reviewMonth: '2026-06',
+      fileContent: conflictContent,
+    });
+    const conflict = await postImport(
+      memberToken,
+      conflictPayload,
+      conflictContent,
+    ).expect(409);
+    expect(responseBody<{ code: string }>(conflict).code).toBe(
+      'BILL_REVIEW_MONTH_CONFLICT',
+    );
+    const [{ count: conflictingImports }] = await dataSource.query<
+      Array<{ count: number }>
+    >(
+      'SELECT count(*)::integer AS count FROM public.imports WHERE group_id = $1 AND file_hash = $2',
+      [groupId, conflictPayload.fileHash],
+    );
+    expect(conflictingImports).toBe(0);
+    await request(httpServer)
+      .delete(`/imports/${initialImportId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    const reimportPayload = { ...payload, reviewMonth: undefined };
+    await postImport(memberToken, reimportPayload, content).expect(201);
+    const retainedMonth = await request(httpServer)
+      .get(`${billPath}?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{
+        bill: { reviewMonth: string };
+        transactions: Array<{ reviewMonth: string }>;
+      }>(retainedMonth),
+    ).toMatchObject({
+      bill: { reviewMonth: '2026-05' },
+      transactions: [expect.objectContaining({ reviewMonth: '2026-05' })],
+    });
+
+    await dataSource.query(`
+      CREATE FUNCTION public.fail_review_import_row() RETURNS trigger LANGUAGE plpgsql AS $function$
+      BEGIN
+        IF NEW.source_row = 998 THEN RAISE EXCEPTION 'synthetic review persistence failure'; END IF;
+        RETURN NEW;
+      END;
+      $function$;
+      CREATE TRIGGER fail_review_import_row BEFORE INSERT ON public.transactions
+      FOR EACH ROW EXECUTE FUNCTION public.fail_review_import_row();
+    `);
+    const rollbackContent = Buffer.from(
+      'Date;Description;Amount\n2026-10-01;Synthetic review rollback;10',
+    );
+    const rollbackPayload = importPayload({
+      groupId,
+      accountId: creditAccountId,
+      billMonth: '2026-11',
+      reviewMonth: '2026-10',
+      fileContent: rollbackContent,
+      rows: [
+        {
+          sourceRow: 998,
+          date: '2026-10-01',
+          amount: 10,
+          description: 'Synthetic review rollback',
+          installmentCurrent: null,
+          installmentTotal: null,
+        },
+      ],
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    try {
+      await postImport(memberToken, rollbackPayload, rollbackContent).expect(
+        500,
+      );
+    } finally {
+      consoleSpy.mockRestore();
+      await dataSource.query(
+        'DROP TRIGGER fail_review_import_row ON public.transactions',
+      );
+      await dataSource.query('DROP FUNCTION public.fail_review_import_row()');
+    }
+    const [{ count: rollbackRows }] = await dataSource.query<
+      Array<{ count: number }>
+    >(
+      `SELECT count(*)::integer AS count FROM (
+      SELECT group_id FROM public.credit_card_bill_reviews WHERE bill_month = '2026-11-01'
+      UNION ALL SELECT group_id FROM public.imports WHERE file_hash = $2
+    ) rows WHERE group_id = $1`,
+      [groupId, rollbackPayload.fileHash],
+    );
+    expect(rollbackRows).toBe(0);
+
+    const raceResults = await Promise.all(
+      ['2027-01', '2027-02'].map((reviewMonth) => {
+        const fileContent = Buffer.from(
+          `Date;Description;Amount\n2027-02-01;Synthetic concurrent ${reviewMonth};10`,
+        );
+        return postImport(
+          memberToken,
+          importPayload({
+            groupId,
+            accountId: creditAccountId,
+            billMonth: '2027-03',
+            reviewMonth,
+            fileContent,
+          }),
+          fileContent,
+        );
+      }),
+    );
+    expect(raceResults.map(({ status }) => status).sort()).toEqual([201, 409]);
+    const winningMonth = await dataSource.query<
+      Array<{ review_month: string; import_count: number }>
+    >(
+      `
+      SELECT review.review_month::text, (
+        SELECT count(*)::integer FROM public.imports WHERE group_id = $1 AND bill_due_date = '2027-03-05'
+      ) AS import_count FROM public.credit_card_bill_reviews review
+      WHERE group_id = $1 AND credit_account_id = $2 AND bill_month = '2027-03-01'
+    `,
+      [groupId, creditAccountId],
+    );
+    expect(winningMonth).toHaveLength(1);
+    expect(winningMonth[0]?.review_month).toMatch(/^2027-0[12]-01$/);
+    expect(winningMonth[0]?.import_count).toBe(1);
+  });
+
+  it.each(['purchases', 'import'] as const)(
+    'retains a confirmed cash payment after all bill %s are removed, including archived cards',
+    async (removedResource) => {
+      const { groupId, creditAccountId, checkingAccountId, memberToken } =
+        await reviewFixture();
+      const fileContent = Buffer.from(
+        'Date;Description;Amount\n2026-06-18;Synthetic removable purchase;-10',
+      );
+      const payload = importPayload({
+        groupId,
+        accountId: creditAccountId,
+        billMonth: '2026-07',
+        reviewMonth: '2026-06',
+        fileContent,
+        rows: [
+          {
+            sourceRow: 2,
+            date: '2026-06-18',
+            amount: -10,
+            description: 'Synthetic removable purchase',
+            installmentCurrent: null,
+            installmentTotal: null,
+          },
+        ],
+      });
+      const imported = await postImport(
+        memberToken,
+        payload,
+        fileContent,
+      ).expect(201);
+      const importId = responseBody<{ id: string }>(imported).id;
+      const paymentResponse = await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(
+          reviewTransaction(groupId, checkingAccountId, { date: '2026-06-30' }),
+        )
+        .expect(201);
+      const paymentId = responseBody<{ id: string }>(paymentResponse).id;
+      const billPath = `/credit-card-bills/${creditAccountId}/2026-07`;
+      const reconciled = await request(httpServer)
+        .post(`${billPath}/reconciliation`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ groupId, paymentTransactionId: paymentId })
+        .expect(200);
+      const purchases = responseBody<{ transactions: Array<{ id: string }> }>(
+        reconciled,
+      ).transactions;
+      expect(purchases).toHaveLength(1);
+      if (removedResource === 'import') {
+        await request(httpServer)
+          .delete(`/imports/${importId}`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+      } else {
+        for (const purchase of purchases) {
+          await request(httpServer)
+            .delete(`/transactions/${purchase.id}`)
+            .set('Authorization', `Bearer ${memberToken}`)
+            .expect(200);
+        }
+      }
+
+      for (const archived of [false, true]) {
+        if (archived) {
+          await request(httpServer)
+            .delete(`/bankaccounts/${creditAccountId}`)
+            .set('Authorization', `Bearer ${memberToken}`)
+            .expect(200);
+        }
+        const detail = await request(httpServer)
+          .get(`${billPath}?groupId=${groupId}`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(
+          responseBody<{ bill: unknown; transactions: unknown[] }>(detail),
+        ).toMatchObject({
+          bill: {
+            accountId: creditAccountId,
+            billMonth: '2026-07',
+            reviewMonth: '2026-06',
+            dueDate: '2026-07-05',
+            cashFlowDate: '2026-06-30',
+            transactionCount: 0,
+            total: 0,
+            status: 'needs-review',
+            payment: {
+              transactionId: paymentId,
+              value: -10,
+              date: '2026-06-30',
+            },
+          },
+          transactions: [],
+        });
+        const cashBills = await request(httpServer)
+          .get(
+            `/credit-card-bills?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-06-01&endDate=2026-06-30`,
+          )
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        const cashPayments = responseBody<
+          Array<{ payment: { transactionId: string; value: number } | null }>
+        >(cashBills).flatMap(({ payment }) => (payment ? [payment] : []));
+        expect(cashPayments).toEqual([
+          expect.objectContaining({ transactionId: paymentId, value: -10 }),
+        ]);
+        const cashTransactions = await request(httpServer)
+          .get(
+            `/transactions?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-06-01&endDate=2026-06-30`,
+          )
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(
+          responseBody<{ data: unknown[] }>(cashTransactions).data,
+        ).toEqual([]);
+        const julyBills = await request(httpServer)
+          .get(
+            `/credit-card-bills?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-07-01&endDate=2026-07-31`,
+          )
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(
+          responseBody<Array<{ billMonth: string }>>(julyBills).map(
+            ({ billMonth }) => billMonth,
+          ),
+        ).not.toContain('2026-07');
+        const monthlyBills = await request(httpServer)
+          .get(
+            `/credit-card-bills?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+          )
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(
+          responseBody<Array<{ total: number }>>(monthlyBills).reduce(
+            (total, bill) => total + bill.total,
+            0,
+          ),
+        ).toBe(0);
+        const monthlyTransactions = await request(httpServer)
+          .get(
+            `/transactions?groupId=${groupId}&dateBasis=monthly-review&startDate=2026-06-01&endDate=2026-06-30`,
+          )
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(
+          responseBody<{ data: unknown[] }>(monthlyTransactions).data,
+        ).toEqual([]);
+      }
+    },
+  );
+
+  it('rejects transaction edits that bypass credit-card bill identity and reference-month assignment', async () => {
+    const { groupId, creditAccountId, checkingAccountId, memberToken } =
+      await reviewFixture();
+    const created = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(
+        reviewTransaction(groupId, creditAccountId, {
+          billMonth: '2026-07',
+          reviewMonth: '2026-06',
+        }),
+      )
+      .expect(201);
+    const transactionId = responseBody<{ id: string }>(created).id;
+    for (const mutation of [
+      { creditDueDate: '2026-08-19' },
+      { creditDueDate: null },
+      { toBeConsideredAt: '2026-08-19' },
+      { reviewMonth: '2026-05' },
+      { bankaccountId: checkingAccountId },
+      { bankaccountId: null },
+    ]) {
+      await request(httpServer)
+        .patch(`/transactions/${transactionId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(mutation)
+        .expect(400);
+    }
+    const unchanged = await request(httpServer)
+      .get(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<unknown>(unchanged)).toMatchObject({
+      creditDueDate: '2026-07-05',
+      toBeConsideredAt: '2026-07-05',
+      reviewMonth: '2026-06',
+    });
+    await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({
+        bankaccountId: creditAccountId,
+        creditDueDate: '2026-07-05',
+        toBeConsideredAt: '2026-07-05',
+        description: 'Synthetic edited purchase',
+      })
+      .expect(200);
+
+    const checking = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send(reviewTransaction(groupId, checkingAccountId))
+      .expect(201);
+    const checkingId = responseBody<{ id: string }>(checking).id;
+    for (const mutation of [
+      { bankaccountId: creditAccountId },
+      { bankaccountId: creditAccountId, creditDueDate: '2026-07-05' },
+    ]) {
+      await request(httpServer)
+        .patch(`/transactions/${checkingId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(mutation)
+        .expect(400);
+    }
+    const unchangedChecking = await request(httpServer)
+      .get(`/transactions/${checkingId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<unknown>(unchangedChecking)).toMatchObject({
+      bankaccount: { id: checkingAccountId },
+      creditDueDate: null,
+      reviewMonth: '2026-06',
+    });
+  });
+
+  it('preserves legacy timestamp output and month filters until the date is explicitly changed', async () => {
+    const { groupId, checkingAccountId, memberToken } = await reviewFixture();
+    const [{ id: transactionId }] = await dataSource.query<
+      Array<{ id: string }>
+    >(
+      `INSERT INTO public.transactions (group_id, bankaccount_id, description, date, calculated_date, value)
+       VALUES ($1, $2, 'Synthetic legacy timestamp', '2026-06-30 21:00', '2026-06-30', -10) RETURNING id`,
+      [groupId, checkingAccountId],
+    );
+    const legacyIsoDate = new Date(2026, 5, 30, 21).toISOString();
+    const legacyReviewMonth = legacyIsoDate.slice(0, 7);
+    const monthStart = `${legacyReviewMonth}-01`;
+    const monthEnd = new Date(
+      Date.UTC(
+        Number(legacyReviewMonth.slice(0, 4)),
+        Number(legacyReviewMonth.slice(5, 7)),
+        0,
+      ),
+    )
+      .toISOString()
+      .slice(0, 10);
+    const original = await request(httpServer)
+      .get(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<unknown>(original)).toMatchObject({
+      date: legacyIsoDate,
+      reviewMonth: legacyReviewMonth,
+    });
+    expect(responseBody<Record<string, unknown>>(original)).not.toHaveProperty(
+      'dateIsUtc',
+    );
+    for (const dateBasis of ['monthly-review', 'cash-flow']) {
+      const listing = await request(httpServer)
+        .get(
+          `/transactions?groupId=${groupId}&dateBasis=${dateBasis}&startDate=${monthStart}&endDate=${monthEnd}`,
+        )
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+      expect(
+        responseBody<{ data: Array<{ id: string }> }>(listing).data,
+      ).toEqual([expect.objectContaining({ id: transactionId })]);
+    }
+    const ordinaryEdit = await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ description: 'Synthetic legacy description edit' })
+      .expect(200);
+    expect(responseBody<unknown>(ordinaryEdit)).toMatchObject({
+      date: legacyIsoDate,
+      reviewMonth: legacyReviewMonth,
+    });
+    const [unchangedStoredDate] = await dataSource.query<
+      Array<{ date: string; date_is_utc: boolean }>
+    >('SELECT date::text, date_is_utc FROM public.transactions WHERE id = $1', [
+      transactionId,
+    ]);
+    expect(unchangedStoredDate).toEqual({
+      date: '2026-06-30 21:00:00',
+      date_is_utc: false,
+    });
+
+    const explicitDateEdit = await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ date: '2026-08-01' })
+      .expect(200);
+    expect(responseBody<unknown>(explicitDateEdit)).toMatchObject({
+      date: '2026-08-01T00:00:00.000Z',
+      reviewMonth: '2026-08',
+      cashFlowDate: '2026-08-01',
+    });
+    const [canonicalStoredDate] = await dataSource.query<
+      Array<{ date: string; date_is_utc: boolean }>
+    >('SELECT date::text, date_is_utc FROM public.transactions WHERE id = $1', [
+      transactionId,
+    ]);
+    expect(canonicalStoredDate).toEqual({
+      date: '2026-08-01 00:00:00',
+      date_is_utc: true,
+    });
+  });
+
+  it.each(['value', 'bankaccountId'] as const)(
+    'returns a reconciled bill to its forecast date when the payment %s is cleared',
+    async (clearedField) => {
+      const { groupId, creditAccountId, checkingAccountId, memberToken } =
+        await reviewFixture();
+      const purchase = await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(
+          reviewTransaction(groupId, creditAccountId, {
+            billMonth: '2026-07',
+            reviewMonth: '2026-06',
+          }),
+        )
+        .expect(201);
+      const purchaseId = responseBody<{ id: string }>(purchase).id;
+      const payment = await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(
+          reviewTransaction(groupId, checkingAccountId, { date: '2026-06-30' }),
+        )
+        .expect(201);
+      const paymentId = responseBody<{ id: string }>(payment).id;
+      const billPath = `/credit-card-bills/${creditAccountId}/2026-07`;
+      await request(httpServer)
+        .post(`${billPath}/reconciliation`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ groupId, paymentTransactionId: paymentId })
+        .expect(200);
+      await request(httpServer)
+        .patch(`/transactions/${paymentId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ [clearedField]: null })
+        .expect(200);
+      const changedBill = await request(httpServer)
+        .get(`${billPath}?groupId=${groupId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+      expect(responseBody<{ bill: unknown }>(changedBill).bill).toMatchObject({
+        status: 'needs-review',
+        payment: null,
+        cashFlowDate: '2026-07-05',
+        dueDate: '2026-07-05',
+        total: -10,
+      });
+      const cashFlow = await request(httpServer)
+        .get(
+          `/transactions?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-07-01&endDate=2026-07-31`,
+        )
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+      expect(responseBody<{ data: unknown[] }>(cashFlow).data).toEqual([
+        expect.objectContaining({
+          id: purchaseId,
+          cashFlowDate: '2026-07-05',
+          cashFlowStatus: 'scheduled',
+        }),
+      ]);
+      const oldPaymentMonth = await request(httpServer)
+        .get(
+          `/transactions?groupId=${groupId}&dateBasis=cash-flow&startDate=2026-06-01&endDate=2026-06-30`,
+        )
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+      expect(responseBody<{ data: unknown[] }>(oldPaymentMonth).data).toEqual(
+        [],
+      );
+    },
+  );
+
   it('rolls back a failed atomic write', async () => {
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -1702,6 +2764,67 @@ describe('backend-only PostgreSQL boundary', () => {
     });
   }
 
+  async function reviewFixture() {
+    const [ownerId, memberId, outsiderId] = [
+      randomUUID(),
+      randomUUID(),
+      randomUUID(),
+    ];
+    await dataSource.query(
+      `INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
+      ($1::uuid, $1::text || '@example.com', '{}'::jsonb), ($2::uuid, $2::text || '@example.com', '{}'::jsonb), ($3::uuid, $3::text || '@example.com', '{}'::jsonb)`,
+      [ownerId, memberId, outsiderId],
+    );
+    const [group, otherGroup] = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO public.groups (name) VALUES ('Monthly review fixture'), ('Other review fixture') RETURNING id`,
+    );
+    const groupId = group.id;
+    const otherGroupId = otherGroup.id;
+    await dataSource.query(
+      `INSERT INTO public.user_group (group_id, user_id, role) VALUES ($1, $2, 'owner'), ($1, $3, 'member'), ($4, $5, 'owner')`,
+      [groupId, ownerId, memberId, otherGroupId, outsiderId],
+    );
+    const [credit, checking, otherCredit] = await dataSource.query<
+      Array<{ id: string }>
+    >(
+      `INSERT INTO public.bankaccounts (created_at, name, type, due_date, group_id, user_id) VALUES
+      ('2025-01-01', 'Review card', 'credit', 5, $1, $2),
+      ('2025-01-01', 'Review checking', 'checkout', NULL, $1, $2),
+      ('2025-01-01', 'Foreign card', 'credit', 5, $3, $4) RETURNING id`,
+      [groupId, ownerId, otherGroupId, outsiderId],
+    );
+    return {
+      groupId,
+      otherGroupId,
+      creditAccountId: credit.id,
+      checkingAccountId: checking.id,
+      otherCreditAccountId: otherCredit.id,
+      ownerToken: tokenFor(ownerId, `${ownerId}@example.com`),
+      memberToken: tokenFor(memberId, `${memberId}@example.com`),
+      outsiderToken: tokenFor(outsiderId, `${outsiderId}@example.com`),
+    };
+  }
+
+  function reviewTransaction(
+    groupId: string,
+    bankaccountId: string,
+    overrides: Record<string, unknown> = {},
+  ) {
+    return {
+      groupId,
+      bankaccountId,
+      categoryId: null,
+      billMonth: null,
+      date: '2026-06-18',
+      description: 'Synthetic review transaction',
+      value: -10,
+      installmentCurrent: null,
+      installmentTotal: null,
+      observation: null,
+      ...overrides,
+    };
+  }
+
   function importPayload({
     groupId,
     accountId,
@@ -1709,6 +2832,7 @@ describe('backend-only PostgreSQL boundary', () => {
     fileContent,
     sourceFingerprint = 'b'.repeat(64),
     billMonth = null,
+    reviewMonth,
     rows,
   }: {
     groupId: string;
@@ -1717,12 +2841,14 @@ describe('backend-only PostgreSQL boundary', () => {
     fileContent: Buffer;
     sourceFingerprint?: string;
     billMonth?: string | null;
+    reviewMonth?: string;
     rows?: Array<Record<string, unknown>>;
   }) {
     return {
       groupId,
       accountId,
       billMonth,
+      ...(reviewMonth === undefined ? {} : { reviewMonth }),
       fileName,
       fileSize: fileContent.length,
       fileHash: createHash('sha256').update(fileContent).digest('hex'),

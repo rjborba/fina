@@ -17,7 +17,13 @@ const previewImport = vi.fn()
 const addImport = vi.fn()
 
 vi.mock("@/contexts/ActiveGroupContext", () => ({
-  useActiveGroup: () => ({ selectedGroup: { id: "10", name: "Test" } })
+  useActiveGroup: () => ({
+    selectedGroup: { id: "10", name: "Test", creditCardReviewMonthOffset: -1 }
+  })
+}))
+
+vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
+  useCreditCardBill: () => ({ data: undefined, isLoading: false })
 }))
 
 vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
@@ -241,7 +247,7 @@ describe("adaptive CSV import", () => {
     )
 
     const currentYear = new Date().getFullYear()
-    const billMonth = await screen.findByLabelText("Bill month")
+    const billMonth = await screen.findByLabelText("Bill due in")
     expect(
       screen.getByRole("button", { name: "Validate import" })
     ).toBeDisabled()
@@ -251,6 +257,13 @@ describe("adaptive CSV import", () => {
     await userEvent.click(
       screen.getByRole("button", { name: `September ${currentYear}` })
     )
+    expect(
+      screen.getByLabelText("Include in monthly review")
+    ).toHaveTextContent(`August ${currentYear}`)
+    await userEvent.click(screen.getByLabelText("Include in monthly review"))
+    await userEvent.click(
+      screen.getByRole("button", { name: `July ${currentYear}` })
+    )
     const validate = screen.getByRole("button", { name: "Validate import" })
     await waitFor(() => expect(validate).toBeEnabled())
     await userEvent.click(validate)
@@ -258,7 +271,8 @@ describe("adaptive CSV import", () => {
     expect(previewImport).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: "21",
-        billMonth: `${currentYear}-09`
+        billMonth: `${currentYear}-09`,
+        reviewMonth: `${currentYear}-07`
       })
     )
   })

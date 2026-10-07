@@ -23,6 +23,8 @@ export const CreditCardBillSummarySchema = z.object({
   accountName: z.string(),
   billMonth: BillMonthSchema,
   dueDate: z.string().date(),
+  reviewMonth: BillMonthSchema,
+  cashFlowDate: z.string().date(),
   transactionCount: z.number().int().nonnegative(),
   total: z.number(),
   status: CreditCardBillStatusSchema,
@@ -34,6 +36,7 @@ export const CreditCardBillListOutputSchema = z.array(
 );
 
 export const CreditCardBillListQuerySchema = z.object({
+  dateBasis: z.enum(["cash-flow", "monthly-review"]).optional(),
   groupId: z.string().regex(/^\d+$/),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional()
@@ -58,6 +61,16 @@ export const ReconcileCreditCardBillInputSchema = z.object({
   groupId: z.string().regex(/^\d+$/),
   paymentTransactionId: z.string().regex(/^\d+$/)
 });
+
+export const UpdateCreditCardBillReviewMonthInputSchema = z
+  .object({
+    groupId: z.string().regex(/^\d+$/),
+    reviewMonth: BillMonthSchema
+  })
+  .strict();
+export type UpdateCreditCardBillReviewMonthInput = z.infer<
+  typeof UpdateCreditCardBillReviewMonthInputSchema
+>;
 
 export const UnlinkCreditCardBillOutputSchema = z.object({
   accountId: z.string(),

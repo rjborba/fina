@@ -115,6 +115,7 @@ export const ImportPayloadSchema = z
     groupId: z.string().regex(/^\d+$/),
     accountId: z.string().regex(/^\d+$/),
     billMonth: BillMonthSchema.nullable(),
+    reviewMonth: BillMonthSchema.optional(),
     fileName: z
       .string()
       .trim()

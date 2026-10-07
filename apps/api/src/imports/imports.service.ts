@@ -22,6 +22,8 @@ import { Transactions } from '../transactions/entities/transaction.entity';
 import { ImportProfiles } from './entities/import-profile.entity';
 import { Imports } from './entities/import.entity';
 import { ImportFiles } from './entities/import-file.entity';
+import { ensureBillReviewMonth } from '../common/review-month';
+import { utcTimestampTransformer } from '../common/utc-timestamp';
 
 export type UploadedImportFile = {
   buffer: Buffer;
@@ -53,6 +55,27 @@ export class ImportsService {
       input.accountId,
     );
     this.resolveBillDueDate(account, input.billMonth);
+    if (account.type !== 'credit' && input.reviewMonth !== undefined) {
+      throw new BadRequestException(
+        'An import reference month is only allowed for credit card bills',
+      );
+    }
+    if (account.type === 'credit' && input.reviewMonth) {
+      const [assigned] = await this.dataSource.query<
+        { review_month: string }[]
+      >(
+        `SELECT to_char(review_month, 'YYYY-MM') AS review_month FROM public.credit_card_bill_reviews
+         WHERE group_id = $1 AND credit_account_id = $2 AND bill_month = $3::date`,
+        [input.groupId, input.accountId, `${input.billMonth}-01`],
+      );
+      if (assigned && assigned.review_month !== input.reviewMonth) {
+        throw new ConflictException({
+          code: 'BILL_REVIEW_MONTH_CONFLICT',
+          message:
+            'This bill already belongs to another reference month. Change the reference month on the bill before adding these transactions.',
+        });
+      }
+    }
     const duplicate = await this.findDuplicate(
       input.groupId,
       input.accountId,
@@ -78,6 +101,11 @@ export class ImportsService {
       input.accountId,
     );
     const billDueDate = this.resolveBillDueDate(account, input.billMonth);
+    if (account.type !== 'credit' && input.reviewMonth !== undefined) {
+      throw new BadRequestException(
+        'An import reference month is only allowed for credit card bills',
+      );
+    }
     const duplicate = await this.findDuplicate(
       input.groupId,
       input.accountId,
@@ -88,6 +116,15 @@ export class ImportsService {
     const summary = this.summarize(input);
     try {
       const savedId = await this.dataSource.transaction(async (manager) => {
+        if (account.type === 'credit') {
+          await ensureBillReviewMonth(
+            manager,
+            input.groupId,
+            input.accountId,
+            input.billMonth!,
+            input.reviewMonth,
+          );
+        }
         const importRecord = await manager.getRepository(Imports).save(
           manager.getRepository(Imports).create({
             fileName: input.fileName,
@@ -122,7 +159,8 @@ export class ImportsService {
             sourceRow: row.sourceRow,
             description: row.description,
             value: row.amount,
-            date: row.date,
+            date: utcTimestampTransformer.to(row.date) as Date,
+            dateIsUtc: true,
             calculatedDate: row.date,
             creditDueDate: billDueDate,
             toBeConsideredAt: billDueDate,

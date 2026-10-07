@@ -47,6 +47,7 @@ export interface TransactionsTableProps {
   pageIndex: number
   pageSize: number
   sort: TransactionSortOption
+  dateBasis?: "cash-flow" | "monthly-review" | "purchase-date"
   isLoading: boolean
   isError: boolean
   onUpdateTransaction: (
@@ -184,7 +185,7 @@ const NoTransactions = () => (
     </span>
     <div className="flex w-full items-end justify-between gap-6">
       <p className="max-w-xl text-3xl font-black uppercase leading-[0.9] tracking-[-0.06em] md:text-5xl">
-        No money moves in this period. Yet.
+        No entries in this period. Yet.
       </p>
       <ArrowUpRight className="size-12 shrink-0 md:size-20" strokeWidth={3} />
     </div>
@@ -218,6 +219,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
   pageIndex,
   pageSize,
   sort,
+  dateBasis = "cash-flow",
   isLoading,
   isError,
   onUpdateTransaction,
@@ -243,8 +245,8 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
   }, [categoriesData])
 
   const sortedData = useMemo(
-    () => sortTransactions(data || [], sort),
-    [data, sort]
+    () => sortTransactions(data || [], sort, dateBasis),
+    [data, sort, dateBasis]
   )
   const transactionIds = useMemo(
     () => sortedData.map((transaction) => transaction.id),
@@ -282,12 +284,38 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     () => [
       columnHelper.accessor("calculatedDate", {
         id: "date",
-        header: "Date",
-        size: 88,
+        header:
+          dateBasis === "monthly-review"
+            ? "Review month"
+            : dateBasis === "purchase-date"
+              ? "Purchase date"
+              : "Flow date",
+        size: dateBasis === "cash-flow" ? 88 : 130,
         cell: (info) => {
+          const transaction = info.row.original
+          const date =
+            dateBasis === "monthly-review"
+              ? transaction.reviewMonth
+                ? `${transaction.reviewMonth}-01`
+                : null
+              : dateBasis === "purchase-date"
+                ? transaction.date
+                : (transaction.cashFlowDate ?? info.getValue())
           return (
             <span className="font-mono text-[11px] font-black">
-              {dayjs(info.getValue()).format("DD.MM.YY")}
+              {date
+                ? dayjs(date).format(
+                    dateBasis === "monthly-review" ? "MMM YYYY" : "DD.MM.YY"
+                  )
+                : "—"}
+              {dateBasis === "cash-flow" &&
+              transaction.bankaccount?.type === "credit" ? (
+                <span className="mt-1 block text-[8px] uppercase text-fina-ink/60">
+                  {transaction.cashFlowStatus === "confirmed"
+                    ? "Paid"
+                    : "Scheduled"}
+                </span>
+              ) : null}
             </span>
           )
         }
@@ -330,7 +358,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         }
       })
     ],
-    [categories, onUpdateTransaction]
+    [categories, onUpdateTransaction, dateBasis]
   )
 
   const table = useReactTable({

@@ -59,6 +59,7 @@ interface CreditCardBillsLedgerProps {
   transactions: readonly TransactionOutput[]
   bills: readonly CreditCardBillSummary[]
   sort: TransactionSortOption
+  dateBasis?: "cash-flow" | "monthly-review"
   isLoading: boolean
   isError: boolean
   onUpdateTransaction: UpdateLedgerTransaction
@@ -69,6 +70,7 @@ export function CreditCardBillsLedger({
   transactions,
   bills,
   sort,
+  dateBasis = "cash-flow",
   isLoading,
   isError,
   onUpdateTransaction,
@@ -92,8 +94,8 @@ export function CreditCardBillsLedger({
   )
   const containerRef = useRef<HTMLDivElement>(null)
   const rows = useMemo(
-    () => buildGroupedLedgerRows(transactions, bills, sort),
-    [bills, sort, transactions]
+    () => buildGroupedLedgerRows(transactions, bills, sort, dateBasis),
+    [bills, sort, transactions, dateBasis]
   )
   const visibleTransactions = useMemo(
     () =>
@@ -273,7 +275,7 @@ export function CreditCardBillsLedger({
         <FinaBadge tone="surface">Ledger empty</FinaBadge>
         <div className="flex w-full items-end justify-between gap-6">
           <p className="max-w-xl text-3xl font-black uppercase leading-[0.9] tracking-[-0.06em] md:text-5xl">
-            No money moves in this period. Yet.
+            No entries in this period. Yet.
           </p>
           <ArrowUpRight className="size-12 shrink-0 md:size-20" />
         </div>
@@ -290,7 +292,7 @@ export function CreditCardBillsLedger({
         <TableHeader className="sticky top-0 z-10 grid bg-fina-lime">
           <TableRow className="flex w-full border-0">
             <TableHead className="flex h-10 w-[120px] shrink-0 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
-              Date
+              {dateBasis === "monthly-review" ? "Review month" : "Flow date"}
             </TableHead>
             <TableHead className="flex h-10 min-w-0 flex-1 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
               Transaction
@@ -343,7 +345,20 @@ export function CreditCardBillsLedger({
               >
                 <TableCell className="flex h-full w-[120px] shrink-0 items-center border-b border-r border-fina-ink px-3">
                   <span className="font-mono text-[11px] font-black">
-                    {dayjs(row.date).format("DD.MM.YY")}
+                    {row.date
+                      ? dayjs(row.date).format(
+                          dateBasis === "monthly-review"
+                            ? "MMM YYYY"
+                            : "DD.MM.YY"
+                        )
+                      : "—"}
+                    {row.kind === "bill" &&
+                    row.bill.status !== "empty" &&
+                    dateBasis === "cash-flow" ? (
+                      <span className="mt-1 block text-[8px] uppercase text-fina-ink/60">
+                        {row.bill.payment ? "Paid" : "Scheduled"}
+                      </span>
+                    ) : null}
                   </span>
                 </TableCell>
                 <TableCell className="flex h-full min-w-0 flex-1 items-center border-b border-r border-fina-ink px-3">
@@ -362,7 +377,7 @@ export function CreditCardBillsLedger({
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] font-bold uppercase text-fina-ink/60">
                         <span>
-                          {dayjs(row.bill.dueDate).format("MMMM YYYY")}
+                          Due {dayjs(row.bill.dueDate).format("DD MMM YYYY")}
                         </span>
                         <span aria-hidden="true">/</span>
                         <span>{row.bill.transactionCount} transactions</span>

@@ -57,6 +57,11 @@ export class TransactionsController {
     required: false,
   })
   @ApiQuery({ name: 'search', type: String, required: false })
+  @ApiQuery({
+    name: 'dateBasis',
+    enum: ['cash-flow', 'monthly-review'],
+    required: false,
+  })
   @ZodSerializerDto(QueryTransactionOutputDto)
   async findAll(
     @CurrentUser() user: AuthenticatedUser,
@@ -72,6 +77,7 @@ export class TransactionsController {
       accountIdList,
       accountType,
       search,
+      dateBasis,
     } = query;
 
     const { data, totalCount } = await this.transactionsService.findAll(
@@ -86,6 +92,7 @@ export class TransactionsController {
         accountIdList,
         accountType,
         search,
+        dateBasis,
       },
     );
 

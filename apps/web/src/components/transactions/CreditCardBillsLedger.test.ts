@@ -13,6 +13,8 @@ const transaction = (
     description: id,
     value,
     calculatedDate: date,
+    cashFlowDate: date,
+    reviewMonth: date.slice(0, 7),
     toBeConsideredAt: null,
     date: `${date}T00:00:00.000Z`,
     bankaccount: { id: type, name: type, type, dueDate: null }
@@ -22,6 +24,8 @@ const bill = (paymentTransactionId?: string): CreditCardBillSummary => ({
   accountId: "credit",
   accountName: "Main card",
   billMonth: "2026-06",
+  reviewMonth: "2026-05",
+  cashFlowDate: "2026-06-05",
   dueDate: "2026-06-05",
   transactionCount: 1,
   total: -100,
@@ -39,6 +43,43 @@ const bill = (paymentTransactionId?: string): CreditCardBillSummary => ({
 })
 
 describe("buildGroupedLedgerRows", () => {
+  it("assigns a July bill to June review while cash flow uses the actual July payment", () => {
+    const julyBill = {
+      ...bill("payment"),
+      billMonth: "2026-07",
+      dueDate: "2026-07-10",
+      cashFlowDate: "2026-07-09",
+      reviewMonth: "2026-06"
+    }
+    const review = buildGroupedLedgerRows(
+      [],
+      [julyBill],
+      "date-desc",
+      "monthly-review"
+    )
+    const cashFlow = buildGroupedLedgerRows(
+      [],
+      [julyBill],
+      "date-desc",
+      "cash-flow"
+    )
+    expect(review).toMatchObject([{ date: "2026-06-01", value: -100 }])
+    expect(cashFlow).toMatchObject([{ date: "2026-07-09", value: -100 }])
+    expect(julyBill.dueDate).toBe("2026-07-10")
+  })
+  it("keeps a confirmed cash payment unchanged when the bill total later changes", () => {
+    const changedBill = {
+      ...bill("payment"),
+      total: -150,
+      status: "needs-review" as const
+    }
+    expect(
+      buildGroupedLedgerRows([], [changedBill], "date-desc", "cash-flow")
+    ).toMatchObject([{ value: -100 }])
+    expect(
+      buildGroupedLedgerRows([], [changedBill], "date-desc", "monthly-review")
+    ).toMatchObject([{ value: -150 }])
+  })
   it("replaces credit transactions with one bill row", () => {
     const rows = buildGroupedLedgerRows(
       [

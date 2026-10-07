@@ -2,6 +2,7 @@ import type { CreateImportInputDto, ImportMappingConfig } from "@fina/types"
 import { ApiError } from "@/api/generated/core/ApiError"
 import { FinaPage, FinaPageHeader } from "@/components/FinaPage"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
+import { useBillReviewMonth } from "@/data/creditCardBills/useBillReviewMonth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -158,6 +159,15 @@ export const Import = () => {
     (account) => account.id === selectedAccountId
   )
   const creditCardSelected = selectedAccount?.type === "credit"
+  const {
+    reviewMonth,
+    setReviewMonth,
+    resetReviewMonth,
+    isLoading: reviewMonthLoading
+  } = useBillReviewMonth(
+    creditCardSelected ? selectedAccountId : undefined,
+    billMonth
+  )
   const config = completeConfig(draft)
   const normalization = useMemo(
     () =>
@@ -177,7 +187,8 @@ export const Import = () => {
       !config ||
       !groupId ||
       !selectedAccountId ||
-      (creditCardSelected && !billMonth) ||
+      (creditCardSelected &&
+        (!billMonth || !reviewMonth || reviewMonthLoading)) ||
       !normalization ||
       normalization.summary.errorCount > 0 ||
       normalization.normalizedRows.length === 0
@@ -188,6 +199,7 @@ export const Import = () => {
       groupId,
       accountId: selectedAccountId,
       billMonth: creditCardSelected ? billMonth : null,
+      reviewMonth: creditCardSelected ? reviewMonth : undefined,
       fileName: loaded.file.name,
       fileSize: loaded.file.size,
       fileHash: loaded.hash,
@@ -198,6 +210,8 @@ export const Import = () => {
     }
   }, [
     billMonth,
+    reviewMonth,
+    reviewMonthLoading,
     config,
     creditCardSelected,
     groupId,
@@ -556,6 +570,7 @@ export const Import = () => {
                       onValueChange={(value) => {
                         setSelectedAccountId(value)
                         setBillMonth("")
+                        resetReviewMonth()
                         setServerPreview(null)
                       }}
                     >
@@ -580,16 +595,30 @@ export const Import = () => {
                       </p>
                     )}
                     {creditCardSelected ? (
-                      <BillMonthPicker
-                        id="bill-month"
-                        className="max-w-md pt-2"
-                        value={billMonth}
-                        dueDate={selectedAccount?.dueDate}
-                        onValueChange={(value) => {
-                          setBillMonth(value)
-                          setServerPreview(null)
-                        }}
-                      />
+                      <div className="grid max-w-3xl gap-4 pt-2 sm:grid-cols-2">
+                        <BillMonthPicker
+                          id="bill-month"
+                          className="max-w-md pt-2"
+                          value={billMonth}
+                          dueDate={selectedAccount?.dueDate}
+                          onValueChange={(value) => {
+                            setBillMonth(value)
+                            resetReviewMonth()
+                            setServerPreview(null)
+                          }}
+                        />
+                        <BillMonthPicker
+                          id="import-review-month"
+                          label="Include in monthly review"
+                          description="Every transaction in this bill belongs to this review month. Existing bills keep their saved month; change it from the bill details."
+                          value={reviewMonth}
+                          disabled={!billMonth || reviewMonthLoading}
+                          onValueChange={(value) => {
+                            setReviewMonth(value)
+                            setServerPreview(null)
+                          }}
+                        />
+                      </div>
                     ) : null}
                   </div>
                   <div className="border-t-2 border-fina-ink pt-5">
@@ -1535,6 +1564,9 @@ function apiMessage(error: unknown): string {
     const body = error.body as { message?: unknown; code?: unknown }
     if (body?.code === "DUPLICATE_IMPORT") {
       return "This exact file has already been imported into the selected account."
+    }
+    if (body?.code === "BILL_REVIEW_MONTH_CONFLICT") {
+      return "This bill already has a different review month. Open the bill details to change the month for the whole bill, then retry the import."
     }
     if (typeof body?.message === "string") return body.message
   }

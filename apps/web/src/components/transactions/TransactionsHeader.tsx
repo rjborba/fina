@@ -12,12 +12,14 @@ interface TransactionsHeaderProps {
   isFilterOpen: boolean
   onFilterToggle: (value: boolean) => void
   totalCount: number
+  monthlyReview?: boolean
 }
 
 export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
   isFilterOpen,
   onFilterToggle,
-  totalCount
+  totalCount,
+  monthlyReview = false
 }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const { selectedGroup } = useActiveGroup()
@@ -43,7 +45,7 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
 
   return (
     <header className="transactions-hero border-b-[3px] border-fina-ink px-4 pb-4 pt-16 md:px-8 md:py-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
             <FinaBadge>Ledger / 01</FinaBadge>
@@ -53,13 +55,13 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
             <span aria-hidden="true">/</span>
             <span>{totalCount.toLocaleString("en-US")} entries</span>
           </div>
-          <h1 className="max-w-4xl text-[clamp(2.5rem,5vw,4.75rem)] font-black uppercase leading-[0.82] tracking-[-0.075em] text-fina-ink">
+          <h1 className="max-w-full text-[clamp(1.8rem,5vw,4.75rem)] font-black uppercase leading-[0.82] tracking-[-0.075em] text-fina-ink">
             Transactions<span className="text-fina-violet">.</span>
           </h1>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-stretch">
-          <TransactionsDateFilter />
+        <div className="flex max-w-full flex-wrap items-stretch gap-3">
+          <TransactionsDateFilter monthlyReview={monthlyReview} />
           <Button
             variant="fina-secondary"
             lift

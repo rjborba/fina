@@ -18,6 +18,9 @@ export const TransactionOutputSchema = z.object({
   observation: z.string().nullable(),
   toBeConsideredAt: z.string().date().nullable(),
   calculatedDate: z.string().date().nullable(),
+  reviewMonth: BillMonthSchema.nullable(),
+  cashFlowDate: z.string().date().nullable(),
+  cashFlowStatus: z.enum(["scheduled", "confirmed"]).nullable(),
   billPayment: z
     .object({
       creditAccountId: z.string(),

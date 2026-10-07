@@ -74,7 +74,9 @@ allowlisted origin and no redirect before declaring the deployment healthy.
 
 ## Deployment procedure
 
-1. Run `pnpm verify` against the candidate commit.
+1. Run `pnpm verify` and `pnpm test:e2e` against the candidate commit. For coupled
+   API/web changes, temporarily hold Vercel custom-domain auto-assignment before
+   pushing so the new web contract cannot reach users ahead of the API.
 2. From that exact commit, inspect pending migrations with
    `pnpm --filter @fina/api migration:show`, then apply them from a controlled
    administrative job using `pnpm --filter @fina/api migration:run`.
@@ -82,8 +84,17 @@ allowlisted origin and no redirect before declaring the deployment healthy.
 4. Confirm the Render deployment is healthy at its `onrender.com` hostname.
 5. Confirm TLS and an authenticated API request through
    `https://api.fina.rjborba.com`.
-6. Deploy the Vercel web project with `VITE_API_URL` set to that API origin and
-   verify a complete authenticated browser journey.
+6. Promote the matching Vercel web deployment with `VITE_API_URL` set to that
+   API origin and production `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` configured.
+   Restore normal Vercel custom-domain auto-assignment and verify the web entry
+   point. A complete authenticated browser journey remains the final user-flow
+   check; never create synthetic records in production for automated tests.
+
+The monthly-review release adds `AddMonthlyReview1791000000000` after the 13
+previous migrations. It is additive: existing bill assignments retain their due
+month, historical occurrence timestamps remain untouched, and the default is
+unchanged until a group owner chooses the preceding month. Apply this migration
+before starting the updated API; no production data rewrite is required.
 
 Application startup never synchronizes or migrates the schema automatically.
 Do not place `migration:run` in the normal start command: a failed migration

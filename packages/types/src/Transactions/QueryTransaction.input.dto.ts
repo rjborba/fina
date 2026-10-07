@@ -12,6 +12,7 @@ const arrayTransform = (val: unknown) => {
 };
 
 export const QueryTransactionInputDtoSchema = z.object({
+  dateBasis: z.enum(["cash-flow", "monthly-review"]).optional(),
   groupId: z
     .string()
     .regex(/^\d+$/)

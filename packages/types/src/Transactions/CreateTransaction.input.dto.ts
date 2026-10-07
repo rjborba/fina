@@ -9,7 +9,8 @@ export const TransactionWriteFieldsSchema = z.object({
   creditDueDate: z.coerce.date().nullable().optional(),
   observation: z.string().nullable().optional(),
   toBeConsideredAt: z.coerce.date().nullable().optional(),
-  calculatedDate: z.coerce.date().nullable().optional()
+  calculatedDate: z.coerce.date().nullable().optional(),
+  reviewMonth: BillMonthSchema.optional()
 });
 
 export const CreateTransactionInputDtoSchema =

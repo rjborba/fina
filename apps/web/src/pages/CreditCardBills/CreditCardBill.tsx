@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { useCallback, useState } from "react"
 import { Link, useParams } from "react-router"
+import { BillReviewMonth } from "./BillReviewMonth"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -56,12 +57,12 @@ const statusDetails: Record<
   "needs-reconciliation": {
     label: "Needs reconciliation",
     tone: "yellow",
-    copy: "Link the checking-account payment to remove it from grouped totals."
+    copy: "Link the checking-account payment to confirm the cash-flow date and count the payment once."
   },
   reconciled: {
     label: "Reconciled",
     tone: "lime",
-    copy: "The linked payment is excluded from grouped totals."
+    copy: "Cash flow uses the confirmed payment date. The linked checking entry is excluded to count the payment once."
   },
   "needs-review": {
     label: "Needs review",
@@ -238,6 +239,12 @@ export function CreditCardBill() {
           </div>
         </section>
 
+        <BillReviewMonth
+          key={`${bill.accountId}:${bill.billMonth}:${bill.reviewMonth}`}
+          bill={bill}
+          groupId={groupId}
+        />
+
         <section aria-labelledby="reconciliation-title">
           <div className="mb-4">
             <FinaSectionLabel>Payment / Reconciliation</FinaSectionLabel>
@@ -307,7 +314,7 @@ export function CreditCardBill() {
                   </Button>
                 }
                 title="Unlink this bill payment?"
-                description="The checking transaction will return to grouped totals and this bill will need reconciliation."
+                description="The checking transaction will return to both ledger views. Cash flow will schedule this bill on its due date until you reconcile it again."
                 confirmText="Unlink payment"
                 onConfirm={() => void unlink()}
               />
@@ -348,7 +355,7 @@ export function CreditCardBill() {
                       </Button>
                     }
                     title="Reconcile this payment?"
-                    description="The payment remains visible in inline mode, but is excluded from grouped totals."
+                    description="Cash flow will use this payment’s date. Its checking entry is excluded from both ledger views to count the payment once."
                     confirmText="Reconcile payment"
                     onConfirm={() => void reconcile(candidate.transactionId)}
                   />
@@ -390,6 +397,7 @@ export function CreditCardBill() {
             pageIndex={0}
             pageSize={5000}
             sort={sort}
+            dateBasis="purchase-date"
             isLoading={false}
             isError={false}
             onUpdateTransaction={handleUpdateTransaction}

@@ -19,6 +19,7 @@ export const useTransactions = (
       fetchTransactionsOptions.groupId,
       fetchTransactionsOptions.startDate,
       fetchTransactionsOptions.endDate,
+      fetchTransactionsOptions.dateBasis,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
       fetchTransactionsOptions.accountType,

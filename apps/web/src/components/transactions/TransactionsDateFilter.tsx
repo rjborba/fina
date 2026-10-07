@@ -15,7 +15,62 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { FC, useEffect, useState } from "react"
 import { DateRange } from "react-day-picker"
 
-export const TransactionsDateFilter: FC = () => {
+export const TransactionsDateFilter: FC<{ monthlyReview?: boolean }> = ({
+  monthlyReview = false
+}) => {
+  const [filter, setFilter] = useAtom(transactionFilterAtom)
+  const changeMonth = (month: string) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return
+    const selected = dayjs(`${month}-01`)
+    setFilter((current) => ({
+      ...current,
+      startDate: selected.startOf("month").toDate(),
+      endDate: selected.endOf("month").toDate()
+    }))
+  }
+
+  if (!monthlyReview) return <CashFlowDateFilter />
+
+  return (
+    <div className="flex min-h-12 items-stretch border-2 border-fina-ink bg-fina-surface shadow-fina-md">
+      <Button
+        variant="fina-ghost"
+        size="icon"
+        aria-label="Previous month"
+        className="h-auto w-10 border-r-2 border-fina-ink"
+        onClick={() =>
+          changeMonth(
+            dayjs(filter.startDate).subtract(1, "month").format("YYYY-MM")
+          )
+        }
+      >
+        <ChevronLeftIcon className="size-4" />
+      </Button>
+      <label className="flex flex-col justify-center gap-1 px-3 font-mono text-[10px] font-black uppercase">
+        Review month
+        <input
+          type="month"
+          className="min-w-0 bg-transparent text-sm"
+          value={dayjs(filter.startDate).format("YYYY-MM")}
+          onChange={(event) => changeMonth(event.target.value)}
+        />
+      </label>
+      <Button
+        variant="fina-ghost"
+        size="icon"
+        aria-label="Next month"
+        className="h-auto w-10 border-l-2 border-fina-ink"
+        onClick={() =>
+          changeMonth(dayjs(filter.startDate).add(1, "month").format("YYYY-MM"))
+        }
+      >
+        <ChevronRightIcon className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
+const CashFlowDateFilter: FC = () => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
   const [date, setDate] = useState<DateRange | undefined>({
     from: filterProps.startDate,

@@ -150,6 +150,7 @@ export type CreateImportInputDto = {
     groupId: string;
     accountId: string;
     billMonth: (string) | null;
+    reviewMonth?: string;
     fileName: string;
     fileSize: number;
     fileHash: string;
@@ -217,6 +218,7 @@ export type CreateTransactionInputDto = {
     installmentTotal?: (number) | null;
     installmentCurrent?: (string) | null;
     observation?: (string) | null;
+    reviewMonth?: string;
     bankaccountId: string;
     categoryId?: (string) | null;
     groupId: string;
@@ -230,6 +232,8 @@ export type CreditCardBillDetailDto = {
         accountName: string;
         billMonth: string;
         dueDate: string;
+        reviewMonth: string;
+        cashFlowDate: string;
         transactionCount: number;
         total: number;
         status: 'empty' | 'needs-reconciliation' | 'reconciled' | 'needs-review';
@@ -254,6 +258,9 @@ export type CreditCardBillDetailDto = {
         observation: (string) | null;
         toBeConsideredAt: (string) | null;
         calculatedDate: (string) | null;
+        reviewMonth: (string) | null;
+        cashFlowDate: (string) | null;
+        cashFlowStatus: ('scheduled' | 'confirmed') | null;
         billPayment: {
             creditAccountId: string;
             billMonth: string;
@@ -303,6 +310,8 @@ export type CreditCardBillListOutputDto = Array<{
     accountName: string;
     billMonth: string;
     dueDate: string;
+    reviewMonth: string;
+    cashFlowDate: string;
     transactionCount: number;
     total: number;
     status: 'empty' | 'needs-reconciliation' | 'reconciled' | 'needs-review';
@@ -349,6 +358,7 @@ export type GroupListOutputDto = Array<{
     createdAt: string;
     name: string;
     isOwner: boolean;
+    creditCardReviewMonthOffset: (number);
 }>;
 
 export type GroupMemberListOutputDto = Array<{
@@ -366,6 +376,7 @@ export type GroupOutputDto = {
     createdAt: string;
     name: string;
     isOwner: boolean;
+    creditCardReviewMonthOffset: (number);
 };
 
 export type ImportListOutputDto = Array<{
@@ -443,6 +454,7 @@ export type PreviewImportInputDto = {
     groupId: string;
     accountId: string;
     billMonth: (string) | null;
+    reviewMonth?: string;
     fileName: string;
     fileSize: number;
     fileHash: string;
@@ -540,6 +552,9 @@ export type QueryTransactionOutputDto = {
         observation: (string) | null;
         toBeConsideredAt: (string) | null;
         calculatedDate: (string) | null;
+        reviewMonth: (string) | null;
+        cashFlowDate: (string) | null;
+        cashFlowStatus: ('scheduled' | 'confirmed') | null;
         billPayment: {
             creditAccountId: string;
             billMonth: string;
@@ -584,6 +599,9 @@ export type TransactionOutputDto = {
     observation: (string) | null;
     toBeConsideredAt: (string) | null;
     calculatedDate: (string) | null;
+    reviewMonth: (string) | null;
+    cashFlowDate: (string) | null;
+    cashFlowStatus: ('scheduled' | 'confirmed') | null;
     billPayment: {
         creditAccountId: string;
         billMonth: string;
@@ -611,6 +629,10 @@ export type TransactionOutputDto = {
 };
 
 export namespace TransactionOutputDto {
+    export enum cashFlowStatus {
+        SCHEDULED = 'scheduled',
+        CONFIRMED = 'confirmed'
+    }
     export enum icon {
         TAG = 'tag',
         SHOPPING_CART = 'shopping-cart',
@@ -706,6 +728,15 @@ export namespace UpdateCategoryAppearanceInputDto {
     }
 }
 
+export type UpdateCreditCardBillReviewMonthInputDto = {
+    groupId: string;
+    reviewMonth: string;
+};
+
+export type UpdateGroupReviewSettingsInputDto = {
+    creditCardReviewMonthOffset: (number);
+};
+
 export type UpdateTransactionInputDto = {
     description?: (string) | null;
     value?: (number) | null;
@@ -716,6 +747,7 @@ export type UpdateTransactionInputDto = {
     observation?: (string) | null;
     toBeConsideredAt?: unknown;
     calculatedDate?: unknown;
+    reviewMonth?: string;
     bankaccountId?: (string) | null;
     categoryId?: (string) | null;
 };
@@ -732,6 +764,7 @@ export type TransactionsControllerFindAllData = {
     accountIdList?: Array<string>;
     accountType?: 'checkout' | 'credit';
     categoryIdList?: Array<string>;
+    dateBasis?: 'cash-flow' | 'monthly-review';
     endDate?: string;
     groupId: string;
     page?: number;
@@ -812,6 +845,13 @@ export type GroupsControllerRemoveData = {
 };
 
 export type GroupsControllerRemoveResponse = (DeleteGroupOutputDto);
+
+export type GroupsControllerUpdateReviewSettingsData = {
+    id: string;
+    requestBody: UpdateGroupReviewSettingsInputDto;
+};
+
+export type GroupsControllerUpdateReviewSettingsResponse = (GroupOutputDto);
 
 export type BankaccountsControllerCreateData = {
     requestBody: CreateBankaccountInputDto;
@@ -904,6 +944,7 @@ export type ImportsControllerRemoveData = {
 export type ImportsControllerRemoveResponse = (DeleteImportOutputDto);
 
 export type CreditCardBillsControllerFindAllData = {
+    dateBasis?: 'cash-flow' | 'monthly-review';
     endDate?: string;
     groupId: string;
     startDate?: string;
@@ -918,6 +959,14 @@ export type CreditCardBillsControllerFindOneData = {
 };
 
 export type CreditCardBillsControllerFindOneResponse = (CreditCardBillDetailDto);
+
+export type CreditCardBillsControllerUpdateReviewMonthData = {
+    accountId: string;
+    billMonth: string;
+    requestBody: UpdateCreditCardBillReviewMonthInputDto;
+};
+
+export type CreditCardBillsControllerUpdateReviewMonthResponse = (CreditCardBillDetailDto);
 
 export type CreditCardBillsControllerReconcileData = {
     accountId: string;

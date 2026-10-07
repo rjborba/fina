@@ -61,7 +61,8 @@ export function getTransactionSortLabel(value: TransactionSortOption) {
 
 export function sortTransactions(
   transactions: readonly Transaction[],
-  option: TransactionSortOption
+  option: TransactionSortOption,
+  dateBasis: "cash-flow" | "monthly-review" | "purchase-date" = "cash-flow"
 ) {
   const direction = option.endsWith("-desc") ? -1 : 1
   const field = option.replace(/-(asc|desc)$/, "")
@@ -72,8 +73,20 @@ export function sortTransactions(
     switch (field) {
       case "date":
         comparison =
-          dayjs(left.calculatedDate).valueOf() -
-          dayjs(right.calculatedDate).valueOf()
+          dayjs(
+            dateBasis === "monthly-review"
+              ? `${left.reviewMonth}-01`
+              : dateBasis === "purchase-date"
+                ? left.date
+                : (left.cashFlowDate ?? left.calculatedDate)
+          ).valueOf() -
+          dayjs(
+            dateBasis === "monthly-review"
+              ? `${right.reviewMonth}-01`
+              : dateBasis === "purchase-date"
+                ? right.date
+                : (right.cashFlowDate ?? right.calculatedDate)
+          ).valueOf()
         break
       case "value":
         comparison = (left.value || 0) - (right.value || 0)

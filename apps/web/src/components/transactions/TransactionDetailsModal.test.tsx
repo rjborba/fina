@@ -69,6 +69,9 @@ const transaction: TransactionOutput = {
   toBeConsideredAt: null,
   calculatedDate: "2026-09-27",
   billPayment: null,
+  reviewMonth: "2026-06",
+  cashFlowDate: "2026-09-27",
+  cashFlowStatus: "scheduled",
   bankaccount: null,
   category: null,
   group: { id: "1", name: "My finances" },
@@ -83,6 +86,65 @@ describe("TransactionDetailsModal", () => {
   })
 
   afterEach(cleanup)
+
+  it("changes a checking transaction’s review month without changing its dates or value", async () => {
+    render(
+      <TransactionDetailsModal
+        transaction={{
+          ...transaction,
+          bankaccount: {
+            id: "20",
+            name: "Checking",
+            type: "checkout",
+            dueDate: null
+          }
+        }}
+        open
+        onOpenChange={vi.fn()}
+        totalTransactions={1}
+        currentTransactionIndex={0}
+        onNextTransaction={vi.fn()}
+        onPreviousTransaction={vi.fn()}
+      />
+    )
+    fireEvent.change(screen.getByLabelText("Reference month"), {
+      target: { value: "2026-08" }
+    })
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save reference month" })
+    )
+    await waitFor(() =>
+      expect(mocks.mutateAsync).toHaveBeenCalledWith({
+        id: "7",
+        transaction: { reviewMonth: "2026-08" }
+      })
+    )
+    expect(
+      screen.getByText(/transaction date and cash flow stay unchanged/)
+    ).toBeVisible()
+  })
+
+  it("links card purchases to the whole-bill editor without an individual month override", () => {
+    render(
+      <TransactionDetailsModal
+        transaction={{
+          ...transaction,
+          creditDueDate: "2026-07-10",
+          bankaccount: { id: "21", name: "Card", type: "credit", dueDate: 10 }
+        }}
+        open
+        onOpenChange={vi.fn()}
+        totalTransactions={1}
+        currentTransactionIndex={0}
+        onNextTransaction={vi.fn()}
+        onPreviousTransaction={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole("link", { name: "Change month for the whole bill" })
+    ).toHaveAttribute("href", "/credit-card-bills/21/2026-07")
+    expect(screen.queryByLabelText("Reference month")).not.toBeInTheDocument()
+  })
 
   it("categorizes with number keys and shows the available shortcut range", async () => {
     render(

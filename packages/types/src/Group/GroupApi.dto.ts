@@ -4,7 +4,8 @@ export const GroupOutputSchema = z.object({
   id: z.string().regex(/^\d+$/),
   createdAt: z.string().datetime(),
   name: z.string(),
-  isOwner: z.boolean()
+  isOwner: z.boolean(),
+  creditCardReviewMonthOffset: z.union([z.literal(0), z.literal(-1)])
 });
 
 export const GroupListOutputSchema = z.array(GroupOutputSchema);
@@ -16,6 +17,15 @@ export const CreateGroupInputSchema = z.object({
 export const DeleteGroupInputSchema = z.object({
   confirmName: z.string().min(1)
 });
+
+export const UpdateGroupReviewSettingsInputSchema = z
+  .object({
+    creditCardReviewMonthOffset: z.union([z.literal(0), z.literal(-1)])
+  })
+  .strict();
+export type UpdateGroupReviewSettingsInput = z.infer<
+  typeof UpdateGroupReviewSettingsInputSchema
+>;
 
 export const DeleteGroupOutputSchema = z.object({ id: z.string() });
 export const IdParamSchema = z.object({ id: z.string().regex(/^\d+$/) });

@@ -23,7 +23,13 @@ import { CreateTransactionModal } from "./CreateTransactionModal"
 const mutateAsync = vi.fn()
 
 vi.mock("@/contexts/ActiveGroupContext", () => ({
-  useActiveGroup: () => ({ selectedGroup: { id: "10", name: "Test" } })
+  useActiveGroup: () => ({
+    selectedGroup: { id: "10", name: "Test", creditCardReviewMonthOffset: -1 }
+  })
+}))
+
+vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
+  useCreditCardBill: () => ({ data: undefined, isLoading: false })
 }))
 
 vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
@@ -64,7 +70,7 @@ describe("CreateTransactionModal", () => {
     mutateAsync.mockResolvedValue({ id: "30" })
   })
 
-  it("asks only for bill month when creating a credit card transaction", async () => {
+  it("keeps a card bill’s due month separate from its default review month", async () => {
     render(<CreateTransactionModal open />)
 
     await userEvent.click(screen.getByRole("combobox", { name: "Account" }))
@@ -73,12 +79,15 @@ describe("CreateTransactionModal", () => {
     )
 
     const currentYear = new Date().getFullYear()
-    const billMonth = screen.getByLabelText("Bill month")
+    const billMonth = screen.getByLabelText("Bill due in")
     expect(billMonth).toHaveTextContent("Choose month")
     await userEvent.click(billMonth)
     await userEvent.click(
       screen.getByRole("button", { name: `October ${currentYear}` })
     )
+    expect(
+      screen.getByLabelText("Include in monthly review")
+    ).toHaveTextContent(`September ${currentYear}`)
     fireEvent.change(screen.getByLabelText("Description"), {
       target: { value: "Synthetic transaction" }
     })
@@ -93,7 +102,8 @@ describe("CreateTransactionModal", () => {
     expect(mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         bankaccountId: "20",
-        billMonth: `${currentYear}-10`
+        billMonth: `${currentYear}-10`,
+        reviewMonth: `${currentYear}-09`
       })
     )
   })

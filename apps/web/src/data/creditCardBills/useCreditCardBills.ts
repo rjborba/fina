@@ -1,4 +1,5 @@
 import {
+  ApiError,
   creditCardBillsControllerFindAll,
   creditCardBillsControllerFindOne
 } from "@/api/generated"
@@ -14,7 +15,8 @@ export const creditCardBillKeys = {
       "list",
       query.groupId,
       query.startDate?.toISOString(),
-      query.endDate?.toISOString()
+      query.endDate?.toISOString(),
+      query.dateBasis
     ] as const,
   detail: (groupId: string, accountId: string, billMonth: string) =>
     [
@@ -36,6 +38,7 @@ export function useCreditCardBills(
     queryFn: () =>
       creditCardBillsControllerFindAll({
         groupId: query.groupId,
+        dateBasis: query.dateBasis,
         startDate: query.startDate
           ? dayjs(query.startDate).format("YYYY-MM-DD")
           : undefined,
@@ -49,10 +52,16 @@ export function useCreditCardBills(
 export function useCreditCardBill(
   groupId: string | undefined,
   accountId: string | undefined,
-  billMonth: string | undefined
+  billMonth: string | undefined,
+  options?: { allowMissing?: boolean }
 ) {
   return useQuery<CreditCardBillDetail>({
     enabled: !!groupId && !!accountId && !!billMonth,
+    retry: options?.allowMissing
+      ? (failureCount, error) =>
+          !(error instanceof ApiError && error.status === 404) &&
+          failureCount < 3
+      : undefined,
     queryKey: creditCardBillKeys.detail(
       groupId || "",
       accountId || "",

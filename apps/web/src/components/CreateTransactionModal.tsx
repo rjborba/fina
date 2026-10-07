@@ -25,6 +25,8 @@ import { toast } from "@/hooks/use-toast"
 import { CreateTransactionInputDtoType } from "@fina/types"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
+import { useBillReviewMonth } from "@/data/creditCardBills/useBillReviewMonth"
+import { ApiError } from "@/api/generated"
 
 interface CreateTransactionModalProps {
   onOpenChange?: (open: boolean) => void
@@ -76,6 +78,15 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     (account) => account.id.toString() === selectedAccountId
   )
   const creditCardSelected = selectedAccount?.type === "credit"
+  const {
+    reviewMonth,
+    setReviewMonth,
+    resetReviewMonth,
+    isLoading: reviewMonthLoading
+  } = useBillReviewMonth(
+    creditCardSelected ? selectedAccountId : undefined,
+    form.watch("bill_month")
+  )
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -93,6 +104,8 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       const transactionData: CreateTransactionInputDtoType = {
         date: data.date ? new Date(data.date) : null,
         billMonth: selectedAccount?.type === "credit" ? data.bill_month : null,
+        reviewMonth:
+          selectedAccount?.type === "credit" ? reviewMonth : undefined,
         description: data.description,
         value: data.value ? parseFloat(data.value) : null,
         categoryId: data.category_id ? data.category_id : null,
@@ -112,10 +125,17 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         title: "Transaction created successfully"
       })
       form.reset()
+      resetReviewMonth()
       onOpenChange?.(false)
-    } catch {
+    } catch (error) {
       toast({
         title: "Failed to create transaction",
+        description:
+          error instanceof ApiError &&
+          (error.body as { code?: unknown } | null)?.code ===
+            "BILL_REVIEW_MONTH_CONFLICT"
+            ? "This bill already has a different review month. Change the month for the whole bill from its details, then try again."
+            : "Check the required fields and try again.",
         variant: "destructive"
       })
     }
@@ -128,7 +148,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         onOpenChange(newOpen)
       }}
     >
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Transaction</DialogTitle>
           <DialogDescription>
@@ -142,6 +162,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               onValueChange={(value) => {
                 form.setValue("bankaccount_id", value)
                 form.setValue("bill_month", "")
+                resetReviewMonth()
               }}
               value={selectedAccountId}
             >
@@ -218,12 +239,21 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
                 id="bill_month"
                 value={form.watch("bill_month")}
                 dueDate={selectedAccount?.dueDate}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
+                  resetReviewMonth()
                   form.setValue("bill_month", value, {
                     shouldDirty: true,
                     shouldValidate: true
                   })
-                }
+                }}
+              />
+              <BillMonthPicker
+                id="transaction-review-month"
+                label="Include in monthly review"
+                description="All purchases in the same bill share this month. Existing bills keep their saved month."
+                value={reviewMonth}
+                disabled={!form.watch("bill_month") || reviewMonthLoading}
+                onValueChange={setReviewMonth}
               />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -248,7 +278,17 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             </div>
           ) : null}
 
-          <Button type="submit" className="w-full">
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              addMutation.isPending ||
+              (creditCardSelected &&
+                (!form.watch("bill_month") ||
+                  !reviewMonth ||
+                  reviewMonthLoading))
+            }
+          >
             Create Transaction
           </Button>
         </form>

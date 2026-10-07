@@ -11,6 +11,7 @@ import { Categories } from '../../categories/entities/category.entity';
 import { Groups } from '../../groups/entities/group.entity';
 import { Imports } from '../../imports/entities/import.entity';
 import { CreditCardBillReconciliations } from '../../credit-card-bills/entities/credit-card-bill-reconciliation.entity';
+import { CreditCardBillReviews } from '../../credit-card-bills/entities/credit-card-bill-review.entity';
 
 @Entity('transactions', { schema: 'public' })
 export class Transactions {
@@ -29,8 +30,14 @@ export class Transactions {
   @Column('real', { name: 'value', nullable: true })
   value: number | null;
 
-  @Column('timestamp without time zone', { name: 'date', nullable: true })
+  @Column('timestamp without time zone', {
+    name: 'date',
+    nullable: true,
+  })
   date: Date | string | null;
+
+  @Column('boolean', { name: 'date_is_utc', default: false })
+  dateIsUtc: boolean;
 
   @Column('integer', { name: 'installment_total', nullable: true })
   installmentTotal?: number | null;
@@ -39,7 +46,7 @@ export class Transactions {
   installmentCurrent?: string | null;
 
   @Column('date', { name: 'credit_due_date', nullable: true })
-  creditDueDate?: Date | null;
+  creditDueDate?: Date | string | null;
 
   @Column('text', { name: 'observation', nullable: true })
   observation?: string | null;
@@ -51,13 +58,19 @@ export class Transactions {
   removed: boolean;
 
   @Column('date', { name: 'to_be_considered_at', nullable: true })
-  toBeConsideredAt?: Date | null;
+  toBeConsideredAt?: Date | string | null;
 
   @Column('date', { name: 'calculated_date', nullable: true })
   calculatedDate?: Date | string | null;
 
   @Column('integer', { name: 'source_row', nullable: true })
   sourceRow?: number | null;
+
+  @Column('date', { name: 'review_month', nullable: true })
+  reviewMonth?: Date | string | null;
+
+  billReview?: CreditCardBillReviews | null;
+  billCashFlowPayment?: Transactions | null;
 
   @ManyToOne(() => Bankaccounts, (bankaccounts) => bankaccounts.transactions, {
     nullable: true,

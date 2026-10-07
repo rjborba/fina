@@ -26,7 +26,7 @@
     "check-types": "pnpm typecheck",
     "test": "turbo run test",
     "test:integration": "node ./scripts/run-integration-tests.mjs",
-    "test:e2e": "turbo run test:e2e",
+    "test:e2e": "pnpm build:api && turbo run test:e2e && playwright test",
     "rules:generate": "rulesync generate",
     "rules:check": "rulesync doctor --strict && rulesync generate --check",
     "migration:show:prod": "DOTENV_CONFIG_PATH=.env.production.local pnpm --filter @fina/api migration:show",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.84.0",
+    "@playwright/test": "1.63.0",
     "@secretlint/secretlint-rule-preset-recommend": "13.0.5",
     "lint-staged": "15.5.2",
     "prettier": "3.4.2",

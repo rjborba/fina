@@ -14,7 +14,8 @@ export const fetchTransactions = async ({
   categoryIdList,
   accountIdList,
   accountType,
-  search
+  search,
+  dateBasis
 }: QueryTransactionInputDto): Promise<QueryTransactionOutputDtoType> => {
   const response = await transactionsControllerFindAll({
     groupId,
@@ -25,7 +26,8 @@ export const fetchTransactions = async ({
     categoryIdList,
     accountIdList,
     accountType,
-    search
+    search,
+    dateBasis
   })
   return response as QueryTransactionOutputDtoType
 }

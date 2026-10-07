@@ -64,6 +64,7 @@ export const useTransactionMutation = () => {
         observation: transaction.observation,
         toBeConsideredAt: transaction.toBeConsideredAt,
         calculatedDate: transaction.calculatedDate,
+        reviewMonth: transaction.reviewMonth,
         categoryId:
           transaction.category === null ? null : transaction.category?.id,
         bankaccountId:

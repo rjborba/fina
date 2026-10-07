@@ -20,6 +20,9 @@ export class Groups {
   @Column('character varying', { name: 'name', nullable: false })
   name: string;
 
+  @Column('smallint', { name: 'credit_card_review_month_offset', default: 0 })
+  creditCardReviewMonthOffset: 0 | -1;
+
   @OneToMany(() => Bankaccounts, (bankaccounts) => bankaccounts.group)
   bankaccounts: Bankaccounts[];
 

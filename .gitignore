@@ -39,3 +39,5 @@ rulesync.local.jsonc
 # Cache files
 .eslintcache
 .vercel
+test-results/
+playwright-report/
