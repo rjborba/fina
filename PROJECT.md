@@ -165,7 +165,12 @@ Production observability around authentication and import failures remains.
    available in both views; the review toggle only replaces each bill row with
    that bill's transactions. Cash flow's purchase-category breakdown is explicitly
    distinct from actual payments when a reconciled bill changes. Bill detail preserves purchase date, installment,
-   category editing, value, and transaction detail behavior. PostgreSQL tests
+   category editing, value, and transaction detail behavior. Its description and
+   category filters (including uncategorized purchases) search the complete bill
+   independently of the Transactions page's filters. Filtered purchase counts
+   and net totals are labeled separately; the full bill total, review month,
+   payment link, and reconciliation candidates are never narrowed by filters.
+   Filters reset when changing the active group or bill. PostgreSQL tests
    prove tenant isolation, suggestion, reconciliation, review, unlinking,
    migration, and aggregate cascade behavior.
 5. **Non-goals:** split/partial/multiple payments, statement-file bill records,

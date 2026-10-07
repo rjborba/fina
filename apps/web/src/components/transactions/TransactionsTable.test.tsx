@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor
+} from "@testing-library/react"
 import type { TransactionOutput as Transaction } from "@fina/types"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -269,5 +275,54 @@ describe("TransactionsTable", () => {
     expect(
       screen.queryByRole("dialog", { name: "Transaction details" })
     ).not.toBeInTheDocument()
+  })
+
+  it("removes filtered purchases from selection and deletes only visible rows after select all", async () => {
+    const first = transaction("1", "Visible first purchase")
+    const hidden = transaction("2", "Hidden purchase")
+    const third = transaction("3", "Visible third purchase")
+    const onDeleteTransactions = vi.fn().mockResolvedValue(undefined)
+    const props: TransactionsTableProps = {
+      data: [first, hidden, third],
+      totalCount: 3,
+      pageIndex: 0,
+      pageSize: 100,
+      sort: "date-desc",
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions
+    }
+
+    const { rerender } = render(<TransactionsTable {...props} />)
+    fireEvent.click(screen.getByText(first.description!).closest("tr")!, {
+      metaKey: true
+    })
+    fireEvent.click(screen.getByText(hidden.description!).closest("tr")!, {
+      metaKey: true
+    })
+    expect(screen.getByText("2 selected")).toBeInTheDocument()
+
+    rerender(
+      <TransactionsTable {...props} data={[first, third]} totalCount={2} />
+    )
+    expect(screen.queryByText(hidden.description!)).not.toBeInTheDocument()
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }))
+    expect(screen.getByText("2 selected")).toBeInTheDocument()
+    expect(screen.getByText(first.description!).closest("tr")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    expect(screen.getByText(third.description!).closest("tr")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+    fireEvent.click(screen.getByRole("button", { name: "Delete selected" }))
+    await waitFor(() =>
+      expect(onDeleteTransactions).toHaveBeenCalledWith([first.id, third.id])
+    )
   })
 })

@@ -123,5 +123,85 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(
     page.getByText("Fixture older installment", { exact: true }),
   ).toBeVisible();
+  const billSummary = page.getByRole("region", { name: "Bill summary" });
+  const completeSummary = (await billSummary.textContent()) ?? "";
+  await page.getByRole("button", { name: /^Filter/ }).click();
+  const descriptionFilter = page.getByLabel("Search description", {
+    exact: true,
+  });
+  await descriptionFilter.fill("JULY REFUND");
+  await expect(
+    page.getByText("1 of 4 purchases", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture July refund", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture groceries", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Fixture older installment", { exact: true }),
+  ).toHaveCount(0);
+  await expect(billSummary).toHaveText(completeSummary);
+  await expect(
+    page.getByLabel("Matching purchases total", { exact: true }),
+  ).toHaveText(/Matching purchases total:\s*R\$\s*25,00/);
+  await descriptionFilter.fill("No synthetic purchases match this");
+  await expect(
+    page.getByText("No purchases match these filters", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture July refund", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .first()
+    .click();
+  await expect(descriptionFilter).toHaveValue("");
+  await expect(
+    page.getByText("Fixture July refund", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("checkbox", { name: "None", exact: true }).check();
+  await expect(
+    page.getByText("4 of 4 purchases", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture groceries", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture older installment", { exact: true }),
+  ).toBeVisible();
+  await expect(billSummary).toHaveText(completeSummary);
+  await page
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("checkbox", { name: "None", exact: true }),
+  ).not.toBeChecked();
+  await page
+    .getByRole("button", { name: "Close filters", exact: true })
+    .click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await descriptionFilter.fill("groceries");
+  await expect(
+    page.getByText("1 of 4 purchases", { exact: true }),
+  ).toBeVisible();
+  const mobileFilters = page.getByRole("complementary", {
+    name: "Transaction filters",
+  });
+  await mobileFilters
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .click();
+  await mobileFilters
+    .getByRole("button", { name: "Close filters", exact: true })
+    .click();
+  await expect(
+    page.getByText("4 of 4 purchases", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fixture July refund", { exact: true }),
+  ).toBeVisible();
   expect(browserErrors).toEqual([]);
 });

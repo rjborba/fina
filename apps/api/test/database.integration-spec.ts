@@ -2217,6 +2217,130 @@ describe('backend-only PostgreSQL boundary', () => {
     expect(rolledBackFile[0]?.count).toBe(0);
   });
 
+  it('returns complete bill purchases beyond the transaction page limit without leaking other bills or tenants', async () => {
+    const {
+      groupId,
+      otherGroupId,
+      creditAccountId,
+      checkingAccountId,
+      otherCreditAccountId,
+      memberToken,
+      outsiderToken,
+    } = await reviewFixture();
+    const [{ id: siblingCreditAccountId }] = await dataSource.query<
+      Array<{ id: string }>
+    >(
+      `INSERT INTO public.bankaccounts (created_at, name, type, due_date, group_id, user_id)
+       SELECT '2025-01-01', 'Second synthetic card', 'credit', 5, group_id, user_id
+       FROM public.bankaccounts WHERE id = $1
+       RETURNING id`,
+      [creditAccountId],
+    );
+    const purchases = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO public.transactions (
+         description, value, date, date_is_utc, calculated_date,
+         credit_due_date, bankaccount_id, group_id, removed
+       ) SELECT 'Synthetic complete-bill purchase',
+           CASE WHEN entry = 5001 THEN 25 ELSE -1 END,
+           CASE WHEN entry = 5001 THEN '2026-01-10'::date ELSE '2026-06-18'::date END,
+           true,
+           CASE WHEN entry = 5001 THEN '2026-01-10'::date ELSE '2026-06-18'::date END,
+           '2026-07-05', $1, $2, false
+         FROM generate_series(1, 5001) AS entry
+         RETURNING id`,
+      [creditAccountId, groupId],
+    );
+    await dataSource.query(
+      `INSERT INTO public.transactions (
+         description, value, date, date_is_utc, calculated_date,
+         credit_due_date, bankaccount_id, group_id, removed
+       ) VALUES
+         ('Synthetic excluded row', -999, '2026-06-18', true, '2026-06-18', '2026-07-05', $1, $2, true),
+         ('Synthetic excluded row', -999, '2026-06-18', true, '2026-06-18', '2026-08-05', $1, $2, false),
+         ('Synthetic excluded row', -999, '2026-06-18', true, '2026-06-18', '2026-07-05', $3, $2, false),
+         ('Synthetic excluded row', -999, '2026-06-18', true, '2026-06-18', NULL, $4, $2, false),
+         ('Synthetic excluded row', -999, '2026-06-18', true, '2026-06-18', '2026-07-05', $5, $6, false)`,
+      [
+        creditAccountId,
+        groupId,
+        siblingCreditAccountId,
+        checkingAccountId,
+        otherCreditAccountId,
+        otherGroupId,
+      ],
+    );
+
+    const billPath = `/credit-card-bills/${creditAccountId}/2026-07`;
+    const detailResponse = await request(httpServer)
+      .get(`${billPath}?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    const detail = responseBody<{
+      bill: { transactionCount: number; total: number };
+      transactions: Array<{
+        id: string;
+        value: number;
+        group: { id: string };
+        bankaccount: { id: string };
+        creditDueDate: string;
+      }>;
+    }>(detailResponse);
+    expect(detail.bill).toMatchObject({
+      transactionCount: 5001,
+      total: -4975,
+    });
+    expect(detail.transactions).toHaveLength(detail.bill.transactionCount);
+    const transactionIds = new Set(detail.transactions.map(({ id }) => id));
+    expect(transactionIds.size).toBe(purchases.length);
+    expect(purchases.every(({ id }) => transactionIds.has(id))).toBe(true);
+    expect(
+      detail.transactions.every(
+        (transaction) =>
+          transaction.group.id === groupId &&
+          transaction.bankaccount.id === creditAccountId &&
+          transaction.creditDueDate === '2026-07-05',
+      ),
+    ).toBe(true);
+    expect(
+      detail.transactions.reduce((total, { value }) => total + value, 0),
+    ).toBe(detail.bill.total);
+
+    const transactionQuery = `/transactions?groupId=${groupId}&accountIdList=${creditAccountId}&startDate=2026-07-01&endDate=2026-07-31`;
+    const pageResponse = await request(httpServer)
+      .get(`${transactionQuery}&page=0&pageSize=2`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    const page = responseBody<{ data: unknown[]; totalCount: number }>(
+      pageResponse,
+    );
+    expect(page.data).toHaveLength(2);
+    expect(page.totalCount).toBe(5001);
+    await request(httpServer)
+      .get(`${transactionQuery}&pageSize=5001`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(400);
+
+    await request(httpServer).get(`${billPath}?groupId=${groupId}`).expect(401);
+    await request(httpServer)
+      .get(`${billPath}?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .expect(404);
+    const foreignResponse = await request(httpServer)
+      .get(`${billPath}?groupId=${otherGroupId}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .expect(404);
+    const missingResponse = await request(httpServer)
+      .get(`/credit-card-bills/999999999/2026-07?groupId=${otherGroupId}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .expect(404);
+    expect(
+      responseBody<{ code: string; message: string }>(foreignResponse),
+    ).toMatchObject({
+      code: responseBody<{ code: string }>(missingResponse).code,
+      message: responseBody<{ message: string }>(missingResponse).message,
+    });
+  }, 30_000);
+
   it('keeps bill review months independent from purchases, cash flow, payments, and later defaults', async () => {
     const fixture = await reviewFixture();
     const {

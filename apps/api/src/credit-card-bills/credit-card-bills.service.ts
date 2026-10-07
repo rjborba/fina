@@ -96,8 +96,6 @@ export class CreditCardBillsService {
       userId,
       {
         groupId,
-        page: 0,
-        pageSize: 5000,
         accountIdList: [accountId],
         accountType: 'credit',
       },

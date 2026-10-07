@@ -1,14 +1,22 @@
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
 import { cn } from "@/lib/utils"
 import { useAtom } from "jotai"
-import { FC, useEffect, useState } from "react"
+import {
+  type Dispatch,
+  type FC,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState
+} from "react"
 
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useDebounce } from "@/components/ui/multipleselector"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "../ui/skeleton"
 import { Button } from "../ui/button"
@@ -20,13 +28,52 @@ interface TransactionsFilterProps {
   onFilterToggle: (value: boolean) => void
 }
 
+export interface TransactionFilterValue {
+  partialDescription: string
+  categoriesId: string[]
+}
+
+interface TransactionFilterPanelProps extends TransactionsFilterProps {
+  value: TransactionFilterValue
+  onChange: Dispatch<SetStateAction<TransactionFilterValue>>
+}
+
 export const TransactionsFilter: FC<TransactionsFilterProps> = ({
   isOpen,
   onFilterToggle
 }) => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
-  const [description, setDescription] = useState(filterProps.partialDescription)
-  const debouncedDescription = useDebounce(description, 200)
+  const changeFilter = useCallback<
+    Dispatch<SetStateAction<TransactionFilterValue>>
+  >(
+    (update) => {
+      setFilterProps((current) => ({
+        ...current,
+        ...(typeof update === "function" ? update(current) : update)
+      }))
+    },
+    [setFilterProps]
+  )
+
+  return (
+    <TransactionFilterPanel
+      value={filterProps}
+      onChange={changeFilter}
+      isOpen={isOpen}
+      onFilterToggle={onFilterToggle}
+    />
+  )
+}
+
+export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
+  value,
+  onChange,
+  isOpen,
+  onFilterToggle
+}) => {
+  const [description, setDescription] = useState(value.partialDescription)
+  const id = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const { selectedGroup } = useActiveGroup()
   const { data: categoriesData, isLoading: isCategoriesLoading } =
@@ -35,18 +82,47 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
     })
 
   useEffect(() => {
-    setFilterProps({
-      ...filterProps,
-      partialDescription: debouncedDescription
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedDescription])
+    setDescription(value.partialDescription)
+  }, [value.partialDescription])
+
+  useEffect(() => {
+    if (description === value.partialDescription) return
+
+    const timer = window.setTimeout(() => {
+      onChange((current) => ({
+        ...current,
+        partialDescription: description
+      }))
+    }, 200)
+
+    return () => window.clearTimeout(timer)
+  }, [description, onChange, value.partialDescription])
+
+  useEffect(() => {
+    panelRef.current?.toggleAttribute("inert", !isOpen)
+    if (!isOpen) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onFilterToggle(false)
+    }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [isOpen, onFilterToggle])
+
+  const changeCategory = (categoryId: string, checked: boolean) => {
+    onChange((current) => ({
+      ...current,
+      categoriesId: checked
+        ? [...new Set([...current.categoriesId, categoryId])]
+        : current.categoriesId.filter((id) => id !== categoryId)
+    }))
+  }
 
   return (
     <>
       <div
         onClick={() => onFilterToggle(false)}
-        aria-hidden={!isOpen}
+        aria-hidden="true"
         className={cn(
           "fixed inset-0 z-30 block cursor-pointer bg-fina-ink/60 transition-opacity xl:hidden xl:pointer-events-auto",
           {
@@ -56,6 +132,10 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
         )}
       ></div>
       <div
+        ref={panelRef}
+        role="complementary"
+        aria-label="Transaction filters"
+        aria-hidden={!isOpen}
         className={cn(
           "fixed right-0 top-0 z-50 h-screen w-[320px] cursor-auto overflow-hidden border-l-[3px] border-fina-ink bg-fina-canvas text-fina-ink shadow-[-8px_0_0_var(--fina-ink)] transition-all duration-300 xl:sticky xl:shadow-none",
           {
@@ -88,16 +168,18 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
           <div className="flex h-[calc(100vh-5rem)] flex-col overflow-y-auto p-5">
             <div className="flex-1">
               <div>
-                <Label className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+                <Label
+                  htmlFor={`${id}-description`}
+                  className="font-mono text-[10px] font-black uppercase tracking-[0.16em]"
+                >
                   Search description
                 </Label>
                 <Input
+                  id={`${id}-description`}
                   type="text"
                   placeholder="Coffee, rent, flight..."
                   value={description}
-                  onInput={(e) => {
-                    setDescription((e.target as HTMLInputElement).value)
-                  }}
+                  onChange={(event) => setDescription(event.target.value)}
                   className="mt-2 h-12 rounded-none border-2 border-fina-ink bg-fina-surface font-bold text-fina-ink shadow-fina-sm placeholder:font-mono placeholder:text-[11px] placeholder:uppercase placeholder:text-fina-ink/40 focus-visible:ring-fina-violet"
                 />
               </div>
@@ -125,29 +207,11 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                             key={category.id}
                           >
                             <Checkbox
-                              id={`category-${category.id}`}
-                              checked={filterProps.categoriesId.includes(
-                                category.id
-                              )}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setFilterProps({
-                                    ...filterProps,
-                                    categoriesId: [
-                                      ...filterProps.categoriesId,
-                                      category.id
-                                    ]
-                                  })
-                                } else {
-                                  setFilterProps({
-                                    ...filterProps,
-                                    categoriesId:
-                                      filterProps.categoriesId.filter(
-                                        (id: string) => id !== category.id
-                                      )
-                                  })
-                                }
-                              }}
+                              id={`${id}-category-${category.id}`}
+                              checked={value.categoriesId.includes(category.id)}
+                              onCheckedChange={(checked) =>
+                                changeCategory(category.id, checked === true)
+                              }
                               className="size-5 rounded-none border-2 border-fina-ink bg-fina-surface data-[state=checked]:bg-fina-violet data-[state=checked]:text-white"
                             />
                             <CategoryAppearance
@@ -157,7 +221,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                             />
                             <div className="grid cursor-pointer gap-1.5 leading-none">
                               <label
-                                htmlFor={`category-${category.id}`}
+                                htmlFor={`${id}-category-${category.id}`}
                                 className="cursor-pointer text-sm font-black leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                               >
                                 {category.name}
@@ -167,31 +231,16 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
                         ))}
                         <div className="flex items-center gap-3 border border-fina-ink bg-fina-surface px-3 py-2.5 hover:bg-fina-yellow">
                           <Checkbox
-                            id="category-none"
-                            checked={filterProps.categoriesId.includes("-1")}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setFilterProps({
-                                  ...filterProps,
-                                  categoriesId: [
-                                    ...filterProps.categoriesId,
-                                    "-1"
-                                  ]
-                                })
-                              } else {
-                                setFilterProps({
-                                  ...filterProps,
-                                  categoriesId: filterProps.categoriesId.filter(
-                                    (id) => id !== "-1"
-                                  )
-                                })
-                              }
-                            }}
+                            id={`${id}-category-none`}
+                            checked={value.categoriesId.includes("-1")}
+                            onCheckedChange={(checked) =>
+                              changeCategory("-1", checked === true)
+                            }
                             className="size-5 rounded-none border-2 border-fina-ink bg-fina-surface data-[state=checked]:bg-fina-violet data-[state=checked]:text-white"
                           />
                           <div className="grid cursor-pointer gap-1.5 leading-none">
                             <label
-                              htmlFor={"category-none"}
+                              htmlFor={`${id}-category-none`}
                               className="cursor-pointer text-sm font-black leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
                               None
@@ -210,8 +259,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
               lift
               onClick={() => {
                 setDescription("")
-                setFilterProps({
-                  ...filterProps,
+                onChange({
                   partialDescription: "",
                   categoriesId: []
                 })

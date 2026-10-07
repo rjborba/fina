@@ -133,6 +133,11 @@ normally use their purchase month and can have a separate review-month override.
 date; a confirmed checking payment uses its actual date and amount. Bill details
 retain the purchase breakdown. A bill that changes after payment is flagged for
 review, while the actual payment amount remains unchanged in cash-flow totals.
+In bill details, **Filter** searches descriptions and selects categories,
+including **None** for uncategorized purchases, just like Transactions. Filters
+apply only to the purchase list and its labeled matching total; the full bill
+and payment amounts remain unchanged. **Clear filters** restores all purchases.
+Bill filters are independent of Transactions and reset when switching bills or groups.
 Expense responsibility splits and reimbursement balances are a later increment.
 
 ## Deployment
