@@ -46,6 +46,32 @@ configuration, and an explicit `CORS_ORIGINS=https://fina.rjborba.com` value.
 The API database role must be able to use the migrated application schema; the
 Supabase browser roles remain denied direct access.
 
+| Variable              | Production requirement                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`            | `production`                                                                                                            |
+| `DATABASE_URL`        | The production PostgreSQL connection string, stored only in Render. The legacy `SUPABASE_DB_URI` name is also accepted. |
+| `DATABASE_SCHEMA`     | `public`                                                                                                                |
+| `DATABASE_SSL`        | `true`; certificate verification remains enabled.                                                                       |
+| `SUPABASE_URL`        | The production Supabase project URL.                                                                                    |
+| `SUPABASE_JWT_SECRET` | The production legacy signing secret when Auth issues HS256 tokens. Signing-key tokens use the project's JWKS instead.  |
+| `CORS_ORIGINS`        | `https://fina.rjborba.com`                                                                                              |
+| `NODE_EXTRA_CA_CERTS` | `/etc/secrets/supabase-ca.crt`, when using Supabase's database CA.                                                      |
+
+For this persistent API on Render, use the Supabase session pooler on port
+`5432`, not the transaction-pooling port `6543`. Download the official server
+root certificate from the production project's **Database Settings → SSL
+configuration** and add it as a Render file named `supabase-ca.crt`. Node reads
+`NODE_EXTRA_CA_CERTS` at startup, allowing the existing verified TLS connection
+without disabling certificate checks. See the
+[Supabase connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres)
+and [Render file configuration](https://render.com/docs/configure-environment-variables#secret-files).
+
+The custom domain must serve `api.fina.rjborba.com` directly. Do not redirect
+that origin to `www.api.fina.rjborba.com`: the web client's CORS preflight and
+authorization header must reach the configured origin without a host change.
+Confirm an `OPTIONS` request from `https://fina.rjborba.com` returns the explicit
+allowlisted origin and no redirect before declaring the deployment healthy.
+
 ## Deployment procedure
 
 1. Run `pnpm verify` against the candidate commit.
@@ -74,15 +100,37 @@ deploy the API. Use the Supabase direct connection for migrations, or the
 session-mode pooler when the runner cannot reach the direct IPv6 endpoint; do
 not use the transaction-mode pooler.
 
-## Current operational gap
+## Operational status and remaining gaps
 
-The Render dashboard was inspected on 2026-10-05. The deployment of `8509f39`
-built successfully but failed at startup: the compiler included the OpenAPI
-helper and emitted `dist/src/main.js`, while `pnpm start:prod` expected
-`dist/main.js`. The production build now has an explicit source root and input
-scope to preserve that entry point. Deploy the corrected commit using the
-procedure above; the last successful Render deployment is still `f327937`, and
-the custom API domain still fails TLS negotiation. Treat production as unhealthy
-until the deployment procedure succeeds. The abandoned Vercel `fina-api` project
-is not a supported API target and should be removed separately after its
-deployment history is no longer needed.
+On 2026-10-06, the production release of `7fa88ea` passed the repository
+verification gate and started successfully on Render. The 12 pending TypeORM
+migrations were applied in one transaction, and `migration:show` confirmed all
+13 committed migrations are applied. Production database, Supabase Auth,
+explicit CORS, and verified database TLS configuration are stored in Render.
+
+The API origin now serves directly without the former `www.api` redirect.
+Operational checks at both the Render hostname and `https://api.fina.rjborba.com`
+confirmed valid HTTPS, an unauthenticated `401` with the stable error contract
+and request identifier, and a `204` CORS preflight for
+`https://fina.rjborba.com` without a redirect. These read-only release checks do
+not replace a complete authenticated browser journey; automated tests continue
+to use disposable local databases only.
+
+The earlier startup failure in `8509f39` was caused by the compiler including the
+OpenAPI helper and emitting `dist/src/main.js` instead of `dist/main.js`. The
+explicit source root and input scope now preserve the production entry point.
+The subsequent runtime failure was missing Render database configuration, not
+another build failure.
+
+The service is still on Render's free instance tier, so an always-on instance,
+health/readiness endpoints, and a repeatable approved migration workflow remain
+release follow-ups. The abandoned Vercel `fina-api` project is not a supported
+API target; remove it separately after its deployment history is no longer
+needed.
+
+Supabase's security advisor also reports separate follow-ups for
+[PostgreSQL security updates](https://supabase.com/docs/guides/platform/upgrading),
+[email OTP expiry](https://supabase.com/docs/guides/platform/going-into-prod#security),
+and [leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+This deployment does not change the database version, Auth policy, or billing
+plan.
