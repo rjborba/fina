@@ -878,8 +878,10 @@ export const Import = () => {
                                       htmlFor="charges-positive"
                                       className="text-sm font-normal"
                                     >
-                                      Charges are positive in this file. A
-                                      source amount of 25.00 imports as −25.00.
+                                      Invert amount signs. Positive amounts
+                                      become negative and negative amounts
+                                      become positive: 25.00 imports as −25.00,
+                                      and −25.00 imports as 25.00.
                                     </label>
                                   </div>
                                 )}

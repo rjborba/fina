@@ -113,6 +113,14 @@ Production observability around authentication and import failures remains.
    once for the bill, using an explicit choice or the group's default. Imports
    into an existing bill reuse its saved month; a conflicting explicit choice
    fails atomically and directs the member to change the whole bill;
+   in signed-amount mode, `chargesPositive` means invert every sign: positive
+   charges become negative and negative credits/refunds become positive. With
+   inversion disabled, source signs are preserved; separate debit/credit columns
+   retain their existing convention. Nest derives inverted amounts from the
+   verified CSV and physical source rows at confirmation, including requests
+   from older browser tabs. The source-backed correction migration updates legacy
+   amounts only when they still match the old calculation, preserves manual
+   amount overrides and soft deletion, and refreshes original-import totals;
    verify size and SHA-256 from the uploaded bytes in Nest; identical hash is
    blocked per group/account; retain the immutable original CSV in PostgreSQL
    with the import while never exposing it in ordinary response contracts.

@@ -185,6 +185,21 @@ describe("CSV import parsing", () => {
       expect.objectContaining({ amount: 0, description: "Gamma" }),
       expect.objectContaining({ amount: 50, description: "Delta" })
     ])
+    expect(
+      normalizeImportRows({
+        matrix,
+        structure,
+        config: config({
+          descriptionColumns: [1, 2],
+          amountMode: "debit-credit",
+          amountColumn: null,
+          debitColumn: 3,
+          creditColumn: 4,
+          installmentColumn: 5,
+          chargesPositive: true
+        })
+      }).normalizedRows
+    ).toEqual(debitCredit.normalizedRows)
 
     const creditCharge = normalizeImportRows({
       matrix: parseCsvMatrix(
@@ -200,6 +215,54 @@ describe("CSV import parsing", () => {
     })
     expect(creditCharge.normalizedRows[0]?.amount).toBe(-25)
   })
+
+  it.each([
+    { chargesPositive: true, expectedAmounts: [-25, 5, 12.5, -0, 0] },
+    { chargesPositive: false, expectedAmounts: [25, -5, -12.5, 0, -0] }
+  ])(
+    "inverts both signed charges and refunds only when enabled ($chargesPositive)",
+    ({ chargesPositive, expectedAmounts }) => {
+      const { matrix, structure } = detectCsvStructure(
+        [
+          "Date;Description;Amount",
+          "13/08/2026;Charge;25,00",
+          "14/08/2026;Refund;-5,00",
+          "15/08/2026;Parenthesized refund;(12,50)",
+          "16/08/2026;Zero;0,00",
+          "17/08/2026;Negative zero;-0,00"
+        ].join("\n")
+      )
+      const result = normalizeImportRows({
+        matrix,
+        structure,
+        config: config({
+          descriptionColumns: [1],
+          amountColumn: 2,
+          chargesPositive
+        })
+      })
+
+      expect(result.summary.errorCount).toBe(0)
+      expect(result.normalizedRows.map((row) => row.amount)).toEqual(
+        expectedAmounts
+      )
+      expect(result.summary).toMatchObject(
+        chargesPositive
+          ? {
+              inflowCount: 2,
+              inflowTotal: 17.5,
+              outflowCount: 1,
+              outflowTotal: -25
+            }
+          : {
+              inflowCount: 1,
+              inflowTotal: 25,
+              outflowCount: 2,
+              outflowTotal: -17.5
+            }
+      )
+    }
+  )
 
   it("ignores installment labels that do not use current/total form", () => {
     const { matrix, structure } = detectCsvStructure(

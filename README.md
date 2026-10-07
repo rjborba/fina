@@ -103,6 +103,19 @@ The integration-test runner requires `pnpm infra:start`. It creates a unique
 signed JWT fixtures, and drops that database even when the suite fails. CI uses
 the same local Supabase path.
 
+## CSV amount signs
+
+For statements with positive charges and negative credits, enable **Invert amount
+signs**: `25.00` becomes `−25.00`, and `−25.00` becomes `25.00`. Zero stays zero.
+Leaving it disabled preserves source signs; separate debit/credit columns keep
+their existing convention. The API confirms inverted values against the uploaded
+CSV, so older open browser tabs also import credits correctly.
+
+The source-backed repair migration corrects old imports that used this option
+without overwriting manually changed amounts. Original files, categories, dates,
+bill assignments, and deletion history are preserved; import totals reflect the
+corrected original source rows.
+
 ## Monthly review and cash flow
 
 Use **Monthly review** to classify expenses by their household reference month.

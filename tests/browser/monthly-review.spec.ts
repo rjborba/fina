@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("imports a July card bill into June review while preserving July cash flow", async ({
+test("inverts charges and refunds on a July card bill in June review while preserving July cash flow", async ({
   page,
 }) => {
   const year = new Date().getFullYear();
@@ -37,10 +37,10 @@ test("imports a July card bill into June review while preserving July cash flow"
     buffer: Buffer.from(
       [
         "Date;Description;Installment;Amount",
-        `18/06/${year};Fixture groceries;Single;-100,00`,
-        `19/06/${year};Fixture transport;Single;-50,00`,
-        `02/07/${year};Fixture July purchase;Single;-25,00`,
-        `12/05/${year};Fixture older installment;2/3;-75,00`,
+        `18/06/${year};Fixture groceries;Single;100,00`,
+        `19/06/${year};Fixture transport;Single;50,00`,
+        `02/07/${year};Fixture July refund;Single;-25,00`,
+        `12/05/${year};Fixture older installment;2/3;75,00`,
       ].join("\n"),
     ),
   });
@@ -57,6 +57,11 @@ test("imports a July card bill into June review while preserving July cash flow"
     .getByRole("button", { name: "Include in monthly review", exact: true })
     .click();
   await page.getByRole("button", { name: `June ${year}`, exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit Amount mapping. Amount", exact: true })
+    .click();
+  await page.getByRole("checkbox", { name: /Invert amount signs/ }).check();
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "Validate import", exact: true })
     .click();
@@ -76,7 +81,19 @@ test("imports a July card bill into June review while preserving July cash flow"
     page.getByText("Fixture groceries", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Fixture July purchase", { exact: true }),
+    page.getByText("Fixture July refund", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("row")
+      .filter({ hasText: "Fixture July refund" })
+      .getByRole("cell", { name: /^R\$\s*25,00$/ }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("row")
+      .filter({ hasText: "Fixture groceries" })
+      .getByRole("cell", { name: /^[−-]R\$\s*100,00$/ }),
   ).toBeVisible();
   await expect(
     page.getByText("Fixture older installment", { exact: true }),
@@ -88,7 +105,7 @@ test("imports a July card bill into June review while preserving July cash flow"
 
   await page.getByLabel("Review month", { exact: true }).fill(`${year}-07`);
   await expect(
-    page.getByText("Fixture July purchase", { exact: true }),
+    page.getByText("Fixture July refund", { exact: true }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Cash flow", exact: true }).click();
   await expect(
@@ -101,7 +118,7 @@ test("imports a July card bill into June review while preserving July cash flow"
     .filter({ hasText: "Review fixture card bill" })
     .click();
   await expect(
-    page.getByText("Fixture July purchase", { exact: true }),
+    page.getByText("Fixture July refund", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Fixture older installment", { exact: true }),

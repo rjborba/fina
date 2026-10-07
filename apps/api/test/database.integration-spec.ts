@@ -19,6 +19,7 @@ import { AddCreditCardBillAttribution1790730000000 } from '../src/database/migra
 import { StoreBankAccountDueDay1790810000000 } from '../src/database/migrations/1790810000000-StoreBankAccountDueDay';
 import { RemoveCreditCardBillAttribution1790900000000 } from '../src/database/migrations/1790900000000-RemoveCreditCardBillAttribution';
 import { AddMonthlyReview1791000000000 } from '../src/database/migrations/1791000000000-AddMonthlyReview';
+import { CorrectImportedAmountSigns1791100000000 } from '../src/database/migrations/1791100000000-CorrectImportedAmountSigns';
 
 const migrations = [
   InitialSchema1789960612000,
@@ -35,6 +36,7 @@ const migrations = [
   StoreBankAccountDueDay1790810000000,
   RemoveCreditCardBillAttribution1790900000000,
   AddMonthlyReview1791000000000,
+  CorrectImportedAmountSigns1791100000000,
 ];
 
 describe('backend-only PostgreSQL boundary', () => {
@@ -133,7 +135,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -1),
+      migrations: migrations.slice(0, 13),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -203,7 +205,7 @@ describe('backend-only PostgreSQL boundary', () => {
     const migrationCount = await dataSource.query<Array<{ count: number }>>(
       'SELECT count(*)::integer AS count FROM migrations',
     );
-    expect(migrationCount[0]?.count).toBe(14);
+    expect(migrationCount[0]?.count).toBe(15);
 
     const columns = await dataSource.query<
       Array<{ table_name: string; column_name: string }>
@@ -1176,6 +1178,424 @@ describe('backend-only PostgreSQL boundary', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ confirmName: 'Wrong name' })
       .expect(404);
+  });
+
+  it('corrects retained imported refund signs without changing edits, tenant attribution, dates, or deletion history', async () => {
+    const fixture = await reviewFixture();
+    const sourceAmounts = [25, -10.123, 0, -7, -3, -4];
+    const legacyAmounts = [-25, -10.123, 0, -7, 3, -4];
+    const content = Buffer.from(
+      [
+        'Date;Description;Amount',
+        ...sourceAmounts.map(
+          (amount) => `2026-06-18;Synthetic retained source;${amount}`,
+        ),
+        '2026-06-18;Synthetic excluded source;-999',
+      ].join('\n'),
+    );
+    const payload = importPayload({
+      groupId: fixture.groupId,
+      accountId: fixture.checkingAccountId,
+      fileContent: content,
+      rows: legacyAmounts.map((amount, index) => ({
+        sourceRow: index + 2,
+        date: '2026-06-18',
+        amount,
+        description: 'Synthetic retained transaction',
+        installmentCurrent: null,
+        installmentTotal: null,
+      })),
+    });
+    payload.config.numberFormat = 'decimal-point';
+    payload.excludedRowCount = 1;
+    const created = await postImport(
+      fixture.memberToken,
+      payload,
+      content,
+    ).expect(201);
+    const importId = responseBody<{ id: string }>(created).id;
+    await dataSource.query(
+      `UPDATE public.imports
+       SET mapping_config = jsonb_set(mapping_config, '{chargesPositive}', 'true'),
+           removed = true
+       WHERE id = $1 AND group_id = $2`,
+      [importId, fixture.groupId],
+    );
+    await dataSource.query(
+      `UPDATE public.transactions SET value = -8, review_month = '2026-05-01',
+         observation = 'Synthetic manual amount edit'
+       WHERE import_id = $1 AND group_id = $2 AND source_row = 5`,
+      [importId, fixture.groupId],
+    );
+    await dataSource.query(
+      `UPDATE public.transactions SET removed = true
+       WHERE import_id = $1 AND group_id = $2 AND source_row = 7`,
+      [importId, fixture.groupId],
+    );
+    const [category] = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO public.categories (name, group_id)
+       VALUES ('Synthetic sign category', $1) RETURNING id`,
+      [fixture.groupId],
+    );
+    await dataSource.query(
+      `UPDATE public.transactions SET category_id = $1
+       WHERE import_id = $2 AND group_id = $3 AND source_row = 3`,
+      [category.id, importId, fixture.groupId],
+    );
+
+    const otherContent = Buffer.from(
+      'Date;Description;Amount\n2026-06-18;Synthetic other-group refund;-12',
+    );
+    const otherPayload = importPayload({
+      groupId: fixture.otherGroupId,
+      accountId: fixture.otherCreditAccountId,
+      fileContent: otherContent,
+      fileName: 'other-group.csv',
+      billMonth: '2026-07',
+      rows: [{ ...payload.rows[0], sourceRow: 2, amount: -12 }],
+    });
+    otherPayload.config.numberFormat = 'decimal-point';
+    const otherCreated = await postImport(
+      fixture.outsiderToken,
+      otherPayload,
+      otherContent,
+    ).expect(201);
+    const otherImportId = responseBody<{ id: string }>(otherCreated).id;
+    await dataSource.query(
+      `UPDATE public.imports
+       SET mapping_config = jsonb_set(mapping_config, '{chargesPositive}', 'true')
+       WHERE id = $1 AND group_id = $2`,
+      [otherImportId, fixture.otherGroupId],
+    );
+
+    const unchangedImportIds: string[] = [];
+    for (const amountMode of ['signed', 'debit-credit']) {
+      const untouchedContent = Buffer.from(
+        `Date;Description;Amount;Credit\n2026-06-18;Synthetic ${amountMode} amount;-9;0`,
+      );
+      const untouchedPayload = importPayload({
+        groupId: fixture.groupId,
+        accountId: fixture.checkingAccountId,
+        fileContent: untouchedContent,
+        fileName: `${amountMode}.csv`,
+        rows: [{ ...payload.rows[0], sourceRow: 2, amount: -9 }],
+      });
+      const untouched = await postImport(
+        fixture.memberToken,
+        untouchedPayload,
+        untouchedContent,
+      ).expect(201);
+      const untouchedId = responseBody<{ id: string }>(untouched).id;
+      unchangedImportIds.push(untouchedId);
+      if (amountMode === 'debit-credit') {
+        await dataSource.query(
+          `UPDATE public.imports SET mapping_config = mapping_config ||
+           '{"amountMode":"debit-credit","chargesPositive":true,"debitColumn":2,"creditColumn":3}'::jsonb
+           WHERE id = $1 AND group_id = $2`,
+          [untouchedId, fixture.groupId],
+        );
+      }
+    }
+    const manual = await request(httpServer)
+      .post('/transactions')
+      .set('Authorization', `Bearer ${fixture.memberToken}`)
+      .send(
+        reviewTransaction(fixture.groupId, fixture.checkingAccountId, {
+          value: -21,
+        }),
+      )
+      .expect(201);
+    const manualId = responseBody<{ id: string }>(manual).id;
+    const allImportIds = [importId, otherImportId, ...unchangedImportIds];
+    const attributionBefore = await dataSource.query<
+      Array<{ retained: Record<string, unknown> }>
+    >(
+      `SELECT to_jsonb(transaction_record) - 'value' AS retained
+       FROM public.transactions transaction_record
+       WHERE import_id = ANY($1::bigint[]) ORDER BY id`,
+      [allImportIds],
+    );
+    const importsBefore = await dataSource.query<
+      Array<{ retained: Record<string, unknown> }>
+    >(
+      `SELECT to_jsonb(import_record) - 'inflow_total' - 'outflow_total' AS retained
+       FROM public.imports import_record WHERE id = ANY($1::bigint[]) ORDER BY id`,
+      [allImportIds],
+    );
+    const filesBefore = await dataSource.query<Array<{ content: Buffer }>>(
+      `SELECT content FROM public.import_files
+       WHERE import_id = ANY($1::bigint[]) ORDER BY import_id`,
+      [allImportIds],
+    );
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    try {
+      await runner.startTransaction();
+      const migration = new CorrectImportedAmountSigns1791100000000();
+      await migration.up(runner);
+      await migration.up(runner);
+      await runner.commitTransaction();
+      await expect(migration.down()).rejects.toThrow('forward-only');
+    } finally {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      await runner.release();
+    }
+
+    const corrected = await dataSource.query<
+      Array<{ source_row: number; value: number }>
+    >(
+      `SELECT source_row, value FROM public.transactions
+       WHERE import_id = $1 AND group_id = $2 ORDER BY source_row`,
+      [importId, fixture.groupId],
+    );
+    expect(corrected).toEqual(
+      [-25, 10.123, 0, -8, 3, 4].map((value, index) => ({
+        source_row: index + 2,
+        value,
+      })),
+    );
+    const correctedSummaries = await dataSource.query<
+      Array<{ id: string; inflow_total: number; outflow_total: number }>
+    >(
+      `SELECT id, inflow_total, outflow_total FROM public.imports
+       WHERE id = ANY($1::bigint[]) ORDER BY id`,
+      [[importId, otherImportId]],
+    );
+    expect(correctedSummaries).toEqual([
+      { id: importId, inflow_total: 24.12, outflow_total: -25 },
+      { id: otherImportId, inflow_total: 12, outflow_total: 0 },
+    ]);
+    expect(
+      await dataSource.query(
+        `SELECT value FROM public.transactions WHERE import_id = $1 AND group_id = $2`,
+        [otherImportId, fixture.otherGroupId],
+      ),
+    ).toEqual([{ value: 12 }]);
+    expect(
+      await dataSource.query(
+        `SELECT value FROM public.transactions
+         WHERE import_id = ANY($1::bigint[]) ORDER BY id`,
+        [unchangedImportIds],
+      ),
+    ).toEqual([{ value: -9 }, { value: -9 }]);
+    expect(
+      await dataSource.query(
+        'SELECT value FROM public.transactions WHERE id = $1 AND group_id = $2',
+        [manualId, fixture.groupId],
+      ),
+    ).toEqual([{ value: -21 }]);
+    expect(
+      await dataSource.query(
+        `SELECT to_jsonb(transaction_record) - 'value' AS retained
+         FROM public.transactions transaction_record
+         WHERE import_id = ANY($1::bigint[]) ORDER BY id`,
+        [allImportIds],
+      ),
+    ).toEqual(attributionBefore);
+    expect(
+      await dataSource.query(
+        `SELECT to_jsonb(import_record) - 'inflow_total' - 'outflow_total' AS retained
+         FROM public.imports import_record WHERE id = ANY($1::bigint[]) ORDER BY id`,
+        [allImportIds],
+      ),
+    ).toEqual(importsBefore);
+    const filesAfter = await dataSource.query<Array<{ content: Buffer }>>(
+      `SELECT content FROM public.import_files
+       WHERE import_id = ANY($1::bigint[]) ORDER BY import_id`,
+      [allImportIds],
+    );
+    expect(filesAfter).toEqual(filesBefore);
+  });
+
+  it.each(['missing file', 'file hash', 'file size', 'source row', 'mapping'])(
+    'rolls back the sign correction when retained import verification fails: %s',
+    async (invalidSource) => {
+      const fixture = await reviewFixture();
+      const importIds: string[] = [];
+      for (const amount of [-10, -20]) {
+        const content = Buffer.from(
+          `Date;Description;Amount\n2026-06-18;Synthetic rollback refund;${amount}`,
+        );
+        const payload = importPayload({
+          groupId: fixture.groupId,
+          accountId: fixture.checkingAccountId,
+          fileContent: content,
+          rows: [
+            {
+              sourceRow: 2,
+              date: '2026-06-18',
+              amount,
+              description: 'Synthetic retained refund',
+              installmentCurrent: null,
+              installmentTotal: null,
+            },
+          ],
+        });
+        const created = await postImport(
+          fixture.memberToken,
+          payload,
+          content,
+        ).expect(201);
+        importIds.push(responseBody<{ id: string }>(created).id);
+      }
+      await dataSource.query(
+        `UPDATE public.imports SET mapping_config =
+         jsonb_set(mapping_config, '{chargesPositive}', 'true')
+         WHERE id = ANY($1::bigint[]) AND group_id = $2`,
+        [importIds, fixture.groupId],
+      );
+      const snapshot = () =>
+        dataSource.query<Array<Record<string, unknown>>>(
+          `SELECT imported.id, imported.mapping_config, imported.file_hash,
+             imported.file_size, imported.inflow_total, imported.outflow_total,
+             transaction_record.value, transaction_record.source_row, source.content
+           FROM public.imports imported
+           JOIN public.transactions transaction_record
+             ON transaction_record.import_id = imported.id
+             AND transaction_record.group_id = imported.group_id
+           JOIN public.import_files source ON source.import_id = imported.id
+           WHERE imported.id = ANY($1::bigint[]) AND imported.group_id = $2
+           ORDER BY imported.id`,
+          [importIds, fixture.groupId],
+        );
+      const before = await snapshot();
+      const runner = dataSource.createQueryRunner();
+      await runner.connect();
+      try {
+        await runner.startTransaction();
+        const invalidImportId = importIds[1];
+        if (invalidSource === 'missing file') {
+          await runner.query(
+            'DELETE FROM public.import_files WHERE import_id = $1',
+            [invalidImportId],
+          );
+        } else if (invalidSource === 'file hash') {
+          await runner.query(
+            `UPDATE public.imports SET file_hash = repeat('0', 64)
+             WHERE id = $1 AND group_id = $2`,
+            [invalidImportId, fixture.groupId],
+          );
+        } else if (invalidSource === 'file size') {
+          await runner.query(
+            `UPDATE public.imports SET file_size = file_size + 1
+             WHERE id = $1 AND group_id = $2`,
+            [invalidImportId, fixture.groupId],
+          );
+        } else if (invalidSource === 'source row') {
+          await runner.query(
+            `UPDATE public.transactions SET source_row = 99
+             WHERE import_id = $1 AND group_id = $2`,
+            [invalidImportId, fixture.groupId],
+          );
+        } else {
+          await runner.query(
+            `UPDATE public.imports SET mapping_config =
+             jsonb_set(mapping_config, '{amountColumn}', 'null')
+             WHERE id = $1 AND group_id = $2`,
+            [invalidImportId, fixture.groupId],
+          );
+        }
+        await expect(
+          new CorrectImportedAmountSigns1791100000000().up(runner),
+        ).rejects.toThrow('Cannot correct');
+        await runner.rollbackTransaction();
+      } finally {
+        if (runner.isTransactionActive) await runner.rollbackTransaction();
+        await runner.release();
+      }
+      expect(await snapshot()).toEqual(before);
+    },
+  );
+
+  it('normalizes both source signs on the API and atomically rejects invalid mapped source rows', async () => {
+    const fixture = await reviewFixture();
+    const content = Buffer.from(
+      'Date;Description;Amount\n2026-06-18;Synthetic charge;25\n2026-06-19;Synthetic refund;-10\n2026-06-20;Synthetic zero;0',
+    );
+    const payload = importPayload({
+      groupId: fixture.groupId,
+      accountId: fixture.checkingAccountId,
+      fileContent: content,
+      rows: [-25, -10, 0].map((amount, index) => ({
+        sourceRow: index + 2,
+        date: `2026-06-${index + 18}`,
+        amount,
+        description: 'Synthetic stale-client amount',
+        installmentCurrent: null,
+        installmentTotal: null,
+      })),
+    });
+    payload.config.numberFormat = 'decimal-point';
+    payload.config.chargesPositive = true;
+    const created = await postImport(
+      fixture.memberToken,
+      payload,
+      content,
+    ).expect(201);
+    const importSummary = responseBody<{ id: string }>(created);
+    expect(
+      await dataSource.query(
+        `SELECT inflow_total, outflow_total FROM public.imports
+         WHERE id = $1 AND group_id = $2`,
+        [importSummary.id, fixture.groupId],
+      ),
+    ).toEqual([{ inflow_total: 10, outflow_total: -25 }]);
+    expect(
+      await dataSource.query(
+        `SELECT source_row, value FROM public.transactions
+         WHERE import_id = $1 AND group_id = $2 ORDER BY source_row`,
+        [importSummary.id, fixture.groupId],
+      ),
+    ).toEqual([
+      { source_row: 2, value: -25 },
+      { source_row: 3, value: 10 },
+      { source_row: 4, value: 0 },
+    ]);
+
+    for (const source of ['missing', 'malformed']) {
+      const invalidContent = Buffer.from(
+        source === 'missing'
+          ? 'Date;Description;Amount\n2026-06-18;Synthetic valid charge;25'
+          : 'Date;Description;Amount\n2026-06-18;Synthetic invalid refund;not-money',
+      );
+      const invalidPayload = importPayload({
+        groupId: fixture.groupId,
+        accountId: fixture.checkingAccountId,
+        fileName: `${source}.csv`,
+        fileContent: invalidContent,
+        rows: [
+          {
+            ...payload.rows[0],
+            sourceRow: source === 'missing' ? 99 : 2,
+            amount: -25,
+          },
+        ],
+      });
+      invalidPayload.config.chargesPositive = true;
+      const rejected = await postImport(
+        fixture.memberToken,
+        invalidPayload,
+        invalidContent,
+      ).expect(400);
+      expect(responseBody<{ code: string }>(rejected).code).toBe(
+        'INVALID_IMPORT_SOURCE_AMOUNT',
+      );
+      const retained = await dataSource.query<
+        Array<{ imports: number; files: number; transactions: number }>
+      >(
+        `SELECT
+           (SELECT count(*)::integer FROM public.imports
+            WHERE group_id = $1 AND file_hash = $2) AS imports,
+           (SELECT count(*)::integer FROM public.import_files source
+            JOIN public.imports imported ON source.import_id = imported.id
+            WHERE imported.group_id = $1 AND imported.file_hash = $2) AS files,
+           (SELECT count(*)::integer FROM public.transactions transaction_record
+            JOIN public.imports imported ON transaction_record.import_id = imported.id
+            WHERE imported.group_id = $1 AND imported.file_hash = $2) AS transactions`,
+        [fixture.groupId, invalidPayload.fileHash],
+      );
+      expect(retained).toEqual([{ imports: 0, files: 0, transactions: 0 }]);
+    }
   });
 
   it('previews, scopes, atomically confirms, deduplicates, profiles, and reimports CSV rows', async () => {

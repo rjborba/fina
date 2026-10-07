@@ -301,6 +301,65 @@ describe("adaptive CSV import", () => {
     )
   })
 
+  it("previews and submits inverted charges and refunds together", async () => {
+    renderImport()
+    await upload(
+      [
+        "Date;Description;Installment;Amount",
+        "13/08/2026;Charge;Single;25,00",
+        "14/08/2026;Refund;Single;-5,00",
+        "15/08/2026;Other charge;Single;10,00",
+        "16/08/2026;Other refund;Single;-2,00"
+      ].join("\n")
+    )
+    expect(
+      screen.getByRole("row", { name: /2 2026-08-13 Charge 25.00/ })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("row", { name: /3 2026-08-14 Refund -5.00/ })
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Amount mapping. Amount" })
+    )
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /Invert amount signs/ })
+    )
+    expect(
+      screen.getByRole("row", { name: /2 2026-08-13 Charge -25.00/ })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("row", { name: /3 2026-08-14 Refund 5.00/ })
+    ).toBeInTheDocument()
+    await userEvent.keyboard("{Escape}")
+
+    const currentYear = new Date().getFullYear()
+    await userEvent.click(screen.getByLabelText("Bill due in"))
+    await userEvent.click(
+      screen.getByRole("button", { name: `September ${currentYear}` })
+    )
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    const confirm = screen.getByRole("button", {
+      name: "Import 4 transactions"
+    })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await userEvent.click(confirm)
+
+    await waitFor(() => expect(addImport).toHaveBeenCalledTimes(1))
+    expect(addImport.mock.calls[0][0]).toMatchObject({
+      accountId: "21",
+      config: { version: 1, amountMode: "signed", chargesPositive: true },
+      rows: [
+        { sourceRow: 2, amount: -25 },
+        { sourceRow: 3, amount: 5 },
+        { sourceRow: 4, amount: -10 },
+        { sourceRow: 5, amount: 2 }
+      ]
+    })
+  })
+
   it("blocks invalid rows until they are explicitly excluded", async () => {
     renderImport()
     await upload(

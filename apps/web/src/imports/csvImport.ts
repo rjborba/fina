@@ -840,7 +840,7 @@ function parseMappedAmount(
         error: "INVALID_AMOUNT",
         message: "Choose a number format that matches this row"
       }
-    const value = config.chargesPositive ? -Math.abs(parsed) : parsed
+    const value = config.chargesPositive ? -parsed : parsed
     return { value, message: "" }
   }
   const debitRaw =

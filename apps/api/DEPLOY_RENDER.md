@@ -96,6 +96,21 @@ month, historical occurrence timestamps remain untouched, and the default is
 unchanged until a group owner chooses the preceding month. Apply this migration
 before starting the updated API; no production data rewrite is required.
 
+The amount-sign release adds the data-only
+`CorrectImportedAmountSigns1791100000000`. For this release, deploy the verified
+API commit **before** running that migration: the API canonicalizes inversion
+from the verified CSV and closes the old-browser write path while history is
+repaired. No schema change is required for this ordering. Hold web domain
+auto-assignment, verify the API is live, apply the migration with
+`migration:run --transaction all`, then promote the matching web build.
+The migration validates each saved CSV hash/size and physical source row,
+corrects source-negative amounts only when stored values match the legacy
+float4 calculation, and refreshes original-import totals. Manual amount
+overrides, source files, tenant attribution, categories, dates, bill links, and
+soft-deletion flags are preserved. Missing or unverifiable sources abort the
+whole migration. The correction is idempotent and forward-only; ordinary
+rollback must not restore the incorrect financial values.
+
 Application startup never synchronizes or migrates the schema automatically.
 Do not place `migration:run` in the normal start command: a failed migration
 must stop deployment before new application instances receive traffic.

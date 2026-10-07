@@ -24,6 +24,7 @@ import { Imports } from './entities/import.entity';
 import { ImportFiles } from './entities/import-file.entity';
 import { ensureBillReviewMonth } from '../common/review-month';
 import { utcTimestampTransformer } from '../common/utc-timestamp';
+import { readImportSourceAmounts } from '../common/import-source-amounts-v1';
 
 export type UploadedImportFile = {
   buffer: Buffer;
@@ -106,6 +107,7 @@ export class ImportsService {
         'An import reference month is only allowed for credit card bills',
       );
     }
+    input = this.normalizeInvertedAmounts(input, fileContent);
     const duplicate = await this.findDuplicate(
       input.groupId,
       input.accountId,
@@ -210,6 +212,33 @@ export class ImportsService {
         if (concurrentDuplicate) this.throwDuplicate(concurrentDuplicate);
       }
       throw error;
+    }
+  }
+
+  private normalizeInvertedAmounts(
+    input: CreateImportInputDto,
+    content: Buffer,
+  ): CreateImportInputDto {
+    if (input.config.amountMode !== 'signed' || !input.config.chargesPositive) {
+      return input;
+    }
+    try {
+      const sourceAmounts = readImportSourceAmounts(content, input.config);
+      return {
+        ...input,
+        rows: input.rows.map((row) => {
+          const source = sourceAmounts.get(row.sourceRow);
+          if (source === undefined)
+            throw new Error('Unverifiable source amount');
+          return { ...row, amount: source === 0 ? 0 : -source };
+        }),
+      };
+    } catch {
+      throw new BadRequestException({
+        code: 'INVALID_IMPORT_SOURCE_AMOUNT',
+        message:
+          'The CSV amount and saved mapping must be valid for every imported source row.',
+      });
     }
   }
 
