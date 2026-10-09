@@ -292,7 +292,7 @@ export function CreditCardBillsLedger({
         <TableHeader className="sticky top-0 z-10 grid bg-fina-lime">
           <TableRow className="flex w-full border-0">
             <TableHead className="flex h-10 w-[120px] shrink-0 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
-              {dateBasis === "monthly-review" ? "Review month" : "Flow date"}
+              {dateBasis === "monthly-review" ? "Date" : "Flow date"}
             </TableHead>
             <TableHead className="flex h-10 min-w-0 flex-1 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
               Transaction
@@ -348,7 +348,9 @@ export function CreditCardBillsLedger({
                     {row.date
                       ? dayjs(row.date).format(
                           dateBasis === "monthly-review"
-                            ? "MMM YYYY"
+                            ? row.kind === "bill"
+                              ? "MMM YYYY"
+                              : "DD MMM YYYY"
                             : "DD.MM.YY"
                         )
                       : "—"}

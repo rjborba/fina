@@ -40,9 +40,7 @@ export function buildGroupedLedgerRows(
           key: `transaction-${transaction.id}`,
           date:
             dateBasis === "monthly-review"
-              ? transaction.reviewMonth
-                ? `${transaction.reviewMonth}-01`
-                : ""
+              ? (transaction.date?.slice(0, 10) ?? "")
               : (transaction.cashFlowDate ??
                 transaction.toBeConsideredAt ??
                 transaction.calculatedDate ??

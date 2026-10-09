@@ -72,20 +72,22 @@ export function sortTransactions(
 
     switch (field) {
       case "date":
+        if (dateBasis === "monthly-review") {
+          comparison = (left.date?.slice(0, 10) ?? "").localeCompare(
+            right.date?.slice(0, 10) ?? ""
+          )
+          break
+        }
         comparison =
           dayjs(
-            dateBasis === "monthly-review"
-              ? `${left.reviewMonth}-01`
-              : dateBasis === "purchase-date"
-                ? left.date
-                : (left.cashFlowDate ?? left.calculatedDate)
+            dateBasis === "purchase-date"
+              ? left.date
+              : (left.cashFlowDate ?? left.calculatedDate)
           ).valueOf() -
           dayjs(
-            dateBasis === "monthly-review"
-              ? `${right.reviewMonth}-01`
-              : dateBasis === "purchase-date"
-                ? right.date
-                : (right.cashFlowDate ?? right.calculatedDate)
+            dateBasis === "purchase-date"
+              ? right.date
+              : (right.cashFlowDate ?? right.calculatedDate)
           ).valueOf()
         break
       case "value":

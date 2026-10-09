@@ -98,6 +98,18 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(
     page.getByText("Fixture older installment", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page
+      .getByRole("row")
+      .filter({ hasText: "Fixture July refund" })
+      .getByRole("cell", { name: `02 Jul ${year}`, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("row")
+      .filter({ hasText: "Fixture older installment" })
+      .getByRole("cell", { name: `12 May ${year}`, exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: "test-results/monthly-review.png",
     fullPage: true,

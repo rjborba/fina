@@ -5,7 +5,8 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor
+  waitFor,
+  within
 } from "@testing-library/react"
 import type { TransactionOutput as Transaction } from "@fina/types"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -113,6 +114,46 @@ describe("TransactionsTable", () => {
   afterEach(() => {
     virtualizerMock.state.indexes = null
     cleanup()
+  })
+
+  it("shows and sorts original calendar dates in monthly review, including missing dates", () => {
+    render(
+      <TransactionsTable
+        data={[
+          {
+            ...transaction("earlier", "Earlier purchase"),
+            date: "2026-05-12T00:00:00.000Z"
+          },
+          {
+            ...transaction("later", "Later purchase"),
+            date: "2026-07-02T00:00:00.000Z"
+          },
+          { ...transaction("undated", "Undated purchase"), date: null }
+        ]}
+        totalCount={3}
+        pageIndex={0}
+        pageSize={100}
+        sort="date-desc"
+        dateBasis="monthly-review"
+        isLoading={false}
+        isError={false}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransactions={vi.fn()}
+      />
+    )
+
+    expect(
+      screen.getByRole("columnheader", { name: "Date" })
+    ).toBeInTheDocument()
+    const rows = screen.getAllByRole("row").slice(1)
+    expect(within(rows[0]).getByText("Later purchase")).toBeInTheDocument()
+    expect(
+      within(rows[0]).getByRole("cell", { name: "02 Jul 2026" })
+    ).toBeInTheDocument()
+    expect(
+      within(rows[1]).getByRole("cell", { name: "12 May 2026" })
+    ).toBeInTheDocument()
+    expect(within(rows[2]).getByRole("cell", { name: "—" })).toBeInTheDocument()
   })
 
   it("keeps the ledger mounted while browsing transactions in the modal", () => {

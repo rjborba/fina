@@ -286,7 +286,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         id: "date",
         header:
           dateBasis === "monthly-review"
-            ? "Review month"
+            ? "Date"
             : dateBasis === "purchase-date"
               ? "Purchase date"
               : "Flow date",
@@ -295,9 +295,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
           const transaction = info.row.original
           const date =
             dateBasis === "monthly-review"
-              ? transaction.reviewMonth
-                ? `${transaction.reviewMonth}-01`
-                : null
+              ? transaction.date?.slice(0, 10)
               : dateBasis === "purchase-date"
                 ? transaction.date
                 : (transaction.cashFlowDate ?? info.getValue())
@@ -305,7 +303,7 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
             <span className="font-mono text-[11px] font-black">
               {date
                 ? dayjs(date).format(
-                    dateBasis === "monthly-review" ? "MMM YYYY" : "DD.MM.YY"
+                    dateBasis === "monthly-review" ? "DD MMM YYYY" : "DD.MM.YY"
                   )
                 : "—"}
               {dateBasis === "cash-flow" &&

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within
+} from "@testing-library/react"
 import type { CreditCardBillSummary, TransactionOutput } from "@fina/types"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -114,6 +120,43 @@ describe("CreditCardBillsLedger selection", () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+  })
+
+  it("shows checking transaction dates while grouped bills retain their review month", () => {
+    render(
+      <CreditCardBillsLedger
+        transactions={[
+          { ...checkingTransaction, date: "2026-07-02T00:00:00.000Z" },
+          {
+            ...checkingTransaction,
+            id: "earlier",
+            description: "Earlier purchase",
+            date: "2026-05-12T00:00:00.000Z"
+          }
+        ]}
+        bills={[bill]}
+        sort="date-desc"
+        dateBasis="monthly-review"
+        isLoading={false}
+        isError={false}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransactions={vi.fn()}
+      />
+    )
+
+    expect(
+      screen.getByRole("columnheader", { name: "Date" })
+    ).toBeInTheDocument()
+    const rows = screen.getAllByRole("row").slice(1)
+    expect(
+      within(rows[0]).getByRole("cell", { name: "02 Jul 2026" })
+    ).toBeInTheDocument()
+    expect(
+      within(rows[1]).getByRole("cell", { name: "Jun 2026" })
+    ).toBeInTheDocument()
+    expect(
+      within(rows[2]).getByRole("cell", { name: "12 May 2026" })
+    ).toBeInTheDocument()
   })
 
   it("selects a grouped checking transaction on command-click", () => {

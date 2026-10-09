@@ -196,6 +196,9 @@ Production observability around authentication and import failures remains.
    through a private storage marker; the migration never guesses missing source
    timezones or rewrites historical dates.
 4. **Acceptance criteria:** July bills appear in June review when assigned there;
+   individual transaction rows show their original day, month, and year and date
+   sorting follows that date, including purchases outside the selected review
+   month. Grouped bills retain their assigned review-month display;
    January-to-December defaults, conflicting/concurrent imports, checking
    overrides, historical stability, authorization, migration, and cascade behavior
    are covered with disposable PostgreSQL tests. The browser journey proves the
