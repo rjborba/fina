@@ -38,8 +38,10 @@ const virtualizerMock = vi.hoisted(() => {
   }
 })
 
+const activeGroup = vi.hoisted(() => ({ id: "1" }))
+
 vi.mock("@/contexts/ActiveGroupContext", () => ({
-  useActiveGroup: () => ({ selectedGroup: { id: "1" } })
+  useActiveGroup: () => ({ selectedGroup: { id: activeGroup.id } })
 }))
 
 vi.mock("@/data/categories/useCategories", () => ({
@@ -69,18 +71,47 @@ vi.mock("@tanstack/react-virtual", () => ({
 vi.mock("./TransactionDetailsModal", () => ({
   TransactionDetailsModal: ({
     transaction,
-    onNextTransaction
+    open,
+    onOpenChange,
+    onNextTransaction,
+    onPreviousTransaction,
+    currentTransactionIndex,
+    totalTransactions
   }: {
     transaction: Transaction | null
+    open: boolean
+    onOpenChange: (open: boolean) => void
     onNextTransaction: () => void
-  }) => (
-    <div role="dialog" aria-label="Transaction details">
-      <span data-testid="modal-description">{transaction?.description}</span>
-      <button type="button" onClick={onNextTransaction}>
-        Next transaction
-      </button>
-    </div>
-  )
+    onPreviousTransaction: () => void
+    currentTransactionIndex: number
+    totalTransactions: number
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="Transaction details">
+        <span data-testid="modal-description">{transaction?.description}</span>
+        <span data-testid="modal-category">{transaction?.category?.name}</span>
+        <span data-testid="modal-position">
+          {currentTransactionIndex + 1} / {totalTransactions}
+        </span>
+        <button
+          type="button"
+          onClick={onPreviousTransaction}
+          disabled={currentTransactionIndex <= 0}
+        >
+          Previous transaction
+        </button>
+        <button
+          type="button"
+          onClick={onNextTransaction}
+          disabled={currentTransactionIndex >= totalTransactions - 1}
+        >
+          Next transaction
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Close details
+        </button>
+      </div>
+    ) : null
 }))
 
 const transaction = (id: string, description: string): Transaction => ({
@@ -112,6 +143,7 @@ const transaction = (id: string, description: string): Transaction => ({
 
 describe("TransactionsTable", () => {
   afterEach(() => {
+    activeGroup.id = "1"
     virtualizerMock.state.indexes = null
     cleanup()
   })
@@ -217,6 +249,149 @@ describe("TransactionsTable", () => {
     expect(screen.getByTestId("modal-description")).toHaveTextContent(
       "First transaction"
     )
+  })
+
+  it("keeps the opening navigation order while category edits reorder the ledger", () => {
+    const categorizedTransaction = (id: string, name: string): Transaction => ({
+      ...transaction(id, `Transaction ${id}`),
+      category: {
+        id: `category-${id}`,
+        name,
+        icon: "shopping-cart",
+        color: "lime"
+      }
+    })
+    const first = categorizedTransaction("a", "Alpha")
+    const second = categorizedTransaction("b", "Bravo")
+    const third = categorizedTransaction("c", "Charlie")
+    const props: TransactionsTableProps = {
+      data: [first, second, third],
+      totalCount: 3,
+      pageIndex: 0,
+      pageSize: 100,
+      sort: "category-asc",
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(<TransactionsTable {...props} />)
+    fireEvent.click(screen.getByText("Transaction a").closest("tr")!)
+
+    const updatedFirst = categorizedTransaction("a", "Zulu")
+    rerender(
+      <TransactionsTable {...props} data={[second, third, updatedFirst]} />
+    )
+    expect(screen.getByTestId("modal-category")).toHaveTextContent("Zulu")
+    expect(screen.getByTestId("modal-position")).toHaveTextContent("1 / 3")
+    fireEvent.click(screen.getByRole("button", { name: "Next transaction" }))
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Transaction b"
+    )
+
+    const updatedSecond = categorizedTransaction("b", "Yankee")
+    rerender(
+      <TransactionsTable
+        {...props}
+        data={[third, updatedSecond, updatedFirst]}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Next transaction" }))
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Transaction c"
+    )
+    expect(screen.getByTestId("modal-position")).toHaveTextContent("3 / 3")
+    expect(
+      screen.getByRole("button", { name: "Next transaction" })
+    ).toBeDisabled()
+    fireEvent.click(
+      screen.getByRole("button", { name: "Previous transaction" })
+    )
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Transaction b"
+    )
+    expect(screen.getByTestId("modal-category")).toHaveTextContent("Yankee")
+
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }))
+    fireEvent.click(screen.getByText("Transaction c").closest("tr")!)
+    expect(screen.getByTestId("modal-position")).toHaveTextContent("1 / 3")
+    fireEvent.click(screen.getByRole("button", { name: "Next transaction" }))
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Transaction b"
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Next transaction" }))
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Transaction a"
+    )
+  })
+
+  it("skips removed rows and waits until reopening to include newly added rows", () => {
+    const first = transaction("a", "First transaction")
+    const second = transaction("b", "Second transaction")
+    const third = transaction("c", "Third transaction")
+    const added = transaction("d", "Added transaction")
+    const props: TransactionsTableProps = {
+      data: [first, second, third],
+      totalCount: 3,
+      pageIndex: 0,
+      pageSize: 100,
+      sort: "description-asc",
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(<TransactionsTable {...props} />)
+    fireEvent.click(screen.getByText("First transaction").closest("tr")!)
+    rerender(<TransactionsTable {...props} data={[added, first, third]} />)
+    expect(screen.getByTestId("modal-position")).toHaveTextContent("1 / 2")
+    fireEvent.click(screen.getByRole("button", { name: "Next transaction" }))
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "Third transaction"
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Previous transaction" })
+    )
+    expect(screen.getByTestId("modal-description")).toHaveTextContent(
+      "First transaction"
+    )
+    expect(
+      screen.getByRole("button", { name: "Previous transaction" })
+    ).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }))
+    fireEvent.click(screen.getByText("Added transaction").closest("tr")!)
+    expect(screen.getByTestId("modal-position")).toHaveTextContent("1 / 3")
+  })
+
+  it("ends the details session when switching groups", () => {
+    const firstGroupTransaction = transaction("a", "First group purchase")
+    const secondGroupTransaction: Transaction = {
+      ...transaction("b", "Second group purchase"),
+      group: { id: "2", name: "Second group" }
+    }
+    const props: TransactionsTableProps = {
+      data: [firstGroupTransaction],
+      totalCount: 1,
+      pageIndex: 0,
+      pageSize: 100,
+      sort: "date-desc",
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(<TransactionsTable {...props} />)
+    fireEvent.click(screen.getByText("First group purchase").closest("tr")!)
+    expect(screen.getByRole("dialog")).toHaveTextContent("First group purchase")
+
+    activeGroup.id = "2"
+    rerender(<TransactionsTable {...props} data={[secondGroupTransaction]} />)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    activeGroup.id = "1"
+    rerender(<TransactionsTable {...props} />)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("First group purchase").closest("tr")!)
+    expect(screen.getByRole("dialog")).toHaveTextContent("First group purchase")
   })
 
   it("renders the latest virtual range when the stable virtualizer changes", () => {

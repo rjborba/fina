@@ -37,6 +37,7 @@ import {
   type UpdateLedgerTransaction
 } from "./TransactionLedgerTransaction"
 import type { TransactionSortOption } from "./transactionSort"
+import { useTransactionDetailsNavigation } from "./useTransactionDetailsNavigation"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -112,10 +113,11 @@ export function CreditCardBillsLedger({
     () => new Set(transactionIds),
     [transactionIds]
   )
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const detailsNavigation = useTransactionDetailsNavigation(
+    visibleTransactions,
+    selectedGroup?.id
+  )
+  const { openTransaction } = detailsNavigation
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<
     Set<string>
   >(() => new Set())
@@ -123,9 +125,6 @@ export function CreditCardBillsLedger({
     null
   )
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
-  const selectedTransactionIndex = visibleTransactions.findIndex(
-    (transaction) => transaction.id === selectedTransactionId
-  )
   const virtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => ROW_HEIGHT,
@@ -238,10 +237,16 @@ export function CreditCardBillsLedger({
         return
       }
 
-      setSelectedTransactionId(row.transaction.id)
-      setIsDetailsOpen(true)
+      openTransaction(row.transaction.id)
     },
-    [navigate, selectionAnchorId, toast, transactionIds, transactionIdSet]
+    [
+      navigate,
+      openTransaction,
+      selectionAnchorId,
+      toast,
+      transactionIds,
+      transactionIdSet
+    ]
   )
 
   const allTransactionsSelected =
@@ -421,25 +426,8 @@ export function CreditCardBillsLedger({
         </TableBody>
       </Table>
 
-      {selectedTransactionIndex >= 0 ? (
-        <TransactionDetailsModal
-          transaction={visibleTransactions[selectedTransactionIndex] || null}
-          open={isDetailsOpen}
-          onOpenChange={setIsDetailsOpen}
-          totalTransactions={visibleTransactions.length}
-          currentTransactionIndex={selectedTransactionIndex}
-          onNextTransaction={() => {
-            const next = Math.min(
-              selectedTransactionIndex + 1,
-              visibleTransactions.length - 1
-            )
-            setSelectedTransactionId(visibleTransactions[next]?.id || null)
-          }}
-          onPreviousTransaction={() => {
-            const previous = Math.max(selectedTransactionIndex - 1, 0)
-            setSelectedTransactionId(visibleTransactions[previous]?.id || null)
-          }}
-        />
+      {detailsNavigation.transaction ? (
+        <TransactionDetailsModal {...detailsNavigation} />
       ) : null}
 
       {selectedTransactionIds.size > 0 ? (

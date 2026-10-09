@@ -59,6 +59,20 @@ export function getTransactionSortLabel(value: TransactionSortOption) {
   )
 }
 
+const dateValue = (date: string | null | undefined) => {
+  if (!date) return null
+
+  const parsedDate = dayjs(date)
+  return parsedDate.isValid() ? parsedDate.valueOf() : null
+}
+
+const compareDates = (left: number | null, right: number | null) => {
+  if (left === right) return 0
+  if (left === null) return -1
+  if (right === null) return 1
+  return left - right
+}
+
 export function sortTransactions(
   transactions: readonly Transaction[],
   option: TransactionSortOption,
@@ -72,23 +86,22 @@ export function sortTransactions(
 
     switch (field) {
       case "date":
-        if (dateBasis === "monthly-review") {
-          comparison = (left.date?.slice(0, 10) ?? "").localeCompare(
-            right.date?.slice(0, 10) ?? ""
+        comparison = compareDates(
+          dateValue(
+            dateBasis === "monthly-review"
+              ? left.date?.slice(0, 10)
+              : dateBasis === "purchase-date"
+                ? left.date
+                : (left.cashFlowDate ?? left.calculatedDate)
+          ),
+          dateValue(
+            dateBasis === "monthly-review"
+              ? right.date?.slice(0, 10)
+              : dateBasis === "purchase-date"
+                ? right.date
+                : (right.cashFlowDate ?? right.calculatedDate)
           )
-          break
-        }
-        comparison =
-          dayjs(
-            dateBasis === "purchase-date"
-              ? left.date
-              : (left.cashFlowDate ?? left.calculatedDate)
-          ).valueOf() -
-          dayjs(
-            dateBasis === "purchase-date"
-              ? right.date
-              : (right.cashFlowDate ?? right.calculatedDate)
-          ).valueOf()
+        )
         break
       case "value":
         comparison = (left.value || 0) - (right.value || 0)
@@ -111,6 +124,8 @@ export function sortTransactions(
         break
     }
 
-    return comparison * direction
+    return comparison === 0
+      ? left.id.localeCompare(right.id)
+      : comparison * direction
   })
 }

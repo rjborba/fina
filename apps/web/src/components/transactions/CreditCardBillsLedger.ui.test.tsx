@@ -37,6 +37,24 @@ vi.mock("@/data/categories/useCategories", () => ({
         name: "Groceries",
         icon: "shopping-cart",
         color: "lime"
+      },
+      {
+        id: "category-2",
+        name: "Housing",
+        icon: "house",
+        color: "lime"
+      },
+      {
+        id: "category-3",
+        name: "Transport",
+        icon: "car",
+        color: "lime"
+      },
+      {
+        id: "category-4",
+        name: "Apparel",
+        icon: "shirt",
+        color: "lime"
       }
     ]
   })
@@ -55,9 +73,49 @@ vi.mock("@tanstack/react-virtual", () => ({
 }))
 
 vi.mock("./TransactionDetailsModal", () => ({
-  TransactionDetailsModal: () => (
-    <div role="dialog" aria-label="Transaction details" />
-  )
+  TransactionDetailsModal: ({
+    transaction,
+    open,
+    onOpenChange,
+    totalTransactions,
+    currentTransactionIndex,
+    onNextTransaction,
+    onPreviousTransaction
+  }: {
+    transaction: TransactionOutput | null
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    totalTransactions: number
+    currentTransactionIndex: number
+    onNextTransaction: () => void
+    onPreviousTransaction: () => void
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="Transaction details">
+        <span>{transaction?.description}</span>
+        <span>{transaction?.category?.name || "Uncategorized"}</span>
+        <span>
+          {currentTransactionIndex + 1} of {totalTransactions}
+        </span>
+        <button
+          type="button"
+          onClick={onPreviousTransaction}
+          disabled={currentTransactionIndex === 0}
+        >
+          Previous
+        </button>
+        <button
+          type="button"
+          onClick={onNextTransaction}
+          disabled={currentTransactionIndex === totalTransactions - 1}
+        >
+          Next
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Close
+        </button>
+      </div>
+    ) : null
 }))
 
 const checkingTransaction = {
@@ -226,5 +284,137 @@ describe("CreditCardBillsLedger selection", () => {
     expect(screen.getByTestId("credit-card-bill-row")).toBeInTheDocument()
     expect(screen.getByText("Empty")).toBeInTheDocument()
     expect(screen.getByText("0 transactions")).toBeInTheDocument()
+  })
+
+  it("keeps the opening order when categorization moves a checking row", () => {
+    const transactions = [
+      { ...checkingTransaction, id: "a", description: "Purchase A" },
+      {
+        ...checkingTransaction,
+        id: "b",
+        description: "Purchase B",
+        category: {
+          ...checkingTransaction.category,
+          id: "category-2",
+          name: "Housing"
+        }
+      },
+      {
+        ...checkingTransaction,
+        id: "c",
+        description: "Purchase C",
+        category: {
+          ...checkingTransaction.category,
+          id: "category-3",
+          name: "Transport"
+        }
+      }
+    ]
+    const props = {
+      bills: [bill],
+      sort: "category-asc" as const,
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(
+      <CreditCardBillsLedger {...props} transactions={transactions} />
+    )
+
+    fireEvent.click(screen.getAllByTestId("grouped-transaction-row")[0])
+    const details = within(
+      screen.getByRole("dialog", { name: "Transaction details" })
+    )
+    expect(details.getByText("Purchase A")).toBeInTheDocument()
+    expect(details.getByText("1 of 3")).toBeInTheDocument()
+    fireEvent.click(details.getByRole("button", { name: "Next" }))
+    expect(details.getByText("Purchase B")).toBeInTheDocument()
+
+    rerender(
+      <CreditCardBillsLedger
+        {...props}
+        transactions={transactions.map((transaction) =>
+          transaction.id === "b"
+            ? {
+                ...transaction,
+                category: {
+                  ...checkingTransaction.category,
+                  id: "category-4",
+                  name: "Apparel"
+                }
+              }
+            : transaction
+        )}
+      />
+    )
+
+    const firstRow = screen.getAllByTestId("grouped-transaction-row")[0]
+    expect(within(firstRow).getByText("Purchase B")).toBeInTheDocument()
+    expect(details.getByText("Apparel")).toBeInTheDocument()
+    expect(details.getByText("2 of 3")).toBeInTheDocument()
+    fireEvent.click(details.getByRole("button", { name: "Next" }))
+    expect(details.getByText("Purchase C")).toBeInTheDocument()
+    expect(details.getByRole("button", { name: "Next" })).toBeDisabled()
+    fireEvent.click(details.getByRole("button", { name: "Previous" }))
+    expect(details.getByText("Purchase B")).toBeInTheDocument()
+    expect(details.getByText("Apparel")).toBeInTheDocument()
+    fireEvent.click(details.getByRole("button", { name: "Previous" }))
+    expect(details.getByText("Purchase A")).toBeInTheDocument()
+    expect(details.getByRole("button", { name: "Previous" })).toBeDisabled()
+  })
+
+  it("skips removed transactions, ignores additions, and refreshes on reopening", () => {
+    const transactions = ["A", "B", "C", "D"].map((letter) => ({
+      ...checkingTransaction,
+      id: letter,
+      description: `Purchase ${letter}`
+    }))
+    const props = {
+      bills: [bill],
+      sort: "description-asc" as const,
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(
+      <CreditCardBillsLedger {...props} transactions={transactions} />
+    )
+
+    fireEvent.click(screen.getAllByTestId("grouped-transaction-row")[0])
+    const details = within(
+      screen.getByRole("dialog", { name: "Transaction details" })
+    )
+    expect(details.getByText("Purchase A")).toBeInTheDocument()
+    rerender(
+      <CreditCardBillsLedger
+        {...props}
+        transactions={[
+          ...transactions.filter((transaction) => transaction.id !== "B"),
+          { ...checkingTransaction, id: "AA", description: "Purchase AA" }
+        ]}
+      />
+    )
+
+    expect(details.getByText("1 of 3")).toBeInTheDocument()
+    fireEvent.click(details.getByRole("button", { name: "Next" }))
+    expect(details.getByText("Purchase C")).toBeInTheDocument()
+    fireEvent.click(details.getByRole("button", { name: "Next" }))
+    expect(details.getByText("Purchase D")).toBeInTheDocument()
+    expect(details.getByRole("button", { name: "Next" })).toBeDisabled()
+    fireEvent.click(details.getByRole("button", { name: "Close" }))
+    expect(
+      screen.queryByRole("dialog", { name: "Transaction details" })
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByTestId("grouped-transaction-row")[1])
+    const reopenedDetails = within(
+      screen.getByRole("dialog", { name: "Transaction details" })
+    )
+    expect(reopenedDetails.getByText("Purchase AA")).toBeInTheDocument()
+    expect(reopenedDetails.getByText("2 of 4")).toBeInTheDocument()
+    fireEvent.click(reopenedDetails.getByRole("button", { name: "Next" }))
+    expect(reopenedDetails.getByText("Purchase C")).toBeInTheDocument()
   })
 })

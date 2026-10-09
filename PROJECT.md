@@ -191,7 +191,14 @@ Production observability around authentication and import failures remains.
    imports and manual purchases in a bill, including installments and credits.
    Checking transactions use their occurrence month unless explicitly overridden.
    Month assignment is independent of transaction/category edits and confirmed
-   payments. New or explicitly edited occurrence dates use canonical UTC calendar
+   payments. Transaction sorting uses an immutable ID to break equal-value ties.
+   The details dialog keeps the visible transaction order from when it opens
+   through category edits and refreshes, while displaying the latest record
+   values. Rows removed from the filtered ledger are skipped; new rows join the
+   navigation sequence when the dialog is reopened. This applies to inline
+   transactions, grouped checking transactions, and bill-detail purchases.
+   Changing the active group ends the open details session.
+   New or explicitly edited occurrence dates use canonical UTC calendar
    storage. Legacy timestamps retain their previous server-local interpretation
    through a private storage marker; the migration never guesses missing source
    timezones or rewrites historical dates.

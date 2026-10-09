@@ -40,6 +40,7 @@ import {
 } from "./transactionSelection"
 import { sortTransactions, type TransactionSortOption } from "./transactionSort"
 import { TransactionLedgerTransaction } from "./TransactionLedgerTransaction"
+import { useTransactionDetailsNavigation } from "./useTransactionDetailsNavigation"
 
 export interface TransactionsTableProps {
   data?: Transaction[] | null
@@ -382,16 +383,11 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     overscan: 15
   })
 
-  const [isTransactionsDetailsModalOpen, setIsTransactionsDetailsModalOpen] =
-    useState(false)
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null)
-  const selectedTransactionIndex = selectedTransactionId
-    ? sortedData.findIndex(
-        (transaction) => transaction.id === selectedTransactionId
-      )
-    : -1
+  const detailsNavigation = useTransactionDetailsNavigation(
+    sortedData,
+    selectedGroup?.id
+  )
+  const { openTransaction } = detailsNavigation
 
   const clearSelection = useCallback(() => {
     setSelectedTransactionIds(new Set())
@@ -472,34 +468,10 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
         return
       }
 
-      setSelectedTransactionId(transactionId)
-      setIsTransactionsDetailsModalOpen(true)
+      openTransaction(transactionId)
     },
-    [selectionAnchorId, transactionIds, transactionIdSet]
+    [openTransaction, selectionAnchorId, transactionIds, transactionIdSet]
   )
-
-  const handleNextTransaction = useCallback(() => {
-    setSelectedTransactionId((currentId) => {
-      const currentIndex = sortedData.findIndex(
-        (transaction) => transaction.id === currentId
-      )
-      if (currentIndex < 0) return currentId
-
-      const nextIndex = Math.min(currentIndex + 1, sortedData.length - 1)
-      return sortedData[nextIndex]?.id ?? currentId
-    })
-  }, [sortedData])
-
-  const handlePreviousTransaction = useCallback(() => {
-    setSelectedTransactionId((currentId) => {
-      const currentIndex = sortedData.findIndex(
-        (transaction) => transaction.id === currentId
-      )
-      if (currentIndex < 0) return currentId
-
-      return sortedData[Math.max(0, currentIndex - 1)]?.id ?? currentId
-    })
-  }, [sortedData])
 
   const allTransactionsSelected =
     transactionIds.length > 0 &&
@@ -527,16 +499,8 @@ const TransactionsTable: FC<TransactionsTableProps> = ({
     >
       <div className={cn("min-w-0 flex-1 transition-all duration-300")}>
         {content}
-        {selectedTransactionIndex >= 0 && (
-          <TransactionDetailsModal
-            transaction={sortedData[selectedTransactionIndex] || null}
-            open={isTransactionsDetailsModalOpen}
-            onOpenChange={setIsTransactionsDetailsModalOpen}
-            totalTransactions={sortedData.length}
-            currentTransactionIndex={selectedTransactionIndex}
-            onNextTransaction={handleNextTransaction}
-            onPreviousTransaction={handlePreviousTransaction}
-          />
+        {detailsNavigation.transaction && (
+          <TransactionDetailsModal {...detailsNavigation} />
         )}
       </div>
       {selectedTransactionIds.size > 0 ? (
