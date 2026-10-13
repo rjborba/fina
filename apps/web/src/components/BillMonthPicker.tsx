@@ -78,33 +78,33 @@ export const BillMonthPicker = ({
             aria-required="true"
             disabled={disabled}
             className={cn(
-              "h-auto w-full justify-between rounded-none border-2 border-fina-ink bg-fina-surface px-3 py-3 text-left shadow-fina-sm hover:-translate-y-0.5 hover:bg-fina-yellow hover:shadow-fina-md",
-              !value && "text-fina-ink/55"
+              "h-auto w-full justify-between rounded-md border border-fina-grid bg-fina-surface px-3 py-3 text-left shadow-fina-sm hover:bg-fina-canvas",
+              !value && "text-foreground/55"
             )}
           >
             <span className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-violet text-white">
+              <span className="flex size-10 shrink-0 items-center justify-center border border-fina-grid bg-fina-violet text-white">
                 <CreditCard className="size-5" strokeWidth={2.5} />
               </span>
               <span className="flex flex-col">
-                <span className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/45">
+                <span className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
                   {label}
                 </span>
-                <span className="text-base font-black tracking-[-0.02em] text-fina-ink">
+                <span className="text-base font-semibold tracking-[-0.02em] text-foreground">
                   {selectedMonth === null || selectedYear === null
                     ? "Choose month"
                     : `${months[selectedMonth]} ${selectedYear}`}
                 </span>
               </span>
             </span>
-            <CalendarDays className="size-5 text-fina-ink/55" />
+            <CalendarDays className="size-5 text-foreground/55" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-[min(22rem,calc(100vw-2rem))] rounded-none border-2 border-fina-ink bg-fina-surface p-0 shadow-fina-lg"
+          className="w-[min(22rem,calc(100vw-2rem))] rounded-md border border-fina-grid bg-fina-surface p-0 shadow-fina-lg"
         >
-          <div className="flex items-center justify-between border-b-2 border-fina-ink bg-fina-lime px-3 py-2">
+          <div className="flex items-center justify-between border-b border-fina-grid bg-fina-canvas px-3 py-2">
             <Button
               type="button"
               variant="fina-ghost"
@@ -115,10 +115,10 @@ export const BillMonthPicker = ({
               <ChevronLeft className="size-4" />
             </Button>
             <div className="text-center">
-              <div className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/50">
+              <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/50">
                 Year
               </div>
-              <div className="text-lg font-black">{displayYear}</div>
+              <div className="text-lg font-semibold">{displayYear}</div>
             </div>
             <Button
               type="button"
@@ -142,10 +142,10 @@ export const BillMonthPicker = ({
                   aria-label={`${month} ${displayYear}`}
                   aria-pressed={selected}
                   className={cn(
-                    "relative h-10 rounded-none border-2 border-transparent px-2 text-xs font-black uppercase",
-                    "hover:border-fina-ink hover:bg-fina-yellow",
+                    "relative h-10 rounded-md border border-transparent px-2 text-xs font-semibold",
+                    "hover:border-fina-grid hover:bg-fina-canvas",
                     selected &&
-                      "border-fina-ink bg-fina-violet text-white hover:bg-fina-violet"
+                      "border-fina-grid bg-fina-violet text-white hover:bg-fina-violet"
                   )}
                   onClick={() => {
                     onValueChange(
@@ -162,14 +162,14 @@ export const BillMonthPicker = ({
               )
             })}
           </div>
-          <div className="border-t-2 border-fina-ink bg-fina-grid px-4 py-3 text-xs font-semibold text-fina-ink/65">
+          <div className="border-t border-fina-grid bg-fina-canvas px-4 py-3 text-xs font-semibold text-foreground/65">
             {dueDay
               ? `Due day ${dueDay}. Fina combines it with the selected month.`
               : "Choose the calendar month for this view."}
           </div>
         </PopoverContent>
       </Popover>
-      <p className="text-xs font-semibold text-fina-ink/55">{description}</p>
+      <p className="text-xs font-semibold text-foreground/55">{description}</p>
     </div>
   )
 }

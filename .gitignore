@@ -41,3 +41,4 @@ rulesync.local.jsonc
 .vercel
 test-results/
 playwright-report/
+.playwright-mcp/

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FinancialInstitutionIdSchema } from "./FinancialInstitution";
 
 export const CreditCardDueDaySchema = z.number().int().min(1).max(31);
 
@@ -7,6 +8,7 @@ export const BankaccountOutputSchema = z.object({
   createdAt: z.string().datetime(),
   name: z.string(),
   type: z.string(),
+  institutionId: FinancialInstitutionIdSchema.nullable(),
   dueDate: CreditCardDueDaySchema.nullable(),
   groupId: z.string(),
   userId: z.string().uuid()

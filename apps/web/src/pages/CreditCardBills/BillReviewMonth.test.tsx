@@ -17,6 +17,7 @@ vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }))
 const bill: CreditCardBillSummary = {
   accountId: "20",
   accountName: "Household card",
+  accountInstitutionId: null,
   billMonth: "2026-07",
   reviewMonth: "2026-07",
   dueDate: "2026-07-10",
@@ -28,6 +29,7 @@ const bill: CreditCardBillSummary = {
     transactionId: "40",
     accountId: "21",
     accountName: "Checking",
+    accountInstitutionId: null,
     date: "2026-07-09",
     value: -200,
     description: "Synthetic payment"

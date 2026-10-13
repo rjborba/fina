@@ -13,10 +13,10 @@ export function ReviewSettings({ group }: { group: Group["Row"] }) {
 
   return (
     <FinaSurface className="p-5 sm:p-6">
-      <h2 className="text-xl font-black uppercase tracking-[-0.035em]">
+      <h2 className="text-xl font-semibold tracking-[-0.035em]">
         Monthly review
       </h2>
-      <p className="mt-2 max-w-2xl text-sm font-semibold text-fina-ink/65">
+      <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/65">
         Choose the default review month for new credit-card bills. Saved bill
         assignments stay unchanged. Each bill can be moved from its details.
       </p>
@@ -44,7 +44,7 @@ export function ReviewSettings({ group }: { group: Group["Row"] }) {
         <label className="flex flex-col gap-2 text-sm font-bold">
           Credit-card bills belong to
           <select
-            className="h-11 border-2 border-fina-ink bg-fina-surface px-3 font-semibold"
+            className="h-11 border border-fina-grid bg-fina-surface px-3 font-semibold"
             value={selection}
             disabled={!group.isOwner || updateReviewSettings.isPending}
             onChange={(event) =>

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BillMonthSchema } from "../BillMonth";
+import { CreditCardSafeLabelSchema } from "../CreditCard/CreditCardApi.dto";
 
 export const IMPORT_LIMITS = {
   maxFileBytes: 5 * 1024 * 1024,
@@ -36,6 +37,18 @@ export const ImportMappingConfigSchema = z
     dateColumn: ColumnIndexSchema,
     descriptionColumns: z.array(ColumnIndexSchema).max(10),
     installmentColumn: NullableColumnIndexSchema,
+    creditCardColumn: NullableColumnIndexSchema.optional(),
+    creditCardMappings: z
+      .array(
+        z
+          .object({
+            value: CreditCardSafeLabelSchema,
+            creditCardId: z.string().regex(/^\d+$/).nullable()
+          })
+          .strict()
+      )
+      .max(500)
+      .optional(),
     amountMode: z.enum(["signed", "debit-credit"]),
     amountColumn: NullableColumnIndexSchema,
     debitColumn: NullableColumnIndexSchema,
@@ -44,6 +57,21 @@ export const ImportMappingConfigSchema = z
   })
   .strict()
   .superRefine((config, context) => {
+    const values = config.creditCardMappings?.map(({ value }) => value) ?? [];
+    if (new Set(values).size !== values.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["creditCardMappings"],
+        message: "Card mapping values must be unique"
+      });
+    }
+    if (values.length > 0 && config.creditCardColumn == null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["creditCardColumn"],
+        message: "A card column is required for card mappings"
+      });
+    }
     if (config.amountMode === "signed" && config.amountColumn === null) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -79,6 +107,8 @@ const IsoDateSchema = z
 export const NormalizedImportRowSchema = z
   .object({
     sourceRow: z.number().int().min(1).max(1_000_000),
+    creditCardId: z.string().regex(/^\d+$/).nullable().optional(),
+    creditCardIdentifier: CreditCardSafeLabelSchema.nullable().optional(),
     date: IsoDateSchema,
     amount: z
       .number()
@@ -114,6 +144,7 @@ export const ImportPayloadSchema = z
   .object({
     groupId: z.string().regex(/^\d+$/),
     accountId: z.string().regex(/^\d+$/),
+    creditCardId: z.string().regex(/^\d+$/).nullable().optional(),
     billMonth: BillMonthSchema.nullable(),
     reviewMonth: BillMonthSchema.optional(),
     fileName: z

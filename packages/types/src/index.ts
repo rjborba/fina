@@ -1,6 +1,7 @@
 export * from "./pagination";
 export * from "./BillMonth";
 export * from "./CreditCardBill/index";
+export * from "./CreditCard/index";
 export * from "./Group/index";
 export * from "./Import/index";
 export * from "./Invite/index";

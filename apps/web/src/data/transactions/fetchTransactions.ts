@@ -13,9 +13,15 @@ export const fetchTransactions = async ({
   endDate,
   categoryIdList,
   accountIdList,
+  creditCardIdList,
   accountType,
+  importSource,
+  importIdList,
+  minValue,
+  maxValue,
   search,
-  dateBasis
+  dateBasis,
+  reviewMonths
 }: QueryTransactionInputDto): Promise<QueryTransactionOutputDtoType> => {
   const response = await transactionsControllerFindAll({
     groupId,
@@ -25,9 +31,15 @@ export const fetchTransactions = async ({
     endDate: endDate ? dayjs(endDate).format("YYYY-MM-DD") : undefined,
     categoryIdList,
     accountIdList,
+    creditCardIdList,
     accountType,
+    importSource,
+    importIdList,
+    minValue,
+    maxValue,
     search,
-    dateBasis
+    dateBasis,
+    reviewMonths
   })
   return response as QueryTransactionOutputDtoType
 }

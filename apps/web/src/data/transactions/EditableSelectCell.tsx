@@ -2,7 +2,6 @@ import { FC, useEffect, useState } from "react"
 import type { CategoryOutput } from "@fina/types"
 
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
-import { getCategoryColorClassName } from "@/components/categories/categoryAppearanceOptions"
 import {
   Select,
   SelectContent,
@@ -11,7 +10,6 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { toast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
 
 const NONE_CATEGORY_ID = "none" as const
 
@@ -22,6 +20,7 @@ interface EditableSelectProps {
   ariaLabel: string
   onOpenChange: (open: boolean) => void
   onChange: (value: string | null) => Promise<unknown>
+  disabled?: boolean
 }
 
 export const EditableSelect: FC<EditableSelectProps> = ({
@@ -30,7 +29,8 @@ export const EditableSelect: FC<EditableSelectProps> = ({
   onChange,
   open,
   ariaLabel,
-  onOpenChange
+  onOpenChange,
+  disabled = false
 }) => {
   const [internalValue, setInternalValue] = useState(value)
 
@@ -44,12 +44,18 @@ export const EditableSelect: FC<EditableSelectProps> = ({
     setInternalValue(value)
   }, [value])
 
+  useEffect(() => {
+    if (disabled && open) onOpenChange(false)
+  }, [disabled, open, onOpenChange])
+
   return (
     <Select
-      open={open}
+      disabled={disabled}
+      open={open && !disabled}
       onOpenChange={onOpenChange}
       value={internalValue ? String(internalValue) : NONE_CATEGORY_ID}
       onValueChange={(newValue) => {
+        if (disabled) return
         const normalizedNewValue =
           newValue === NONE_CATEGORY_ID ? null : newValue
 
@@ -64,27 +70,23 @@ export const EditableSelect: FC<EditableSelectProps> = ({
     >
       <SelectTrigger
         aria-label={ariaLabel}
-        className={cn(
-          "h-7 w-auto min-w-0 cursor-pointer rounded-full border border-fina-ink px-2 py-0 font-mono text-[10px] font-black shadow-none focus:ring-2 focus:ring-fina-violet [&>svg]:hidden",
-          selectedOption
-            ? getCategoryColorClassName(selectedOption.color)
-            : "bg-fina-yellow text-fina-ink"
-        )}
+        title={displayText}
+        className="h-6 w-full max-w-full min-w-0 cursor-pointer rounded-md border-0 bg-transparent px-1 py-0 text-xs font-normal text-muted-foreground shadow-none hover:bg-fina-canvas focus:ring-1 focus:ring-fina-violet [&>svg]:hidden"
       >
         <SelectValue>
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
             {selectedOption ? (
               <CategoryAppearance
                 icon={selectedOption.icon}
                 color={selectedOption.color}
-                className="size-5 border-0 bg-transparent text-current"
+                className="size-4 shrink-0 border-0 bg-transparent"
               />
             ) : null}
             <span className="truncate">{displayText}</span>
           </span>
         </SelectValue>
       </SelectTrigger>
-      <SelectContent className="rounded-none border-2 border-fina-ink shadow-fina-sm">
+      <SelectContent className="rounded-md border border-fina-grid shadow-fina-sm">
         {options.map((option) => (
           <SelectItem key={option.id} value={String(option.id)}>
             <span className="flex items-center gap-2">

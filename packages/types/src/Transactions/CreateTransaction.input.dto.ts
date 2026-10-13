@@ -21,6 +21,7 @@ export const CreateTransactionInputDtoSchema =
   })
     .extend({
       bankaccountId: z.string().regex(/^\d+$/),
+      creditCardId: z.string().regex(/^\d+$/).nullable().optional(),
       categoryId: z.string().regex(/^\d+$/).nullable().optional(),
       groupId: z.string().regex(/^\d+$/),
       importId: z.string().regex(/^\d+$/).nullable().optional(),

@@ -9,6 +9,7 @@ import {
 import { Groups } from '../../groups/entities/group.entity';
 import { Users } from '../../users/entities/user.entity';
 import { Transactions } from '../../transactions/entities/transaction.entity';
+import { FinancialInstitutionId } from '@fina/types';
 
 @Entity('bankaccounts', { schema: 'public' })
 export class Bankaccounts {
@@ -26,6 +27,9 @@ export class Bankaccounts {
 
   @Column('text', { name: 'type', nullable: false })
   type: string;
+
+  @Column('text', { name: 'institution_id', nullable: true })
+  institutionId: FinancialInstitutionId | null;
 
   @Column('smallint', { name: 'due_date', nullable: true })
   dueDate: number | null;

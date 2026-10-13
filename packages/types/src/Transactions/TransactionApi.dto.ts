@@ -5,12 +5,15 @@ import {
 } from "../Category/CategoryApi.dto";
 import { BillMonthSchema } from "../BillMonth";
 import { CreditCardDueDaySchema } from "../BankAccount/BankaccountApi.dto";
+import { FinancialInstitutionIdSchema } from "../BankAccount/FinancialInstitution";
+import { CreditCardReferenceSchema } from "../CreditCard/CreditCardApi.dto";
 
 export const TransactionOutputSchema = z.object({
   id: z.string(),
   createdAt: z.string().datetime(),
   description: z.string().nullable(),
   value: z.number().nullable(),
+  creditCard: CreditCardReferenceSchema.nullable(),
   date: z.string().datetime().nullable(),
   installmentTotal: z.number().nullable(),
   installmentCurrent: z.string().nullable(),
@@ -32,6 +35,7 @@ export const TransactionOutputSchema = z.object({
       id: z.string(),
       name: z.string(),
       type: z.string(),
+      institutionId: FinancialInstitutionIdSchema.nullable(),
       dueDate: CreditCardDueDaySchema.nullable()
     })
     .nullable(),

@@ -15,12 +15,12 @@ export function TransactionReviewMonth({
   return (
     <section
       aria-labelledby="transaction-review-title"
-      className="border-t-[3px] border-fina-ink bg-fina-surface p-4 sm:p-5"
+      className="border-t border-fina-grid bg-fina-surface p-4 sm:p-5"
     >
-      <h2 id="transaction-review-title" className="font-black uppercase">
+      <h2 id="transaction-review-title" className="font-semibold">
         Monthly review
       </h2>
-      <p className="mt-1 text-sm font-semibold text-fina-ink/65">
+      <p className="mt-1 text-sm font-semibold text-foreground/65">
         Choose the month for this expense or income. The transaction date and
         cash flow stay unchanged.
       </p>
@@ -46,7 +46,7 @@ export function TransactionReviewMonth({
           Reference month
           <input
             type="month"
-            className="h-10 border-2 border-fina-ink bg-fina-surface px-3"
+            className="h-10 border border-fina-grid bg-fina-surface px-3"
             value={month}
             disabled={saving}
             onChange={(event) => setMonth(event.target.value)}

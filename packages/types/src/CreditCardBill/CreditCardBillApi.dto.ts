@@ -1,6 +1,12 @@
 import { z } from "zod";
-import { BillMonthSchema } from "../BillMonth";
+import { BillMonthSchema, ReviewMonthsQuerySchema } from "../BillMonth";
 import { TransactionOutputSchema } from "../Transactions/TransactionApi.dto";
+import { FinancialInstitutionIdSchema } from "../BankAccount/FinancialInstitution";
+import { CreditCardReferenceSchema } from "../CreditCard/CreditCardApi.dto";
+import {
+  hasValidTransactionValueRange,
+  TransactionFilterQueryShape
+} from "../Transactions/TransactionFilters";
 
 export const CreditCardBillStatusSchema = z.enum([
   "empty",
@@ -15,18 +21,22 @@ export const CreditCardBillPaymentSchema = z.object({
   value: z.number(),
   date: z.string().date(),
   accountId: z.string(),
-  accountName: z.string()
+  accountName: z.string(),
+  accountInstitutionId: FinancialInstitutionIdSchema.nullable()
 });
 
 export const CreditCardBillSummarySchema = z.object({
   accountId: z.string(),
   accountName: z.string(),
+  accountInstitutionId: FinancialInstitutionIdSchema.nullable(),
   billMonth: BillMonthSchema,
   dueDate: z.string().date(),
   reviewMonth: BillMonthSchema,
   cashFlowDate: z.string().date(),
   transactionCount: z.number().int().nonnegative(),
   total: z.number(),
+  matchingTransactionCount: z.number().int().nonnegative().optional(),
+  matchingTotal: z.number().finite().optional(),
   status: CreditCardBillStatusSchema,
   payment: CreditCardBillPaymentSchema.nullable()
 });
@@ -35,12 +45,29 @@ export const CreditCardBillListOutputSchema = z.array(
   CreditCardBillSummarySchema
 );
 
-export const CreditCardBillListQuerySchema = z.object({
-  dateBasis: z.enum(["cash-flow", "monthly-review"]).optional(),
-  groupId: z.string().regex(/^\d+$/),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional()
-});
+export const CreditCardBillListQuerySchema = z
+  .object({
+    ...TransactionFilterQueryShape,
+    dateBasis: z.enum(["cash-flow", "monthly-review"]).optional(),
+    reviewMonths: ReviewMonthsQuerySchema.describe(
+      "Explicit review months; overrides date bounds in monthly review"
+    ),
+    groupId: z.string().regex(/^\d+$/),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional()
+  })
+  .refine(
+    (query) =>
+      query.reviewMonths === undefined || query.dateBasis === "monthly-review",
+    {
+      message: "Review months require monthly-review date basis",
+      path: ["reviewMonths"]
+    }
+  )
+  .refine(hasValidTransactionValueRange, {
+    message: "Maximum value must be greater than or equal to minimum value",
+    path: ["maxValue"]
+  });
 
 export const CreditCardBillParamsSchema = z.object({
   accountId: z.string().regex(/^\d+$/),
@@ -54,7 +81,16 @@ export const CreditCardBillQuerySchema = z.object({
 export const CreditCardBillDetailSchema = z.object({
   bill: CreditCardBillSummarySchema,
   transactions: z.array(TransactionOutputSchema),
-  candidates: z.array(CreditCardBillPaymentSchema)
+  candidates: z.array(CreditCardBillPaymentSchema),
+  cardRoundingAdjustment: z.number().finite(),
+  cardSummaries: z.array(
+    z.object({
+      creditCard: CreditCardReferenceSchema.nullable(),
+      transactionCount: z.number().int().nonnegative(),
+      total: z.number().finite(),
+      unavailableValueCount: z.number().int().nonnegative()
+    })
+  )
 });
 
 export const ReconcileCreditCardBillInputSchema = z.object({

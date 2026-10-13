@@ -12,6 +12,7 @@ import { Groups } from '../../groups/entities/group.entity';
 import { Imports } from '../../imports/entities/import.entity';
 import { CreditCardBillReconciliations } from '../../credit-card-bills/entities/credit-card-bill-reconciliation.entity';
 import { CreditCardBillReviews } from '../../credit-card-bills/entities/credit-card-bill-review.entity';
+import { CreditCards } from '../../credit-cards/entities/credit-card.entity';
 
 @Entity('transactions', { schema: 'public' })
 export class Transactions {
@@ -79,6 +80,14 @@ export class Transactions {
   })
   @JoinColumn([{ name: 'bankaccount_id', referencedColumnName: 'id' }])
   bankaccount: Bankaccounts | null;
+
+  @ManyToOne(() => CreditCards, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'credit_card_id' })
+  creditCard: CreditCards | null;
 
   @ManyToOne(() => Categories, (categories) => categories.transactions, {
     nullable: true,

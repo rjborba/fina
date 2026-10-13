@@ -24,6 +24,9 @@ import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { toast } from "@/hooks/use-toast"
 import { CreateTransactionInputDtoType } from "@fina/types"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
+import { CardPicker } from "@/components/creditCards/CardPicker"
+import { useCreditCards } from "@/data/creditCards/useCreditCards"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
 import { useBillReviewMonth } from "@/data/creditCardBills/useBillReviewMonth"
 import { ApiError } from "@/api/generated"
@@ -40,6 +43,7 @@ type FormData = {
   category_id: string
   observation: string
   bankaccount_id: string
+  credit_card_id: string | null
   installment_current: string
   installment_total: string
   bill_month: string
@@ -67,6 +71,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       category_id: "",
       observation: "",
       bankaccount_id: "",
+      credit_card_id: null,
       installment_current: "",
       installment_total: "",
       bill_month: "",
@@ -78,6 +83,10 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     (account) => account.id.toString() === selectedAccountId
   )
   const creditCardSelected = selectedAccount?.type === "credit"
+  const cardQuery = useCreditCards({
+    groupId: open && creditCardSelected ? selectedGroup?.id : undefined,
+    accountId: creditCardSelected ? selectedAccountId : undefined
+  })
   const {
     reviewMonth,
     setReviewMonth,
@@ -94,7 +103,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         (account) => account.id.toString() === data.bankaccount_id
       )
 
-      if (!data.group_id) {
+      if (!selectedGroup?.id) {
         throw new Error("Group ID is required")
       }
       if (selectedAccount?.type === "credit" && !data.bill_month) {
@@ -111,13 +120,15 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         categoryId: data.category_id ? data.category_id : null,
         observation: data.observation || null,
         bankaccountId: data.bankaccount_id,
+        creditCardId:
+          selectedAccount?.type === "credit" ? data.credit_card_id : null,
         installmentCurrent: data.installment_current
           ? data.installment_current
           : null,
         installmentTotal: data.installment_total
           ? parseInt(data.installment_total)
           : null,
-        groupId: data.group_id.toString()
+        groupId: selectedGroup.id
       }
 
       await addMutation.mutateAsync(transactionData)
@@ -161,6 +172,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             <Select
               onValueChange={(value) => {
                 form.setValue("bankaccount_id", value)
+                form.setValue("credit_card_id", null)
                 form.setValue("bill_month", "")
                 resetReviewMonth()
               }}
@@ -172,12 +184,43 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               <SelectContent>
                 {bankAccounts?.map((account) => (
                   <SelectItem key={account.id} value={account.id.toString()}>
-                    {account.name}
+                    <span className="flex items-center gap-2">
+                      <FinancialInstitutionLogo
+                        institutionId={account.institutionId}
+                        accountName={account.name}
+                        accountType={account.type}
+                        className="size-4"
+                        decorative
+                      />
+                      {account.name}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {creditCardSelected ? (
+            <div className="space-y-2">
+              <Label>Card</Label>
+              <CardPicker
+                cards={cardQuery.data ?? []}
+                value={form.watch("credit_card_id")}
+                onChange={(id) => form.setValue("credit_card_id", id)}
+                isLoading={cardQuery.isLoading}
+                disabled={cardQuery.isError}
+                ariaLabel="Purchase card"
+              />
+              <p className="text-xs text-muted-foreground">
+                Identifies the card used. All cards share this account's bill.
+              </p>
+              {cardQuery.isError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  Could not load cards. Try again before assigning one.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>

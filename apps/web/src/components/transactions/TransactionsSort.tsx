@@ -1,17 +1,29 @@
-import { ArrowDownUp } from "lucide-react"
+import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  SlidersHorizontal
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover"
 import {
-  getTransactionSortLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
+import {
+  TRANSACTION_DISPLAY_PROPERTIES,
+  type TransactionDisplayProperties
+} from "./transactionDisplay"
+import {
   TRANSACTION_SORT_OPTIONS,
   type TransactionSortOption
 } from "./transactionSort"
@@ -20,52 +32,172 @@ interface TransactionsSortProps {
   value: TransactionSortOption
   onValueChange: (value: TransactionSortOption) => void
   options?: typeof TRANSACTION_SORT_OPTIONS
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  displayProperties?: TransactionDisplayProperties
+  onDisplayPropertiesChange?: (value: TransactionDisplayProperties) => void
+  inlineCreditCardTransactions?: boolean
+  onInlineCreditCardTransactionsChange?: (value: boolean) => void
 }
+
+const sortFields = [
+  { value: "date", label: "Date" },
+  { value: "value", label: "Amount" },
+  { value: "description", label: "Description" },
+  { value: "category", label: "Category" }
+] as const
 
 export function TransactionsSort({
   value,
   onValueChange,
-  options = TRANSACTION_SORT_OPTIONS
+  options = TRANSACTION_SORT_OPTIONS,
+  open,
+  onOpenChange,
+  displayProperties,
+  onDisplayPropertiesChange,
+  inlineCreditCardTransactions,
+  onInlineCreditCardTransactionsChange
 }: TransactionsSortProps) {
+  const direction = value.endsWith("-desc") ? "desc" : "asc"
+  const field = value.replace(/-(asc|desc)$/, "")
+  const orderingLabel = options.find((option) => option.value === value)?.label
+  const DirectionIcon =
+    direction === "desc" ? ArrowDownWideNarrow : ArrowUpNarrowWide
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
         <Button
-          variant="fina-secondary"
-          lift
-          className="h-11 min-w-40 justify-between px-3 font-mono text-[10px] tracking-[0.1em]"
-          aria-label={`Sort transactions by ${getTransactionSortLabel(value)}`}
+          variant="ghost"
+          className="h-7 gap-1.5 rounded-md border border-fina-grid px-2 text-xs font-normal text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-foreground/30 focus-visible:bg-fina-canvas focus-visible:ring-0 data-[state=open]:bg-fina-canvas data-[state=open]:text-foreground"
+          aria-label="Display options"
+          title={`Display options${onOpenChange ? " (Shift V)" : ""} · ${orderingLabel}`}
+          aria-keyshortcuts={onOpenChange ? "Shift+V" : undefined}
         >
-          <span>Sort / {getTransactionSortLabel(value)}</span>
-          <ArrowDownUp className="size-4" />
+          <SlidersHorizontal className="size-3.5" />
+          <span>Display</span>
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      </PopoverTrigger>
+      <PopoverContent
         align="end"
-        className="w-64 rounded-none border-2 border-fina-ink bg-fina-surface p-0 text-fina-ink shadow-fina-md"
+        sideOffset={8}
+        aria-label="Display options"
+        className="w-[304px] max-w-[calc(100vw-24px)] rounded-xl border border-fina-grid bg-fina-surface p-0 text-xs text-foreground shadow-fina-md"
       >
-        <DropdownMenuLabel className="bg-fina-lime px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
-          Sort transactions
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="m-0 bg-fina-ink" />
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(nextValue) =>
-            onValueChange(nextValue as TransactionSortOption)
-          }
-          className="p-1"
-        >
-          {options.map((option) => (
-            <DropdownMenuRadioItem
-              key={option.value}
-              value={option.value}
-              className="rounded-none font-mono text-[11px] font-bold text-fina-ink focus:bg-fina-yellow focus:text-fina-ink"
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <span className="text-muted-foreground">Ordering</span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-transparent focus-visible:bg-fina-canvas focus-visible:text-foreground focus-visible:ring-0"
+              aria-label={
+                direction === "desc" ? "Sort ascending" : "Sort descending"
+              }
+              title={orderingLabel}
+              onClick={() => {
+                const nextDirection = direction === "desc" ? "asc" : "desc"
+                const nextOption = options.find(
+                  (option) => option.value === `${field}-${nextDirection}`
+                )
+                if (nextOption) onValueChange(nextOption.value)
+              }}
             >
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              <DirectionIcon className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Select
+              value={field}
+              onValueChange={(nextField) => {
+                const nextOption =
+                  options.find(
+                    (option) => option.value === `${nextField}-${direction}`
+                  ) ??
+                  options.find((option) =>
+                    option.value.startsWith(`${nextField}-`)
+                  )
+                if (nextOption) onValueChange(nextOption.value)
+              }}
+            >
+              <SelectTrigger
+                aria-label="Ordering"
+                className="h-7 w-32 rounded-md border-fina-grid bg-fina-canvas px-2 py-0 text-xs shadow-none focus:ring-0 focus-visible:border-foreground/30"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                className="border-fina-grid bg-fina-surface text-foreground"
+              >
+                {sortFields
+                  .filter((sortField) =>
+                    options.some((option) =>
+                      option.value.startsWith(`${sortField.value}-`)
+                    )
+                  )
+                  .map((sortField) => (
+                    <SelectItem
+                      key={sortField.value}
+                      value={sortField.value}
+                      className="text-xs focus:bg-fina-canvas focus:text-foreground"
+                    >
+                      {sortField.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {onInlineCreditCardTransactionsChange ||
+        (displayProperties && onDisplayPropertiesChange) ? (
+          <div className="space-y-3 border-t border-fina-grid px-4 py-3">
+            <p className="font-medium">List options</p>
+            {onInlineCreditCardTransactionsChange ? (
+              <label className="flex cursor-pointer items-center justify-between gap-3 text-muted-foreground">
+                <span>Inline credit card transactions</span>
+                <Switch
+                  aria-label="Inline credit card transactions"
+                  className="focus-visible:border-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  checked={inlineCreditCardTransactions}
+                  onCheckedChange={onInlineCreditCardTransactionsChange}
+                />
+              </label>
+            ) : null}
+            {displayProperties && onDisplayPropertiesChange ? (
+              <div
+                className="space-y-2"
+                role="group"
+                aria-label="Display properties"
+              >
+                <p className="text-muted-foreground">Display properties</p>
+                <div className="flex flex-wrap gap-1">
+                  {TRANSACTION_DISPLAY_PROPERTIES.map((property) => (
+                    <button
+                      key={property.id}
+                      type="button"
+                      aria-pressed={displayProperties[property.id]}
+                      className={cn(
+                        "h-6 rounded-full border px-2 text-xs transition-colors outline-none focus-visible:border-foreground/40",
+                        displayProperties[property.id]
+                          ? "border-foreground/10 bg-foreground/10 text-foreground hover:bg-foreground/15"
+                          : "border-fina-grid bg-fina-canvas text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() =>
+                        onDisplayPropertiesChange({
+                          ...displayProperties,
+                          [property.id]: !displayProperties[property.id]
+                        })
+                      }
+                    >
+                      {property.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   )
 }

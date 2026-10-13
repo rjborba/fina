@@ -40,6 +40,9 @@ Existing code is evidence, not an implicit specification.
 - **Credit-card bill**: a derived aggregate for one credit account and bill
   month, whose concrete due date is derived from that account's configured due
   day.
+- **Individual card**: a named physical, additional, or virtual card beneath a
+  credit account. It identifies a purchase's source, not a separate account,
+  bill, payment, permission boundary, or reimbursement obligation.
 - **Bill reconciliation**: the tenant-scoped link between one derived
   credit-card bill and one checking-account payment transaction.
 - **Review month**: an explicit calendar month used for household expense
@@ -99,6 +102,47 @@ Production observability around authentication and import failures remains.
    exist; membership removal, ownership transfer, final-owner protection, and
    first-run guidance remain.
 
+### Account institutions and issuer logos
+
+1. **User outcome:** members identify checking accounts and credit cards by their
+   financial institution's logo. Account creation asks for a bank or card issuer
+   from a searchable 21-institution catalog, with an explicit `Other / not listed`
+   choice. Existing accounts offer `Change institution` without renaming them.
+2. **Authorization boundary:** creation remains membership-checked for the target
+   group; institution changes resolve the account through active membership and
+   group-scoped queries. The strict PATCH body accepts only `institutionId`, never
+   a replacement group or user. Inaccessible and nonexistent accounts produce
+   the same not-found response.
+3. **Business rules:** an allowlisted nullable institution ID is persisted for
+   both account types. Null means an explicit generic institution and never
+   triggers name inference. Older clients may omit the creation field; only
+   unambiguous whole-word, accent-insensitive names are inferred. A forward
+   TypeORM migration backfills recognizable active and archived accounts while
+   preserving names, due days, ownership, balances, imports, and transactions.
+   Unknown, ambiguous, and substring-only names remain generic. Logos are bundled
+   locally from institution-published artwork; no external logo-service requests
+   send account or customer data. Credit cards use issuer branding, not a guessed
+   card network. Branding follows account metadata into transactions, grouped
+   and detailed bills, payment candidates, import history/profiles, filters, and
+   selectors. A successful change invalidates all those query contexts; failed
+   changes keep the existing logo and remain retryable.
+   Logo wrappers are transparent, without an artificial white tile or outline.
+   Plain white SVG backplates are removed while white logo details and branded
+   colored shapes are preserved. Monochrome marks remain legible in dark mode.
+4. **Acceptance criteria:** shared-contract tests validate the catalog and strict
+   inputs; disposable PostgreSQL tests verify all 21 backfill mappings, null and
+   invalid choices, active/archived records, data preservation, authorization,
+   and response propagation. UI and browser journeys verify required selection,
+   checking/card creation, existing-account changes, persistence after reload,
+   generic fallback, and legible local assets in light/dark and mobile layouts.
+5. **Non-goals:** connecting bank APIs, Open Finance consent/data access, card
+   network identification, custom logo uploads, account renaming, and production
+   deployment are separate work.
+6. **Deployment:** `1791200000000-BankAccountInstitution` must run before the new
+   API starts. It has been PostgreSQL-tested and applied to the verified local
+   Supabase development database; production uses the controlled TypeORM
+   migration workflow and is not modified by local development.
+
 ### CSV statement import
 
 1. **User outcome:** a member maps, previews, validates, and confirms a generic
@@ -133,9 +177,68 @@ Production observability around authentication and import failures remains.
    uses a uniquely named disposable local PostgreSQL database and a loopback-only
    identity fixture, never development or production Auth records.
 
+### Individual cards on a shared credit bill
+
+1. **User outcome:** a credit account can contain multiple named cards, such as
+   a member's and their spouse's cards, while retaining one combined bill and
+   payment. Purchases show their card; members can filter by card and inspect
+   per-card subtotals in the complete bill.
+2. **Authorization boundary:** each card belongs to exactly one group and one
+   credit account. Creation derives its group from a membership-scoped parent;
+   card edits cannot change the parent or group. Transaction and import card
+   assignments must match both the transaction's group and credit account.
+   Inaccessible and nonexistent identifiers produce the same not-found result.
+3. **Business rules:** cards store a nickname and optional exactly four final
+   digits, never a full card number, CVV, or expiry. No ownership inference is
+   made from a nickname. Existing purchases remain explicitly unidentified.
+   Card archival hides new-assignment choices but retains historical attribution;
+   changing card metadata never changes financial records. Clearing/changing an
+   account cannot leave an incompatible card reference. Group deletion cascades
+   the complete aggregate; ordinary card or account archival never deletes
+   purchases. Bills, due dates, review months, payment matching, and cash-flow
+   amounts remain keyed by account and bill month, never by an individual card.
+   Per-card summaries include unidentified purchases, credits/refunds, counts,
+   and unavailable amounts, and reconcile to the full bill independently of
+   purchase filters. An explicit rounding adjustment accounts for legacy/manual
+   values stored with more than two decimals; no rounding remainder is assigned
+   to a card or written back to a purchase. Bill detail reads use one read-only
+   repeatable-read snapshot so concurrent edits cannot be mislabeled as rounding.
+   The unidentified card filter applies only to credit-account
+   purchases, not to checking transactions.
+   CSV imports can choose one fallback card for the file or explicitly map a
+   source column's distinct values to cards. Nonempty unmapped values block
+   import; blank values use the fallback, and an explicit unidentified mapping
+   overrides it. Card identities are never guessed. Confirmation derives mapped
+   attribution from verified source rows and checks every selected card within
+   the import transaction. Optional version-1 mapping fields preserve older
+   profiles; stale, archived, or foreign-account selections require correction.
+4. **Acceptance criteria:** shared schemas reject unsafe metadata and malformed
+   mappings. Disposable PostgreSQL tests cover group/parent denial, structural
+   constraints, migration preservation, archival, hard-delete/cascade behavior,
+   verified CSV attribution, and unchanged combined-bill reconciliation. UI and
+   browser journeys cover two cards on one bill, manual creation/editing,
+   combined CSV import, unidentified history, filters/subtotals, and persistence.
+5. **Non-goals:** responsibility splits, multiple payments, separate per-card
+   bills/balances/limits, bank connections, automatic card creation, and storage
+   of payment credentials.
+6. **Reference model:** [C6](https://www.c6bank.com.br/blog/cartao-adicional-c6-bank-tem-fatura-separada)
+   combines all additional-card purchases in the titular bill while exposing
+   individual-card spending views. [Itaú](https://www.itau.com.br/cartoes/servicos/cartao-adicional)
+   differentiates card purchases inside one principal/additional-card statement.
+   Fina follows that account/card distinction without connecting to bank APIs.
+7. **Status:** implemented and verified with shared-contract and UI tests,
+   disposable PostgreSQL coverage, and an isolated browser journey through two
+   cards, one combined bill/payment, manual and CSV attribution, filtering,
+   editing, archival, reload persistence, and light/dark/mobile layouts.
+8. **Deployment:** the forward-only
+   `1791300000000-IndividualCreditCards` TypeORM migration must run before the new
+   API starts. It has been committed, PostgreSQL-tested, and applied to the
+   verified local Supabase development database. Production is unchanged and
+   uses the controlled TypeORM migration workflow.
+
 ### Credit-card bill grouping and reconciliation
 
-1. **User outcome:** Cash flow shows one bill/payment row per card and bill month.
+1. **User outcome:** Cash flow shows one bill/payment row per credit account and bill month.
    Unpaid bills are forecasts on their due date; confirmed payments appear on
    their actual date and amount. Monthly review shows individual purchases or
    one grouped bill using the bill's independently assigned reference month.
@@ -156,7 +259,7 @@ Production observability around authentication and import failures remains.
    review uses the current net purchase amount. A subsequent
    bill-total change keeps the link, marks the bill `needs-review`, and continues
    excluding the linked payment until the user unlinks it.
-   Grouped checking transactions retain modifier-key bulk selection. Derived
+   Grouped checking transactions support checkbox and modifier-key bulk selection. Derived
    bill rows are navigation-only; members use Monthly review's inline mode or
    the bill detail page to edit individual credit-card purchases.
 4. **Acceptance criteria:** the monthly-review inline/grouped choice persists locally;
@@ -166,7 +269,8 @@ Production observability around authentication and import failures remains.
    that bill's transactions. Cash flow's purchase-category breakdown is explicitly
    distinct from actual payments when a reconciled bill changes. Bill detail preserves purchase date, installment,
    category editing, value, and transaction detail behavior. Its description and
-   category filters (including uncategorized purchases) search the complete bill
+   category, import-source, specific-import, and amount filters (including
+   uncategorized purchases) search the complete bill
    independently of the Transactions page's filters. Filtered purchase counts
    and net totals are labeled separately; the full bill total, review month,
    payment link, and reconciliation candidates are never narrowed by filters.
@@ -198,10 +302,103 @@ Production observability around authentication and import failures remains.
    navigation sequence when the dialog is reopened. This applies to inline
    transactions, grouped checking transactions, and bill-detail purchases.
    Changing the active group ends the open details session.
+   Display opens a compact anchored panel with an ordering dropdown, a separate
+   sort-direction control, and toggles for date, account, card, category, installment,
+   amount, and import indicators. Changes apply immediately to inline and
+   grouped ledgers and bill-detail purchases. Description and bill reconciliation
+   context remain visible. Only validated property visibility booleans and a
+   supported sort option are saved locally; no financial records are persisted
+   by these preferences. Closing the panel or reloading preserves the choices.
+   The Transactions page opens a compact searchable filter-property menu with
+   adjacent hover submenus that leave the property list visible. Crossing the
+   gap between menus keeps the submenu open; mouse hover does not steal focus.
+   Click/tap and Enter or Right Arrow open and focus an editor. Escape closes
+   the editor first and returns focus to its property, then closes the main
+   picker; Left Arrow returns from non-text controls without interfering with
+   input cursor keys. Below 640px, editors open below their property rather than
+   beside it, and collision handling keeps them within the viewport.
+   The picker provides
+   category, bank-account and individual-card multiselects, imported/manual source and specific
+   import selection, signed exact/minimum/maximum/inclusive-range amount filters,
+   description search, and a date or review-month range editor. Multiple values
+   within one property match any selected value; different properties combine
+   with AND. Editable chips expose each active category, account, import, and
+   amount criterion, with individual removal and a clear-all control that keeps
+   the selected period. Choosing Manual clears any specific-import selection.
+   Signed amounts follow the ledger convention: expenses are negative, income
+   positive, and exact zero is a valid filter. Invalid or reversed amount/date
+   drafts do not change the applied query. Applying a review-month range replaces
+   any nonadjacent month selection with that complete inclusive span.
+   Nest applies purchase filters before pagination and uses an unpaginated
+   group-scoped match for grouped bills. A matching bill retains its full amount,
+   purchase count, and reconciliation context; monthly-review period totals use
+   matching purchases in both inline and grouped views. Cash-flow totals retain
+   the full forecast bill or confirmed payment amount. Account links intersect
+   selected account filters, and a conflicting selection produces an empty view.
+   The Transactions page also remembers its applied text query, category IDs,
+   account/card IDs, import-source/import IDs, signed amount bounds,
+   and selected date/month range in this browser, separately for each signed-in
+   user and active group. Versioned storage contains only these allowlisted
+   filter preferences, not transaction response fields, statements, tokens, or
+   signed URLs. Dates are stored as validated calendar days and restored as
+   Date values before the first ledger query. Invalid saved preferences fall
+   back to the current month; unavailable browser storage leaves filtering usable
+   in memory. Clear controls update the saved preferences. Account links remain
+   URL-controlled constraints, and bill-detail filters remain independent and reset when
+   changing the active group or bill. Filters are local to this browser and do
+   not sync between devices.
+   Monthly review supports a nonempty selection of up to 120 calendar months,
+   including nonadjacent months and selections across years. The month picker
+   stays open while adding or removing months; previous/next month shifts the
+   entire selection. Both transaction and bill queries filter the explicit
+   review-month set before pagination or aggregation, so unselected months never
+   contribute to the ledger, period totals, or category breakdown. This optional
+   set is validated, deduplicated, sorted, and saved with the scoped browser
+   preferences. Existing saved date ranges remain supported. Entering Monthly
+   review expands both range endpoints to complete months and preserves the
+   span; Cash flow uses the date range and clears the explicit month selection
+   when that range is edited.
    New or explicitly edited occurrence dates use canonical UTC calendar
    storage. Legacy timestamps retain their previous server-local interpretation
    through a private storage marker; the migration never guesses missing source
    timezones or rewrites historical dates.
+   Inline transactions, grouped bills, and bill-detail purchases use a shared
+   div-based list with CSS Grid-aligned fields and fixed-height TanStack Virtual
+   rows, with a shared buffer of 30 rows above and below the visible range,
+   without HTML table markup or a TanStack Table row model. The shared
+   list surface is inset 8px from both sides, has 8px rounded row states, and
+   includes 48px of trailing space without changing virtual row height or count.
+   A shared metadata grid is derived from the complete loaded list. Optional
+   account, import, card, installment, category, and reconciliation fields keep
+   the same column positions across rows, using empty noninteractive slots for
+   absent values. Checking purchases do not acquire fake card attribution.
+   The enabled installment column always reserves 64px, even when no loaded
+   rows have installments, so filtering or different label lengths do not
+   resize the column or move adjacent fields.
+   Hidden properties release their columns and gaps consistently; descriptions
+   retain usable width and narrow viewports scroll within the ledger.
+   A one-column ARIA layout grid exposes full row counts, virtual row indexes, and transaction
+   selection. Each item has one roving focusable cell and an explicit native
+   details action; category controls retain their own focus and keyboard input.
+   Navigation-only bill items never expose transaction selection state.
+   Transaction rows reveal checkboxes on hover or keyboard focus; checked boxes
+   remain visible and touch devices show them without hover. Checkboxes toggle
+   independent selections without opening details, and Shift-click extends an
+   inclusive range in the current ordering. Existing keyboard and modifier-key
+   selection remain available. Selection is in memory only, prunes when rows
+   leave a completed filtered result (not a temporary loading/error state), and
+   resets on active-group changes. Select all
+   includes only loaded transactions, never derived bills or unloaded query rows.
+   A compact bottom bar shows the selected count, signed BRL net total, and any
+   unavailable amounts. It offers select/clear, category assignment or removal,
+   individual-card assignment for selections within one credit account, and
+   confirmed soft deletion. Category/card assignment reuses the generated,
+   authorized transaction mutation with at most eight concurrent requests;
+   partial failures report success/failure counts and remain retryable rather
+   than claiming an atomic bulk update. Actions and selection changes are
+   disabled during bulk mutations, as are row editing and details navigation to
+   avoid competing writes; successful category edits retain selection
+   unless the updated rows stop matching the active filters.
 4. **Acceptance criteria:** July bills appear in June review when assigned there;
    individual transaction rows show their original day, month, and year and date
    sorting follows that date, including purchases outside the selected review
@@ -256,6 +453,14 @@ TypeORM migrations are the only supported production schema-change mechanism;
 synchronization stays disabled. Automated integration tests use uniquely named,
 disposable databases inside the local Supabase PostgreSQL server and never a
 hosted or shared database.
+
+Browser verification also uses a unique temporary Vite dependency cache per
+run, removed at shutdown, so rebuilt shared contracts cannot reuse stale
+exports or invalidate an interactive development server's cache.
+The linked ESM `@fina/types` workspace is excluded from Vite dependency
+prebundling in both interactive and test development. Contract rebuilds must
+load current workspace exports rather than a cache created before new schemas
+or catalogs existed.
 
 Interactive development uses the repository-root local Supabase stack for both
 Auth and PostgreSQL. The web and API receive generated ignored local

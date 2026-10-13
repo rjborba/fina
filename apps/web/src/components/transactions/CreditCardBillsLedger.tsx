@@ -1,22 +1,15 @@
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import { FinaBadge } from "@/components/ui/fina"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import type { CreditCardBillSummary, TransactionOutput } from "@fina/types"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import dayjs from "dayjs"
-import { ArrowUpRight, CreditCard } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 import {
   type MouseEvent,
   useCallback,
@@ -28,7 +21,11 @@ import {
 import { useNavigate } from "react-router"
 import { buildGroupedLedgerRows } from "./groupedLedgerRows"
 import {
+  assignCategoryToTransactionSelection,
+  assignCardToTransactionSelection,
+  selectedCreditAccountId,
   selectTransactionRange,
+  summarizeTransactionSelection,
   toggleTransactionSelection
 } from "./transactionSelection"
 import { TransactionBulkActions } from "./TransactionBulkActions"
@@ -38,6 +35,19 @@ import {
 } from "./TransactionLedgerTransaction"
 import type { TransactionSortOption } from "./transactionSort"
 import { useTransactionDetailsNavigation } from "./useTransactionDetailsNavigation"
+import { useTransactionListKeyboard } from "./useTransactionListKeyboard"
+import {
+  DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+  type TransactionDisplayProperties
+} from "./transactionDisplay"
+import {
+  TRANSACTION_LIST_OVERSCAN,
+  TRANSACTION_LIST_ROW_HEIGHT,
+  VirtualizedTransactionList,
+  VirtualizedTransactionRow
+} from "./VirtualizedTransactionList"
+import { TransactionMetadataGrid } from "./TransactionMetadataGrid"
+import { buildTransactionRowLayout } from "./transactionRowLayout"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -54,13 +64,12 @@ const statusDetails = {
   "needs-review": { label: "Needs review", tone: "danger" as const }
 }
 
-const ROW_HEIGHT = 88
-
 interface CreditCardBillsLedgerProps {
   transactions: readonly TransactionOutput[]
   bills: readonly CreditCardBillSummary[]
   sort: TransactionSortOption
   dateBasis?: "cash-flow" | "monthly-review"
+  displayProperties?: TransactionDisplayProperties
   isLoading: boolean
   isError: boolean
   onUpdateTransaction: UpdateLedgerTransaction
@@ -72,6 +81,7 @@ export function CreditCardBillsLedger({
   bills,
   sort,
   dateBasis = "cash-flow",
+  displayProperties = DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
   isLoading,
   isError,
   onUpdateTransaction,
@@ -98,12 +108,24 @@ export function CreditCardBillsLedger({
     () => buildGroupedLedgerRows(transactions, bills, sort, dateBasis),
     [bills, sort, transactions, dateBasis]
   )
+  const rowKeys = useMemo(() => rows.map((row) => row.key), [rows])
+  const rowsByKey = useMemo(
+    () => new Map(rows.map((row) => [row.key, row])),
+    [rows]
+  )
   const visibleTransactions = useMemo(
     () =>
       rows.flatMap((row) =>
         row.kind === "transaction" ? [row.transaction] : []
       ),
     [rows]
+  )
+  const layout = useMemo(
+    () =>
+      buildTransactionRowLayout(visibleTransactions, displayProperties, {
+        hasBills: rows.some((row) => row.kind === "bill")
+      }),
+    [visibleTransactions, displayProperties, rows]
   )
   const transactionIds = useMemo(
     () => visibleTransactions.map((transaction) => transaction.id),
@@ -125,15 +147,29 @@ export function CreditCardBillsLedger({
     null
   )
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false)
+  const [isUpdatingCard, setIsUpdatingCard] = useState(false)
+  const isSelectionBusy =
+    isDeletingSelected || isUpdatingCategory || isUpdatingCard
+  const cardAccountId = useMemo(
+    () => selectedCreditAccountId(visibleTransactions, selectedTransactionIds),
+    [visibleTransactions, selectedTransactionIds]
+  )
+
+  useEffect(() => {
+    setSelectedTransactionIds(new Set())
+    setSelectionAnchorId(null)
+  }, [selectedGroup?.id])
   const virtualizer = useVirtualizer({
     count: rows.length,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => TRANSACTION_LIST_ROW_HEIGHT,
     getItemKey: (index) => rows[index]?.key || index,
     getScrollElement: () => containerRef.current,
-    overscan: 15
+    overscan: TRANSACTION_LIST_OVERSCAN
   })
 
   useEffect(() => {
+    if (isLoading || isError) return
     setSelectedTransactionIds(
       (currentSelection) =>
         new Set(
@@ -147,32 +183,97 @@ export function CreditCardBillsLedger({
         ? currentAnchor
         : null
     )
-  }, [transactionIdSet])
+  }, [isLoading, isError, transactionIdSet])
 
   const clearSelection = useCallback(() => {
     setSelectedTransactionIds(new Set())
     setSelectionAnchorId(null)
   }, [])
 
-  useEffect(() => {
-    if (selectedTransactionIds.size === 0) return
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") clearSelection()
-    }
-
-    window.addEventListener("keydown", handleEscape, { capture: true })
-    return () =>
-      window.removeEventListener("keydown", handleEscape, { capture: true })
-  }, [clearSelection, selectedTransactionIds.size])
-
   const selectAllTransactions = useCallback(() => {
     setSelectedTransactionIds(new Set(transactionIds))
   }, [transactionIds])
 
+  const openRow = useCallback(
+    (key: string) => {
+      const row = rowsByKey.get(key)
+      if (!row) return
+      if (row.kind === "bill") {
+        navigate(
+          `/credit-card-bills/${row.bill.accountId}/${row.bill.billMonth}`
+        )
+      } else {
+        openTransaction(row.transaction.id)
+      }
+    },
+    [navigate, openTransaction, rowsByKey]
+  )
+
+  const toggleSelection = useCallback(
+    (key: string) => {
+      const row = rowsByKey.get(key)
+      if (!row) return
+      if (row.kind === "bill") {
+        toast({
+          title:
+            "Turn on inline credit card transactions to select bill purchases"
+        })
+        return
+      }
+      setSelectedTransactionIds((currentSelection) =>
+        toggleTransactionSelection(currentSelection, row.transaction.id)
+      )
+      setSelectionAnchorId(row.transaction.id)
+    },
+    [rowsByKey, toast]
+  )
+
+  const extendSelection = useCallback(
+    (anchorKey: string, targetKey: string) => {
+      const anchorRow = rowsByKey.get(anchorKey)
+      const targetRow = rowsByKey.get(targetKey)
+      if (targetRow?.kind !== "transaction") return
+      const anchorId =
+        selectionAnchorId ??
+        (anchorRow?.kind === "transaction"
+          ? anchorRow.transaction.id
+          : targetRow.transaction.id)
+      setSelectedTransactionIds((currentSelection) =>
+        selectTransactionRange(
+          transactionIds,
+          anchorId,
+          targetRow.transaction.id,
+          currentSelection
+        )
+      )
+      setSelectionAnchorId(anchorId)
+    },
+    [rowsByKey, selectionAnchorId, transactionIds]
+  )
+
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      virtualizer.scrollToIndex(index, { align: "auto" })
+    },
+    [virtualizer]
+  )
+
+  const { focusedRowKey, setFocusedRowKey, setHoveredRowKey } =
+    useTransactionListKeyboard({
+      containerRef,
+      rowKeys,
+      enabled: !isLoading && !isError && !isSelectionBusy,
+      onOpen: openRow,
+      onToggleSelection: toggleSelection,
+      onExtendSelection: extendSelection,
+      onSelectAll: selectAllTransactions,
+      onClearSelection: clearSelection,
+      scrollToIndex
+    })
+
   const deleteSelectedTransactions = useCallback(async () => {
     const ids = [...selectedTransactionIds]
-    if (ids.length === 0) return
+    if (ids.length === 0 || isSelectionBusy) return
 
     setIsDeletingSelected(true)
     try {
@@ -186,13 +287,128 @@ export function CreditCardBillsLedger({
         title: "Could not delete the selected transactions",
         variant: "destructive"
       })
+      throw new Error("Could not delete the selected transactions")
     } finally {
       setIsDeletingSelected(false)
     }
-  }, [clearSelection, onDeleteTransactions, selectedTransactionIds, toast])
+  }, [
+    clearSelection,
+    isSelectionBusy,
+    onDeleteTransactions,
+    selectedTransactionIds,
+    toast
+  ])
+
+  const assignSelectedCategory = useCallback(
+    async (categoryId: string | null) => {
+      const ids = [...selectedTransactionIds]
+      if (ids.length === 0 || isSelectionBusy) return
+      const category =
+        categoryId === null
+          ? null
+          : categories.find((item) => item.id === categoryId)
+      if (category === undefined) throw new Error("Category is unavailable")
+      setIsUpdatingCategory(true)
+      try {
+        const { updatedCount, failedCount } =
+          await assignCategoryToTransactionSelection(
+            ids,
+            category,
+            onUpdateTransaction
+          )
+        if (failedCount > 0) {
+          toast({
+            title: "Could not update all selected transactions",
+            description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+            variant: "destructive"
+          })
+          throw new Error("Could not update all selected transactions")
+        }
+        toast({
+          title: `${updatedCount} transaction${updatedCount === 1 ? "" : "s"} updated`
+        })
+      } finally {
+        setIsUpdatingCategory(false)
+      }
+    },
+    [
+      categories,
+      isSelectionBusy,
+      onUpdateTransaction,
+      selectedTransactionIds,
+      toast
+    ]
+  )
+
+  const assignSelectedCard = async (
+    creditCard: TransactionOutput["creditCard"]
+  ) => {
+    if (
+      isSelectionBusy ||
+      !cardAccountId ||
+      (creditCard && creditCard.accountId !== cardAccountId)
+    )
+      return
+    setIsUpdatingCard(true)
+    try {
+      const { updatedCount, failedCount } =
+        await assignCardToTransactionSelection(
+          [...selectedTransactionIds],
+          creditCard,
+          onUpdateTransaction
+        )
+      if (failedCount > 0) {
+        toast({
+          title: "Could not assign every selected purchase",
+          description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+          variant: "destructive"
+        })
+        throw new Error("Could not assign every selected purchase")
+      }
+      toast({
+        title: `${updatedCount} purchase${updatedCount === 1 ? "" : "s"} updated`
+      })
+    } finally {
+      setIsUpdatingCard(false)
+    }
+  }
+
+  const handleSelectionClick = useCallback(
+    (event: MouseEvent<HTMLElement>, transactionId: string) => {
+      if (isSelectionBusy) return
+      setFocusedRowKey(`transaction-${transactionId}`)
+      setSelectedTransactionIds((currentSelection) =>
+        event.shiftKey
+          ? selectTransactionRange(
+              transactionIds,
+              selectionAnchorId,
+              transactionId,
+              currentSelection
+            )
+          : toggleTransactionSelection(currentSelection, transactionId)
+      )
+      setSelectionAnchorId((currentAnchor) =>
+        event.shiftKey && currentAnchor && transactionIdSet.has(currentAnchor)
+          ? currentAnchor
+          : transactionId
+      )
+    },
+    [
+      isSelectionBusy,
+      selectionAnchorId,
+      setFocusedRowKey,
+      transactionIds,
+      transactionIdSet
+    ]
+  )
 
   const handleRowClick = useCallback(
-    (event: MouseEvent<HTMLTableRowElement>, row: (typeof rows)[number]) => {
+    (event: MouseEvent<HTMLDivElement>, row: (typeof rows)[number]) => {
+      if (isSelectionBusy) {
+        event.preventDefault()
+        return
+      }
+      setFocusedRowKey(row.key)
       const isModifiedClick = event.ctrlKey || event.metaKey || event.shiftKey
 
       if (row.kind === "bill") {
@@ -210,52 +426,39 @@ export function CreditCardBillsLedger({
         return
       }
 
-      if (event.shiftKey) {
+      if (isModifiedClick) {
         event.preventDefault()
-        setSelectedTransactionIds((currentSelection) =>
-          selectTransactionRange(
-            transactionIds,
-            selectionAnchorId,
-            row.transaction.id,
-            currentSelection
-          )
-        )
-        setSelectionAnchorId((currentAnchor) =>
-          currentAnchor && transactionIdSet.has(currentAnchor)
-            ? currentAnchor
-            : row.transaction.id
-        )
-        return
-      }
-
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-        setSelectedTransactionIds((currentSelection) =>
-          toggleTransactionSelection(currentSelection, row.transaction.id)
-        )
-        setSelectionAnchorId(row.transaction.id)
+        handleSelectionClick(event, row.transaction.id)
         return
       }
 
       openTransaction(row.transaction.id)
     },
     [
+      isSelectionBusy,
       navigate,
       openTransaction,
-      selectionAnchorId,
+      handleSelectionClick,
       toast,
-      transactionIds,
-      transactionIdSet
+      setFocusedRowKey
     ]
   )
 
   const allTransactionsSelected =
     transactionIds.length > 0 &&
     selectedTransactionIds.size === transactionIds.length
+  const selectionSummary = useMemo(
+    () =>
+      summarizeTransactionSelection(
+        visibleTransactions,
+        selectedTransactionIds
+      ),
+    [visibleTransactions, selectedTransactionIds]
+  )
 
   if (isError) {
     return (
-      <div className="min-h-56 border-2 border-fina-ink bg-fina-danger p-6 font-black uppercase shadow-fina-lg">
+      <div className="flex min-h-56 flex-1 items-center justify-center bg-fina-surface p-6 text-[13px] text-red-700 dark:bg-fina-canvas dark:text-red-300">
         We could not load the grouped ledger. Try again in a moment.
       </div>
     )
@@ -263,11 +466,11 @@ export function CreditCardBillsLedger({
 
   if (isLoading) {
     return (
-      <div className="border-2 border-fina-ink bg-fina-surface p-4 shadow-fina-lg">
+      <div className="flex-1 bg-fina-surface px-6 py-2 dark:bg-fina-canvas">
         {Array.from({ length: 8 }).map((_, index) => (
           <Skeleton
             key={index}
-            className="mb-2 h-20 rounded-none bg-fina-ink/10"
+            className="my-3 h-4 rounded-sm bg-foreground/5"
           />
         ))}
       </div>
@@ -276,14 +479,11 @@ export function CreditCardBillsLedger({
 
   if (rows.length === 0) {
     return (
-      <div className="flex min-h-64 flex-col items-start justify-between border-2 border-fina-ink bg-fina-lime p-6 shadow-fina-lg">
-        <FinaBadge tone="surface">Ledger empty</FinaBadge>
-        <div className="flex w-full items-end justify-between gap-6">
-          <p className="max-w-xl text-3xl font-black uppercase leading-[0.9] tracking-[-0.06em] md:text-5xl">
-            No entries in this period. Yet.
-          </p>
-          <ArrowUpRight className="size-12 shrink-0 md:size-20" />
+      <div className="flex min-h-56 flex-1 flex-col items-center justify-center bg-fina-surface px-6 py-8 text-center dark:bg-fina-canvas">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-fina-lime text-fina-violet">
+          <ArrowUpRight className="size-5" />
         </div>
+        <p className="mt-3 text-[13px] text-foreground/55">No transactions</p>
       </div>
     )
   }
@@ -291,140 +491,194 @@ export function CreditCardBillsLedger({
   return (
     <div
       ref={containerRef}
-      className="relative max-h-[78svh] min-h-64 overflow-auto border-2 border-fina-ink bg-fina-surface shadow-fina-lg"
+      tabIndex={-1}
+      role="region"
+      aria-label="Transaction list"
+      className={cn(
+        "transactions-list-shell relative min-h-64 flex-1 overflow-auto bg-fina-surface outline-none dark:bg-fina-canvas",
+        selectedTransactionIds.size > 0 && "pb-28 sm:pb-20"
+      )}
     >
-      <Table className="grid min-w-[760px] text-xs">
-        <TableHeader className="sticky top-0 z-10 grid bg-fina-lime">
-          <TableRow className="flex w-full border-0">
-            <TableHead className="flex h-10 w-[120px] shrink-0 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
-              {dateBasis === "monthly-review" ? "Date" : "Flow date"}
-            </TableHead>
-            <TableHead className="flex h-10 min-w-0 flex-1 items-center border-b-2 border-r border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
-              Transaction
-            </TableHead>
-            <TableHead className="flex h-10 w-[180px] shrink-0 items-center justify-end border-b-2 border-fina-ink px-3 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-fina-ink">
-              Value
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody
-          className="relative grid"
-          style={{ height: `${virtualizer.getTotalSize()}px` }}
-        >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index]
-            if (!row) return null
-            const isBill = row.kind === "bill"
-            const isSelected =
-              row.kind === "transaction" &&
-              selectedTransactionIds.has(row.transaction.id)
-            const status = isBill ? statusDetails[row.bill.status] : null
-            return (
-              <TableRow
-                key={row.key}
-                tabIndex={0}
-                data-testid={
-                  isBill ? "credit-card-bill-row" : "grouped-transaction-row"
-                }
-                aria-selected={isBill ? undefined : isSelected}
-                className={cn(
-                  "absolute left-0 flex w-full cursor-pointer border-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fina-violet",
-                  isSelected
-                    ? "bg-fina-sky hover:bg-fina-sky"
-                    : isBill
-                      ? "bg-fina-sky hover:bg-fina-yellow"
-                      : "bg-fina-surface hover:bg-fina-yellow"
-                )}
-                style={{
-                  height: `${ROW_HEIGHT}px`,
-                  transform: `translateY(${virtualRow.start}px)`
-                }}
-                onClick={(event) => handleRowClick(event, row)}
-                onKeyDown={(event) => {
-                  if (event.target !== event.currentTarget) return
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    event.currentTarget.click()
-                  }
-                }}
-              >
-                <TableCell className="flex h-full w-[120px] shrink-0 items-center border-b border-r border-fina-ink px-3">
-                  <span className="font-mono text-[11px] font-black">
-                    {row.date
-                      ? dayjs(row.date).format(
-                          dateBasis === "monthly-review"
-                            ? row.kind === "bill"
-                              ? "MMM YYYY"
-                              : "DD MMM YYYY"
-                            : "DD.MM.YY"
-                        )
-                      : "—"}
-                    {row.kind === "bill" &&
-                    row.bill.status !== "empty" &&
-                    dateBasis === "cash-flow" ? (
-                      <span className="mt-1 block text-[8px] uppercase text-fina-ink/60">
-                        {row.bill.payment ? "Paid" : "Scheduled"}
-                      </span>
-                    ) : null}
+      <VirtualizedTransactionList
+        rowCount={rows.length}
+        totalSize={virtualizer.getTotalSize()}
+        displayProperties={displayProperties}
+        layout={layout}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index]
+          if (!row) return null
+          const isBill = row.kind === "bill"
+          const isSelected =
+            row.kind === "transaction" &&
+            selectedTransactionIds.has(row.transaction.id)
+          const status = isBill ? statusDetails[row.bill.status] : null
+          const isFocused = focusedRowKey === row.key
+          const formattedDate = row.date
+            ? dayjs(row.date).format(
+                dateBasis === "monthly-review"
+                  ? row.kind === "bill"
+                    ? "MMM YYYY"
+                    : "DD MMM YYYY"
+                  : "DD.MM.YY"
+              )
+            : "—"
+          return (
+            <VirtualizedTransactionRow
+              key={row.key}
+              rowKey={row.key}
+              index={virtualRow.index}
+              start={virtualRow.start}
+              isFocused={isFocused}
+              isSelected={isBill ? undefined : isSelected}
+              selectionDisabled={isSelectionBusy}
+              onSelectionClick={
+                row.kind === "transaction"
+                  ? (event) => handleSelectionClick(event, row.transaction.id)
+                  : undefined
+              }
+              tabIndex={
+                isFocused || (!focusedRowKey && virtualRow.index === 0) ? 0 : -1
+              }
+              data-testid={
+                isBill ? "credit-card-bill-row" : "grouped-transaction-row"
+              }
+              onFocus={() => {
+                setFocusedRowKey(row.key)
+              }}
+              onMouseEnter={() => setHoveredRowKey(row.key)}
+              onMouseLeave={() => setHoveredRowKey(null)}
+              onClick={(event) => handleRowClick(event, row)}
+            >
+              {displayProperties.date ? (
+                <div
+                  data-column="date"
+                  className="flex h-full w-28 items-center"
+                >
+                  <span className="sr-only">
+                    {dateBasis === "monthly-review" ? "Date:" : "Flow date:"}
                   </span>
-                </TableCell>
-                <TableCell className="flex h-full min-w-0 flex-1 items-center border-b border-r border-fina-ink px-3">
-                  {row.kind === "bill" ? (
-                    <div className="min-w-0 py-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CreditCard className="size-4 shrink-0" />
-                        <span className="truncate text-sm font-black uppercase tracking-[-0.02em]">
-                          {row.bill.accountName} bill
-                        </span>
-                        {status ? (
-                          <FinaBadge tone={status.tone}>
-                            {status.label}
-                          </FinaBadge>
-                        ) : null}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] font-bold uppercase text-fina-ink/60">
-                        <span>
-                          Due {dayjs(row.bill.dueDate).format("DD MMM YYYY")}
-                        </span>
-                        <span aria-hidden="true">/</span>
-                        <span>{row.bill.transactionCount} transactions</span>
-                        {row.bill.payment ? (
-                          <>
-                            <span aria-hidden="true">/</span>
-                            <span>
-                              Paid from {row.bill.payment.accountName}
-                            </span>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : (
-                    <TransactionLedgerTransaction
-                      transaction={row.transaction}
-                      categories={categories}
-                      onUpdateTransaction={onUpdateTransaction}
-                    />
-                  )}
-                </TableCell>
-                <TableCell className="flex h-full w-[180px] shrink-0 items-center justify-end border-b border-fina-ink px-3">
                   <span
+                    data-field-value
+                    className="truncate whitespace-nowrap text-xs tabular-nums text-foreground/45"
+                  >
+                    {formattedDate}
+                  </span>
+                </div>
+              ) : null}
+              <div
+                data-column="transaction"
+                className="flex h-full min-w-0 items-center"
+              >
+                {row.kind === "bill" ? (
+                  <TransactionMetadataGrid
+                    layout={layout}
+                    description={
+                      <>
+                        <button
+                          type="button"
+                          disabled={isSelectionBusy}
+                          tabIndex={-1}
+                          data-list-open
+                          data-testid="transaction-description"
+                          title={`${row.bill.accountName} bill`}
+                          className="min-w-12 flex-1 truncate text-left text-[13px]"
+                        >
+                          {row.bill.accountName} bill
+                        </button>
+                        <span
+                          title={
+                            row.bill.matchingTransactionCount !== undefined &&
+                            row.bill.matchingTransactionCount !==
+                              row.bill.transactionCount
+                              ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
+                              : `${row.bill.transactionCount} transactions`
+                          }
+                          className="hidden min-w-0 max-w-32 shrink truncate text-xs text-foreground/45 lg:block"
+                        >
+                          {row.bill.matchingTransactionCount !== undefined &&
+                          row.bill.matchingTransactionCount !==
+                            row.bill.transactionCount
+                            ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
+                            : `${row.bill.transactionCount} transactions`}
+                        </span>
+                      </>
+                    }
+                    cells={{
+                      "account-icon": (
+                        <FinancialInstitutionLogo
+                          institutionId={row.bill.accountInstitutionId}
+                          accountName={row.bill.accountName}
+                          accountType="credit"
+                          className="size-3.5 shrink-0"
+                          decorative
+                        />
+                      ),
+                      account: (
+                        <span
+                          title={row.bill.accountName}
+                          className="min-w-0 truncate text-xs text-foreground/45"
+                        >
+                          {row.bill.accountName}
+                        </span>
+                      ),
+                      status: status ? (
+                        <FinaBadge
+                          tone={status.tone}
+                          className="max-w-full truncate border-0 px-1.5 py-0.5 text-[11px]"
+                        >
+                          {status.label}
+                        </FinaBadge>
+                      ) : null
+                    }}
+                  />
+                ) : (
+                  <TransactionLedgerTransaction
+                    transaction={row.transaction}
+                    categories={categories}
+                    layout={layout}
+                    onUpdateTransaction={onUpdateTransaction}
+                    disabled={isSelectionBusy}
+                  />
+                )}
+              </div>
+              {displayProperties.value ? (
+                <div
+                  data-column="value"
+                  className="flex h-full w-[132px] items-center justify-end"
+                >
+                  <span className="sr-only">
+                    {row.kind === "bill" && row.bill.matchingTotal !== undefined
+                      ? dateBasis === "cash-flow" && row.bill.payment
+                        ? "Payment value:"
+                        : "Full bill value:"
+                      : "Value:"}
+                  </span>
+                  <span
+                    data-field-value
+                    title={
+                      row.kind === "bill" &&
+                      row.bill.matchingTotal !== undefined
+                        ? `${dateBasis === "cash-flow" && row.bill.payment ? "Confirmed payment amount" : "Full bill amount"}; matching purchases: ${currencyFormatter.format(row.bill.matchingTotal)}`
+                        : undefined
+                    }
                     className={cn(
-                      "whitespace-nowrap border border-fina-ink px-2.5 py-1.5 font-mono text-sm font-black",
+                      "whitespace-nowrap text-[13px] tabular-nums",
                       row.value === 0
-                        ? "bg-fina-surface text-fina-ink"
+                        ? "text-foreground/45"
                         : row.value > 0
-                          ? "bg-fina-lime text-fina-ink"
-                          : "bg-fina-ink text-white"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-foreground"
                     )}
                   >
                     {currencyFormatter.format(row.value)}
                   </span>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+                </div>
+              ) : null}
+            </VirtualizedTransactionRow>
+          )
+        })}
+      </VirtualizedTransactionList>
 
       {detailsNavigation.transaction ? (
         <TransactionDetailsModal {...detailsNavigation} />
@@ -433,11 +687,19 @@ export function CreditCardBillsLedger({
       {selectedTransactionIds.size > 0 ? (
         <TransactionBulkActions
           selectedCount={selectedTransactionIds.size}
+          selectableCount={transactionIds.length}
+          {...selectionSummary}
+          categories={categories}
           allSelected={allTransactionsSelected}
           isDeleting={isDeletingSelected}
+          isUpdatingCategory={isUpdatingCategory}
+          isUpdatingCard={isUpdatingCard}
+          cardAccountId={cardAccountId}
+          onAssignCard={assignSelectedCard}
           onSelectAll={selectAllTransactions}
           onClearSelection={clearSelection}
           onDelete={deleteSelectedTransactions}
+          onAssignCategory={assignSelectedCategory}
         />
       ) : null}
     </div>

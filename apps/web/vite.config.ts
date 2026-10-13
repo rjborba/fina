@@ -11,7 +11,9 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ["@fina/types", "nestjs-zod", "zod"],
+    // Linked ESM contracts change during development; do not cache their exports.
+    exclude: ["@fina/types"],
+    include: ["nestjs-zod", "zod"],
     esbuildOptions: {
       target: "es2020"
     }

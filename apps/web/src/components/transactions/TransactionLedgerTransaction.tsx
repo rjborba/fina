@@ -1,10 +1,14 @@
 import { FinaBadge } from "@/components/ui/fina"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
+import { CardLabel } from "@/components/creditCards/CardLabel"
 import { EditableSelect } from "@/data/transactions/EditableSelectCell"
 import type { CategoryOutput, TransactionOutput } from "@fina/types"
 import { useAtom } from "jotai"
-import { CreditCard, FileUp, Landmark } from "lucide-react"
+import { FileUp } from "lucide-react"
 import type { FC, ReactNode } from "react"
 import { openSelectIdAtom } from "./OpenSelectAtom"
+import { TransactionMetadataGrid } from "./TransactionMetadataGrid"
+import type { TransactionRowLayout } from "./transactionRowLayout"
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +29,8 @@ interface TransactionLedgerTransactionProps {
   transaction: TransactionOutput
   categories: TransactionCategoryOption[]
   onUpdateTransaction: UpdateLedgerTransaction
+  layout: TransactionRowLayout
+  disabled?: boolean
 }
 
 const TransactionIconTooltip: FC<{
@@ -36,9 +42,10 @@ const TransactionIconTooltip: FC<{
     <TooltipTrigger asChild>
       <span
         role="img"
+        data-transaction-metadata="true"
         aria-label={ariaLabel}
         tabIndex={0}
-        className="inline-flex cursor-help items-center text-fina-ink/55 outline-none focus-visible:text-fina-ink focus-visible:ring-2 focus-visible:ring-fina-ink"
+        className="inline-flex shrink-0 cursor-help items-center text-foreground/45 outline-none focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-fina-violet"
       >
         {children}
       </span>
@@ -46,7 +53,7 @@ const TransactionIconTooltip: FC<{
     <TooltipContent
       side="top"
       sideOffset={6}
-      className="rounded-none border border-fina-ink bg-fina-ink font-mono text-[10px] font-black uppercase text-white shadow-fina-sm"
+      className="rounded-md border border-fina-grid bg-fina-ink font-mono text-[10px] font-semibold text-white shadow-fina-sm"
     >
       {tooltip}
     </TooltipContent>
@@ -64,7 +71,13 @@ const AccountTypeIndicator: FC<{
         ariaLabel={`Credit card account: ${account.name}`}
         tooltip={account.name}
       >
-        <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
+        <FinancialInstitutionLogo
+          institutionId={account.institutionId}
+          accountName={account.name}
+          accountType={account.type}
+          className="size-3.5 shrink-0"
+          decorative
+        />
       </TransactionIconTooltip>
     )
   }
@@ -75,7 +88,13 @@ const AccountTypeIndicator: FC<{
         ariaLabel={`Checking account: ${account.name}`}
         tooltip={account.name}
       >
-        <Landmark className="size-3.5 shrink-0" aria-hidden="true" />
+        <FinancialInstitutionLogo
+          institutionId={account.institutionId}
+          accountName={account.name}
+          accountType={account.type}
+          className="size-3.5 shrink-0"
+          decorative
+        />
       </TransactionIconTooltip>
     )
   }
@@ -94,16 +113,21 @@ const ImportSourceIndicator: FC<{
   </TransactionIconTooltip>
 )
 
-const TransactionCategoryChip: FC<TransactionLedgerTransactionProps> = ({
-  transaction,
-  categories,
-  onUpdateTransaction
-}) => {
+const TransactionCategoryChip: FC<
+  Pick<
+    TransactionLedgerTransactionProps,
+    "transaction" | "categories" | "onUpdateTransaction" | "disabled"
+  >
+> = ({ transaction, categories, onUpdateTransaction, disabled = false }) => {
   const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom)
 
   return (
-    <div onClick={(event) => event.stopPropagation()}>
+    <div
+      className="w-32 min-w-0 shrink-0"
+      onClick={(event) => event.stopPropagation()}
+    >
       <EditableSelect
+        disabled={disabled}
         value={transaction.category?.id || null}
         options={categories}
         ariaLabel={`Change category for ${transaction.description}`}
@@ -130,38 +154,88 @@ const TransactionCategoryChip: FC<TransactionLedgerTransactionProps> = ({
 
 export const TransactionLedgerTransaction: FC<
   TransactionLedgerTransactionProps
-> = ({ transaction, categories, onUpdateTransaction }) => {
+> = ({
+  transaction,
+  categories,
+  onUpdateTransaction,
+  disabled = false,
+  layout
+}) => {
   const installment =
     transaction.installmentCurrent && transaction.installmentTotal
       ? `${transaction.installmentCurrent}/${transaction.installmentTotal}`
       : null
 
   return (
-    <div className="flex min-w-max flex-col justify-center gap-1 py-3">
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-sm font-black tracking-[-0.02em]">
+    <TransactionMetadataGrid
+      layout={layout}
+      description={
+        <button
+          type="button"
+          disabled={disabled}
+          tabIndex={-1}
+          data-list-open="true"
+          aria-label={`Open transaction: ${transaction.description || "Untitled transaction"}`}
+          data-testid="transaction-description"
+          title={transaction.description || "Untitled transaction"}
+          className="min-w-0 flex-1 cursor-pointer truncate border-0 bg-transparent p-0 text-left text-[13px] font-normal outline-none focus-visible:underline"
+        >
           {transaction.description || "Untitled transaction"}
-        </span>
-        <AccountTypeIndicator account={transaction.bankaccount} />
-        {transaction.import ? (
+        </button>
+      }
+      cells={{
+        "account-icon": transaction.bankaccount ? (
+          <AccountTypeIndicator account={transaction.bankaccount} />
+        ) : null,
+        import: transaction.import ? (
           <ImportSourceIndicator sourceImport={transaction.import} />
-        ) : null}
-        {transaction.billPayment ? (
-          <FinaBadge tone="lime" className="px-1.5 py-0.5 text-[8px]">
+        ) : null,
+        status: transaction.billPayment ? (
+          <FinaBadge
+            tone="lime"
+            className="max-w-full truncate border-0 px-1.5 py-0.5 text-[10px]"
+          >
             Reconciled
           </FinaBadge>
-        ) : null}
-      </div>
-      <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-        <TransactionCategoryChip
-          transaction={transaction}
-          categories={categories}
-          onUpdateTransaction={onUpdateTransaction}
-        />
-        {installment ? (
-          <span className="font-mono text-[10px] font-bold">{installment}</span>
-        ) : null}
-      </div>
-    </div>
+        ) : null,
+        account: transaction.bankaccount ? (
+          <span
+            title={transaction.bankaccount.name}
+            className="min-w-0 truncate text-xs text-foreground/45"
+          >
+            {transaction.bankaccount.name}
+          </span>
+        ) : null,
+        card:
+          transaction.bankaccount?.type === "credit" ? (
+            <span
+              className="w-full min-w-0 text-xs text-foreground/60"
+              data-testid="transaction-card"
+            >
+              <CardLabel
+                card={transaction.creditCard}
+                className="w-full"
+                showArchived
+              />
+            </span>
+          ) : null,
+        installment: installment ? (
+          <span
+            title={installment}
+            className="w-full truncate text-xs tabular-nums text-foreground/45"
+          >
+            {installment}
+          </span>
+        ) : null,
+        category: (
+          <TransactionCategoryChip
+            transaction={transaction}
+            categories={categories}
+            onUpdateTransaction={onUpdateTransaction}
+            disabled={disabled}
+          />
+        )
+      }}
+    />
   )
 }

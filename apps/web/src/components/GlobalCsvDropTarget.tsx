@@ -69,7 +69,7 @@ export function GlobalCsvDropTarget() {
   if (!active) return null
 
   return (
-    <div className="pointer-events-none fixed inset-4 z-[100] flex items-center justify-center rounded-2xl border-2 border-dashed border-primary/60 bg-background/90 shadow-2xl backdrop-blur-sm">
+    <div className="pointer-events-none fixed inset-4 z-[100] flex items-center justify-center rounded-2xl border border-dashed border-primary/60 bg-background/90 shadow-2xl backdrop-blur-sm">
       <div className="flex flex-col items-center gap-3 text-center">
         <span className="rounded-full bg-primary/10 p-4 text-primary">
           <FileUp className="h-8 w-8" />

@@ -1,39 +1,46 @@
-import { FC, useEffect, useState } from "react"
+import { FC, type ReactNode, useEffect, useState } from "react"
 
-import { ArrowUpRight, Filter, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 
-import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter"
-import { FinaBadge } from "@/components/ui/fina"
 import { Button } from "../ui/button"
 import { CreateTransactionModal } from "../CreateTransactionModal"
-import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 
 interface TransactionsHeaderProps {
-  isFilterOpen: boolean
-  onFilterToggle: (value: boolean) => void
   totalCount: number
-  monthlyReview?: boolean
+  children?: ReactNode
 }
 
 export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
-  isFilterOpen,
-  onFilterToggle,
   totalCount,
-  monthlyReview = false
+  children
 }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const { selectedGroup } = useActiveGroup()
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return
       if (
         event.target instanceof HTMLElement &&
-        event.target.closest('input, textarea, select, [role="combobox"]')
+        event.target.closest(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="combobox"], [role="textbox"]'
+        )
       ) {
         return
       }
 
-      if (event.key.toLowerCase() === "n" && !event.metaKey && !event.ctrlKey) {
+      if (
+        document.querySelector(
+          '[role="dialog"]:not([aria-hidden="true"]), [role="alertdialog"]:not([aria-hidden="true"]), [role="menu"], [role="listbox"]'
+        )
+      )
+        return
+      if (
+        ["c", "n"].includes(event.key.toLowerCase()) &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
         event.preventDefault()
         setIsCreateOpen(true)
       }
@@ -44,45 +51,34 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
   }, [])
 
   return (
-    <header className="transactions-hero border-b-[3px] border-fina-ink px-4 pb-4 pt-16 md:px-8 md:py-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
-            <FinaBadge>Ledger / 01</FinaBadge>
-            <span className="truncate">
-              {selectedGroup?.name || "Your group"}
-            </span>
-            <span aria-hidden="true">/</span>
-            <span>{totalCount.toLocaleString("en-US")} entries</span>
-          </div>
-          <h1 className="max-w-full text-[clamp(1.8rem,5vw,4.75rem)] font-black uppercase leading-[0.82] tracking-[-0.075em] text-fina-ink">
-            Transactions<span className="text-fina-violet">.</span>
+    <header className="shrink-0 bg-fina-surface dark:bg-fina-canvas">
+      <div className="flex h-12 items-center justify-between gap-3 border-b border-fina-grid px-6 max-md:pl-14">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-sm font-medium tracking-normal text-foreground">
+            Transactions
           </h1>
-        </div>
-
-        <div className="flex max-w-full flex-wrap items-stretch gap-3">
-          <TransactionsDateFilter monthlyReview={monthlyReview} />
-          <Button
-            variant="fina-secondary"
-            lift
-            onClick={() => onFilterToggle(!isFilterOpen)}
-            className="h-12 px-4"
+          <span
+            className="text-xs tabular-nums text-muted-foreground"
+            aria-label={`${totalCount.toLocaleString("en-US")} entries`}
           >
-            <Filter className="size-4" />
-            Filter
-          </Button>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            variant="fina-primary"
-            lift
-            className="h-12 px-5"
-          >
-            <Plus className="size-4" />
-            New entry
-            <ArrowUpRight className="size-4" />
-          </Button>
+            {totalCount.toLocaleString("en-US")}
+          </span>
         </div>
+        <Button
+          onClick={() => setIsCreateOpen(true)}
+          variant="ghost"
+          className="h-7 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+          title="New entry (C)"
+          aria-keyshortcuts="C"
+        >
+          <Plus className="size-3.5" />
+          New entry
+          <kbd className="ml-1 rounded border border-fina-grid px-1 text-[10px] text-muted-foreground">
+            C
+          </kbd>
+        </Button>
       </div>
+      {children}
       <CreateTransactionModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}

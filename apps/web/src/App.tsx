@@ -81,15 +81,15 @@ function AppContent() {
                 <GlobalCsvDropTarget />
                 <Sidebar />
                 <div className="fixed left-3 top-3 z-50 md:hidden">
-                  <SidebarTrigger className="size-10 border-2 border-fina-ink bg-fina-lime text-fina-ink shadow-fina-sm hover:bg-fina-surface hover:text-fina-ink" />
+                  <SidebarTrigger className="size-9 border border-fina-grid bg-fina-surface text-foreground shadow-fina-sm hover:bg-fina-canvas hover:text-foreground" />
                 </div>
                 <div className="fina-main min-w-0 flex-1">
                   <Suspense
                     fallback={
-                      <div className="flex h-screen items-center justify-center bg-fina-grid">
-                        <div className="border-2 border-fina-ink bg-fina-lime p-7 shadow-fina-lg">
-                          <WalletMinimal className="size-12 text-fina-ink" />
-                          <div className="mt-4 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-fina-ink">
+                      <div className="flex h-screen items-center justify-center bg-fina-canvas">
+                        <div className="rounded-xl border border-fina-grid bg-fina-surface p-7 text-center shadow-fina-md">
+                          <WalletMinimal className="mx-auto size-8 text-fina-violet" />
+                          <div className="mt-4 text-xs font-medium text-foreground/60">
                             Loading Fina
                           </div>
                         </div>

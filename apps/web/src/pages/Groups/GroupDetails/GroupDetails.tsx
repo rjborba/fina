@@ -101,7 +101,7 @@ export function GroupDetails() {
               <FinaSectionLabel>Access / People</FinaSectionLabel>
               <h2
                 id="people-title"
-                className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+                className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
               >
                 Members & invitations
               </h2>
@@ -113,21 +113,23 @@ export function GroupDetails() {
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.7fr)] lg:items-start">
             <FinaSurface elevation="md" className="overflow-hidden">
-              <div className="border-b-2 border-fina-ink bg-fina-ink px-4 py-3 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white">
+              <div className="border-b border-fina-grid bg-fina-canvas px-4 py-3 text-xs font-medium text-foreground/60">
                 Workspace access list
               </div>
-              <ul className="divide-y-2 divide-fina-ink">
+              <ul className="divide-y divide-fina-grid">
                 {usersPerGroup?.map((member) => (
                   <li
                     key={member.userId}
                     className="flex min-h-20 items-center gap-4 p-4"
                   >
-                    <div className="flex size-10 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-lime">
+                    <div className="flex size-10 shrink-0 items-center justify-center border border-fina-grid bg-fina-lime">
                       <User className="size-4" strokeWidth={2.5} />
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate font-black">{member.email}</div>
-                      <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-fina-ink/45">
+                      <div className="truncate font-semibold">
+                        {member.email}
+                      </div>
+                      <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/45">
                         Active member
                       </div>
                     </div>
@@ -136,17 +138,17 @@ export function GroupDetails() {
                 {invites?.map((invite) => (
                   <li
                     key={invite.id}
-                    className="flex min-h-20 items-center justify-between gap-4 bg-fina-yellow/60 p-4"
+                    className="flex min-h-20 items-center justify-between gap-4 bg-fina-canvas p-4"
                   >
                     <div className="flex min-w-0 items-center gap-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-yellow">
+                      <div className="flex size-10 shrink-0 items-center justify-center border border-fina-grid bg-fina-yellow">
                         <Mail className="size-4" strokeWidth={2.5} />
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate font-black">
+                        <div className="truncate font-semibold">
                           {invite.email}
                         </div>
-                        <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-fina-ink/45">
+                        <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/45">
                           Invitation pending
                         </div>
                       </div>
@@ -181,26 +183,26 @@ export function GroupDetails() {
                 {!usersPerGroup?.length && !invites?.length ? (
                   <li className="p-10 text-center">
                     <Users className="mx-auto size-9" />
-                    <p className="mt-4 font-black uppercase">No people found</p>
+                    <p className="mt-4 font-semibold">No people found</p>
                   </li>
                 ) : null}
               </ul>
             </FinaSurface>
 
-            <FinaSurface tone="sky" elevation="lg" className="p-5">
+            <FinaSurface elevation="sm" className="p-5">
               <FinaSectionLabel>Invite / Email</FinaSectionLabel>
-              <h3 className="mt-2 text-xl font-black uppercase tracking-[-0.035em]">
+              <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">
                 Add a person
               </h3>
-              <p className="mt-2 text-sm font-semibold leading-5 text-fina-ink/65">
+              <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
                 Create a pending invitation for this workspace.
               </p>
-              <label className="mt-5 block font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+              <label className="mt-5 block font-mono text-[10px] font-semibold tracking-[0.16em]">
                 Email address
                 <Input
                   type="email"
                   placeholder="name@example.com"
-                  className="mt-2 h-11 rounded-none border-2 border-fina-ink bg-fina-surface font-sans font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
+                  className="mt-2 h-11 rounded-md border border-fina-grid bg-fina-surface font-sans font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
                   value={inviteEmail}
                   onChange={(event) => setInviteEmail(event.target.value)}
                 />
@@ -227,10 +229,10 @@ export function GroupDetails() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <FinaSectionLabel>Danger / Permanent</FinaSectionLabel>
-              <h2 className="mt-2 flex items-center gap-2 text-xl font-black uppercase tracking-[-0.035em]">
+              <h2 className="mt-2 flex items-center gap-2 text-xl font-semibold tracking-[-0.035em]">
                 <TriangleAlert className="size-5" /> Delete workspace
               </h2>
-              <p className="mt-2 max-w-2xl text-sm font-semibold text-fina-ink/70">
+              <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/70">
                 This erases all data associated with the group. You must type
                 the exact group name to confirm.
               </p>

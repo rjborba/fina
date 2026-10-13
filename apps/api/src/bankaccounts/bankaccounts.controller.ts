@@ -5,6 +5,7 @@ import {
   Param,
   Delete,
   Post,
+  Patch,
   Query,
 } from '@nestjs/common';
 import { BankaccountsService } from './bankaccounts.service';
@@ -15,6 +16,7 @@ import {
   DeleteBankaccountOutputDto,
   IdParamDto,
   QueryBankaccountInputDto,
+  UpdateBankaccountInstitutionInputDto,
 } from '../contracts/api-dtos';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user';
@@ -57,5 +59,21 @@ export class BankaccountsController {
   @ZodSerializerDto(DeleteBankaccountOutputDto)
   remove(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.bankaccountsService.remove(user.id, params.id);
+  }
+
+  @Patch(':id')
+  @ApiOkResponse({ type: BankaccountOutputDto })
+  @ApiParam({ name: 'id', type: String })
+  @ZodSerializerDto(BankaccountOutputDto)
+  updateInstitution(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+    @Body() input: UpdateBankaccountInstitutionInputDto,
+  ) {
+    return this.bankaccountsService.updateInstitution(
+      user.id,
+      params.id,
+      input,
+    );
   }
 }

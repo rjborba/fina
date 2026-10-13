@@ -20,9 +20,15 @@ export const useTransactions = (
       fetchTransactionsOptions.startDate,
       fetchTransactionsOptions.endDate,
       fetchTransactionsOptions.dateBasis,
+      fetchTransactionsOptions.reviewMonths,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
+      fetchTransactionsOptions.creditCardIdList,
       fetchTransactionsOptions.accountType,
+      fetchTransactionsOptions.importSource,
+      fetchTransactionsOptions.importIdList,
+      fetchTransactionsOptions.minValue,
+      fetchTransactionsOptions.maxValue,
       fetchTransactionsOptions.search
     ],
     queryFn: () => fetchTransactions(fetchTransactionsOptions)

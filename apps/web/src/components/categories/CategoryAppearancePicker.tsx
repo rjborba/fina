@@ -21,7 +21,7 @@ export function CategoryAppearancePicker({
   return (
     <div className="space-y-4">
       <fieldset>
-        <legend className="mb-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+        <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
           Icon
         </legend>
         <div
@@ -39,7 +39,7 @@ export function CategoryAppearancePicker({
               title={`Icon ${index + 1}`}
               onClick={() => onIconChange(option.value)}
               className={cn(
-                "flex aspect-square items-center justify-center border-2 border-fina-ink bg-fina-surface p-1 transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-fina-violet",
+                "flex aspect-square items-center justify-center border border-fina-grid bg-fina-surface p-1 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet",
                 icon === option.value
                   ? "-translate-y-0.5 shadow-fina-sm"
                   : "opacity-65 hover:opacity-100"
@@ -56,7 +56,7 @@ export function CategoryAppearancePicker({
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+        <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
           Color
         </legend>
         <div
@@ -74,7 +74,7 @@ export function CategoryAppearancePicker({
               title={option.label}
               onClick={() => onColorChange(option.value)}
               className={cn(
-                "flex h-10 items-center justify-center border-2 border-fina-ink bg-fina-surface transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-fina-violet",
+                "flex h-10 items-center justify-center border border-fina-grid bg-fina-surface transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet",
                 color === option.value
                   ? "-translate-y-0.5 shadow-fina-sm"
                   : "opacity-60 hover:opacity-100"

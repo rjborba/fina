@@ -11,6 +11,7 @@ import {
 import userEvent from "@testing-library/user-event"
 import type {
   CategoryOutput,
+  CreditCardOutput,
   CreditCardBillDetail,
   TransactionOutput
 } from "@fina/types"
@@ -18,7 +19,7 @@ import { getDefaultStore } from "jotai"
 import { MemoryRouter } from "react-router"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { TransactionsTableProps } from "@/components/transactions/TransactionsTable"
+import type { TransactionsListProps } from "@/components/transactions/TransactionsList"
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
 import { CreditCardBill } from "./CreditCardBill"
 
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   billMonth: "2026-07",
   data: undefined as CreditCardBillDetail | undefined,
   categories: [] as CategoryOutput[],
+  cards: [] as CreditCardOutput[],
   updateTransaction: vi.fn(),
   removeTransactions: vi.fn(),
   reconcile: vi.fn(),
@@ -50,6 +52,7 @@ const transport = {
 
 const transaction = {
   id: "coffee-purchase",
+  creditCard: null,
   createdAt: "2026-06-18T00:00:00.000Z",
   description: "Coffee purchase",
   value: -100,
@@ -68,6 +71,7 @@ const transaction = {
     id: "card-1",
     name: "Fixture card",
     type: "credit",
+    institutionId: "nubank",
     dueDate: 10
   },
   category: food,
@@ -79,6 +83,7 @@ const payment = {
   transactionId: "payment-1",
   accountId: "checking-1",
   accountName: "Fixture checking",
+  accountInstitutionId: "inter" as const,
   description: "Fixture whole bill payment",
   date: "2026-07-09",
   value: -200
@@ -86,9 +91,12 @@ const payment = {
 
 function fixture(): CreditCardBillDetail {
   return {
+    cardSummaries: [],
+    cardRoundingAdjustment: 0,
     bill: {
       accountId: "card-1",
       accountName: "Fixture card",
+      accountInstitutionId: "nubank",
       billMonth: "2026-07",
       reviewMonth: "2026-06",
       dueDate: "2026-07-10",
@@ -151,6 +159,42 @@ vi.mock("@/data/categories/useCategories", () => ({
   useCategories: () => ({ data: mocks.categories, isLoading: false })
 }))
 
+vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
+  useBankAccounts: () => ({ data: [], isLoading: false })
+}))
+
+vi.mock("@/data/creditCards/useCreditCards", () => ({
+  useCreditCards: () => ({
+    data: mocks.cards,
+    isLoading: false,
+    isError: false
+  })
+}))
+
+vi.mock("@/data/imports/useImports", () => ({
+  useImports: () => ({
+    data: [
+      {
+        id: "31",
+        fileName: "Fixture statement.csv",
+        accountId: "card-1",
+        accountName: "Fixture card",
+        accountInstitutionId: "nubank",
+        createdAt: "2026-07-01T00:00:00.000Z"
+      },
+      {
+        id: "32",
+        fileName: "Other statement.csv",
+        accountId: "card-1",
+        accountName: "Fixture card",
+        accountInstitutionId: "nubank",
+        createdAt: "2026-07-02T00:00:00.000Z"
+      }
+    ],
+    isLoading: false
+  })
+}))
+
 vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
   useCreditCardBill: () => ({
     data: mocks.data,
@@ -177,8 +221,8 @@ vi.mock("@/data/transactions/useTransactionsMutation", () => ({
 vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }))
 
 // Project the page's table inputs; table editing/selection has its own UI tests.
-vi.mock("@/components/transactions/TransactionsTable", () => ({
-  default: ({ data, totalCount, dateBasis }: TransactionsTableProps) => (
+vi.mock("@/components/transactions/TransactionsList", () => ({
+  default: ({ data, totalCount, dateBasis }: TransactionsListProps) => (
     <div data-testid="bill-purchases" data-date-basis={dateBasis}>
       <span data-testid="purchase-count">{totalCount}</span>
       {(data ?? []).map((purchase) => (
@@ -199,7 +243,9 @@ function Page() {
 }
 
 async function openFilters() {
-  await userEvent.click(screen.getByRole("button", { name: /^Filter/ }))
+  await userEvent.click(
+    screen.getByRole("button", { name: /^Filter(?: \d+)?$/ })
+  )
 }
 
 function expectPurchases(names: string[]) {
@@ -228,6 +274,7 @@ describe("credit-card bill purchase filters", () => {
     mocks.accountId = "card-1"
     mocks.billMonth = "2026-07"
     mocks.data = fixture()
+    mocks.cards = []
     mocks.categories = [food, transport].map((category) => ({
       ...category,
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -246,8 +293,116 @@ describe("credit-card bill purchase filters", () => {
     vi.clearAllMocks()
   })
 
+  it("filters purchases by named cards plus unidentified without changing the shared bill total, subtotals or linked payment", async () => {
+    const physical: CreditCardOutput = {
+      id: "70",
+      accountId: "card-1",
+      accountName: "Fixture card",
+      groupId: "group-1",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      name: "Main physical",
+      last4: "0042",
+      archived: false
+    }
+    const virtual: CreditCardOutput = {
+      ...physical,
+      id: "71",
+      name: "Online virtual",
+      last4: null
+    }
+    mocks.cards = [physical, virtual]
+    const current = mocks.data!
+    mocks.data = {
+      ...current,
+      bill: {
+        ...current.bill,
+        payment,
+        status: "reconciled",
+        cashFlowDate: payment.date
+      },
+      transactions: current.transactions.map((purchase) => ({
+        ...purchase,
+        creditCard: purchase.id.startsWith("coffee")
+          ? physical
+          : purchase.id === "taxi"
+            ? virtual
+            : null
+      })),
+      cardSummaries: [
+        {
+          creditCard: physical,
+          total: -75,
+          transactionCount: 2,
+          unavailableValueCount: 0
+        },
+        {
+          creditCard: virtual,
+          total: -50,
+          transactionCount: 1,
+          unavailableValueCount: 0
+        },
+        {
+          creditCard: null,
+          total: -75,
+          transactionCount: 2,
+          unavailableValueCount: 1
+        }
+      ]
+    }
+    render(<Page />)
+    const summary = screen.getByRole("region", { name: "Bill summary" })
+    const summaryBefore = summary.textContent
+    const linkedPayment = screen.getByText(
+      "Linked checking payment"
+    ).parentElement!
+    const paymentBefore = linkedPayment.textContent
+    const subtotals = screen.getByRole("region", { name: "Cards in this bill" })
+    const subtotalsBefore = subtotals.textContent
+    await openFilters()
+    const cardFilter = within(
+      screen.getByRole("region", { name: "Card filter" })
+    )
+    await userEvent.click(
+      cardFilter.getByRole("checkbox", { name: "Main physical · ••0042" })
+    )
+    expectPurchases(["Coffee purchase", "Coffee refund"])
+    expect(screen.getByText("2 of 5 purchases")).toBeVisible()
+    expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
+      /[-−]R\$\s*75,00/
+    )
+    await userEvent.click(
+      cardFilter.getByRole("checkbox", { name: "Not identified" })
+    )
+    expectPurchases([
+      "Coffee purchase",
+      "Coffee refund",
+      "Internet service",
+      "Untitled purchase"
+    ])
+    expect(screen.getByText("4 of 5 purchases")).toBeVisible()
+    expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
+      /[-−]R\$\s*150,00/
+    )
+    expect(summary.textContent).toBe(summaryBefore)
+    expect(summary).toHaveTextContent(/[-−]R\$\s*200,00/)
+    expect(summary).toHaveTextContent("Reconciled")
+    expect(linkedPayment.textContent).toBe(paymentBefore)
+    expect(subtotals.textContent).toBe(subtotalsBefore)
+    expect(screen.getByRole("button", { name: "Unlink payment" })).toBeEnabled()
+    expect(mocks.reconcile).not.toHaveBeenCalled()
+    expect(mocks.unlink).not.toHaveBeenCalled()
+    expect(mocks.data.bill.payment).toBe(payment)
+    expect(mocks.data.bill.total).toBe(-200)
+  })
+
   it("searches descriptions case-insensitively without inheriting ledger dates or filters", async () => {
     render(<Page />)
+    expect(
+      document.querySelectorAll('[data-institution-id="nubank"] img')
+    ).toHaveLength(2)
+    expect(
+      document.querySelector('[data-institution-id="inter"] img')
+    ).not.toBeNull()
     expectPurchases([
       "Coffee purchase",
       "Coffee refund",
@@ -339,6 +494,112 @@ describe("credit-card bill purchase filters", () => {
     expect(mocks.reconcile).not.toHaveBeenCalled()
     expect(mocks.unlink).not.toHaveBeenCalled()
     expect(mocks.updateTransaction).not.toHaveBeenCalled()
+  })
+
+  it("intersects import source, specific files, categories, and signed amount without narrowing the bill", async () => {
+    const current = mocks.data!
+    mocks.data = {
+      ...current,
+      transactions: current.transactions.map((purchase) => ({
+        ...purchase,
+        import:
+          purchase.id === "coffee-refund"
+            ? { id: "32", fileName: "Other statement.csv" }
+            : purchase.id === "coffee-purchase" || purchase.id === "internet"
+              ? { id: "31", fileName: "Fixture statement.csv" }
+              : null
+      }))
+    }
+    render(<Page />)
+    const summaryBefore = screen.getByRole("region", {
+      name: "Bill summary"
+    }).textContent
+    await openFilters()
+    expect(
+      screen.queryByRole("region", { name: "Bank account filter" })
+    ).toBeNull()
+    await userEvent.click(screen.getByRole("button", { name: "Imported" }))
+    expectPurchases(["Coffee purchase", "Coffee refund", "Internet service"])
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^Fixture statement\.csv/ })
+    )
+    expectPurchases(["Coffee purchase", "Internet service"])
+    await userEvent.click(screen.getByRole("checkbox", { name: "Food" }))
+    expectPurchases(["Coffee purchase"])
+    await userEvent.type(
+      screen.getByRole("spinbutton", { name: "Amount" }),
+      "-100"
+    )
+    await userEvent.click(screen.getByRole("button", { name: "Apply amount" }))
+    expectPurchases(["Coffee purchase"])
+    expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
+      /[-−]R\$\s*100,00/
+    )
+    expect(
+      screen.getByRole("region", { name: "Bill summary" }).textContent
+    ).toBe(summaryBefore)
+    expect(screen.getByText("Fixture whole bill payment")).toBeVisible()
+    expect(mocks.reconcile).not.toHaveBeenCalled()
+    expect(mocks.updateTransaction).not.toHaveBeenCalled()
+  })
+
+  it("uses inclusive signed amount bounds and treats zero separately from missing amounts", async () => {
+    const current = mocks.data!
+    mocks.data = {
+      ...current,
+      bill: { ...current.bill, transactionCount: 6 },
+      transactions: [
+        ...current.transactions,
+        {
+          ...transaction,
+          id: "zero-amount",
+          description: "Zero amount purchase",
+          value: 0
+        }
+      ]
+    }
+    render(<Page />)
+    await openFilters()
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Amount condition" }),
+      "between"
+    )
+    await userEvent.type(
+      screen.getByRole("spinbutton", { name: "Minimum amount" }),
+      "-100"
+    )
+    await userEvent.type(
+      screen.getByRole("spinbutton", { name: "Maximum amount" }),
+      "-50"
+    )
+    await userEvent.click(screen.getByRole("button", { name: "Apply amount" }))
+    expectPurchases(["Coffee purchase", "Taxi ride", "Internet service"])
+    expect(screen.getByText("3 of 6 purchases")).toBeVisible()
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Amount condition" }),
+      "exact"
+    )
+    await userEvent.clear(screen.getByRole("spinbutton", { name: "Amount" }))
+    await userEvent.type(
+      screen.getByRole("spinbutton", { name: "Amount" }),
+      "0"
+    )
+    await userEvent.click(screen.getByRole("button", { name: "Apply amount" }))
+    expectPurchases(["Zero amount purchase"])
+    expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
+      /R\$\s*0,00/
+    )
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Clear filters" })[0]
+    )
+    expectPurchases([
+      "Coffee purchase",
+      "Coffee refund",
+      "Taxi ride",
+      "Internet service",
+      "Untitled purchase",
+      "Zero amount purchase"
+    ])
   })
 
   it("rounds the matching aggregate like the bill total rather than rounding each purchase", async () => {

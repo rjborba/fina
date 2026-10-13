@@ -5,6 +5,12 @@ import {
   CategoryListOutputSchema,
   CategoryOutputSchema,
   CreateBankaccountInputDtoSchema,
+  CreateCreditCardInputSchema,
+  CreditCardListOutputSchema,
+  CreditCardOutputSchema,
+  CreditCardQuerySchema,
+  DeleteCreditCardOutputSchema,
+  UpdateCreditCardInputSchema,
   CreateCategoryInputDtoSchema,
   CreditCardBillDetailSchema,
   CreditCardBillListOutputSchema,
@@ -45,6 +51,7 @@ import {
   PreviewImportOutputSchema,
   TransactionOutputSchema,
   UpdateCategoryAppearanceInputDtoSchema,
+  UpdateBankaccountInstitutionInputDtoSchema,
   UpdateTransactionInputDtoSchema,
   UnlinkCreditCardBillOutputSchema,
   UpdateCreditCardBillReviewMonthInputSchema,
@@ -53,6 +60,20 @@ import {
 import { createZodDto } from 'nestjs-zod';
 
 export class GroupOutputDto extends createZodDto(GroupOutputSchema) {}
+export class CreateCreditCardInputDto extends createZodDto(
+  CreateCreditCardInputSchema,
+) {}
+export class UpdateCreditCardInputDto extends createZodDto(
+  UpdateCreditCardInputSchema,
+) {}
+export class CreditCardOutputDto extends createZodDto(CreditCardOutputSchema) {}
+export class CreditCardListOutputDto extends createZodDto(
+  CreditCardListOutputSchema,
+) {}
+export class CreditCardQueryDto extends createZodDto(CreditCardQuerySchema) {}
+export class DeleteCreditCardOutputDto extends createZodDto(
+  DeleteCreditCardOutputSchema,
+) {}
 export class UpdateGroupReviewSettingsInputDto extends createZodDto(
   UpdateGroupReviewSettingsInputSchema,
 ) {}
@@ -70,6 +91,9 @@ export class GroupQueryInputDto extends createZodDto(GroupQueryInputSchema) {}
 
 export class CreateBankaccountInputDto extends createZodDto(
   CreateBankaccountInputDtoSchema,
+) {}
+export class UpdateBankaccountInstitutionInputDto extends createZodDto(
+  UpdateBankaccountInstitutionInputDtoSchema,
 ) {}
 export class BankaccountOutputDto extends createZodDto(
   BankaccountOutputSchema,

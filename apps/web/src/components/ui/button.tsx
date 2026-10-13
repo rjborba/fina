@@ -20,13 +20,13 @@ const buttonVariants = cva(
         ghost:
           "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
         "fina-primary":
-          "rounded-none border-2 border-fina-ink bg-fina-lime font-black uppercase text-fina-ink shadow-fina-md hover:bg-fina-lime hover:text-fina-ink hover:shadow-fina-lg active:shadow-fina-sm",
+          "rounded-md border border-fina-violet bg-fina-violet font-medium text-white shadow-fina-sm hover:bg-fina-violet/90 hover:text-white active:bg-fina-violet/80",
         "fina-secondary":
-          "rounded-none border-2 border-fina-ink bg-fina-surface font-black uppercase text-fina-ink shadow-fina-md hover:bg-fina-sky hover:text-fina-ink hover:shadow-fina-lg active:shadow-fina-sm",
+          "rounded-md border border-fina-grid bg-fina-surface font-medium text-foreground shadow-fina-sm hover:bg-fina-canvas hover:text-foreground active:bg-fina-canvas/60",
         "fina-ghost":
-          "rounded-none bg-transparent text-fina-ink hover:bg-fina-yellow hover:text-fina-ink",
+          "rounded-md bg-transparent font-medium text-foreground hover:bg-fina-canvas/60 hover:text-foreground",
         "fina-danger":
-          "rounded-none border-2 border-fina-ink bg-fina-danger font-black text-fina-ink shadow-fina-sm hover:bg-fina-danger hover:text-fina-ink",
+          "rounded-md border border-red-200 bg-fina-surface font-medium text-red-600 shadow-fina-sm hover:bg-fina-danger hover:text-red-700 dark:border-red-900/60 dark:text-red-300",
         link: "text-primary underline-offset-4 hover:underline"
       },
       size: {
@@ -36,7 +36,7 @@ const buttonVariants = cva(
         icon: "size-9"
       },
       lift: {
-        true: "hover:-translate-y-0.5 active:translate-y-0",
+        true: "",
         false: ""
       }
     },

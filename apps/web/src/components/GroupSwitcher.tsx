@@ -32,18 +32,16 @@ export function GroupSwitcher() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className={cn(
-                "h-14 rounded-none border border-white/25 text-white hover:border-fina-ink hover:bg-fina-sky hover:text-fina-ink data-[state=open]:border-fina-ink data-[state=open]:bg-fina-sky data-[state=open]:text-fina-ink"
-              )}
+              className={cn("h-12 rounded-md border border-sidebar-border")}
             >
-              <div className="flex aspect-square size-8 items-center justify-center border border-white/50 bg-white/10 group-data-[state=open]:border-fina-ink">
+              <div className="flex aspect-square size-7 items-center justify-center rounded-md bg-fina-lime text-fina-violet">
                 <Users className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-black">
+                <span className="truncate font-medium">
                   {selectedGroup.name}
                 </span>
-                <span className="truncate font-mono text-[9px] font-bold uppercase tracking-[0.12em] opacity-60">
+                <span className="truncate text-[10px] text-sidebar-foreground/50">
                   Active workspace
                 </span>
               </div>
@@ -51,19 +49,19 @@ export function GroupSwitcher() {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-none border-2 border-fina-ink bg-fina-surface shadow-fina-md"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg border border-fina-grid bg-fina-surface shadow-fina-md"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            <DropdownMenuLabel className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/50">
+            <DropdownMenuLabel className="text-[11px] font-medium text-foreground/50">
               Workspaces
             </DropdownMenuLabel>
             {groups.map((group) => (
               <DropdownMenuItem
                 key={group.id}
                 onClick={() => setSelectedGroup(group)}
-                className="gap-2 rounded-none p-3 font-bold focus:bg-fina-lime focus:text-fina-ink"
+                className="gap-2 rounded-md p-2.5 font-medium focus:bg-fina-lime focus:text-foreground"
               >
                 {group.name}
               </DropdownMenuItem>

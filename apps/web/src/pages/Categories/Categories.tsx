@@ -82,7 +82,7 @@ export const Categories: FC = () => {
       <FinaPageHeader
         eyebrow="Categories"
         marker="04"
-        title="Name every move."
+        title="Categories"
         description="Build a focused set of labels for the active workspace, then assign them directly from the transaction ledger."
         actions={
           <FinaBadge tone="yellow">
@@ -92,12 +92,12 @@ export const Categories: FC = () => {
       />
 
       <main className="grid gap-8 p-5 lg:grid-cols-[minmax(20rem,0.65fr)_minmax(0,1.35fr)] lg:items-start md:p-8">
-        <FinaSurface tone="sky" elevation="lg" className="p-5 sm:p-6">
+        <FinaSurface elevation="sm" className="p-5 sm:p-6">
           <FinaSectionLabel>New / Label</FinaSectionLabel>
-          <h2 className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]">
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
             Add category
           </h2>
-          <p className="mt-2 text-sm font-semibold leading-5 text-fina-ink/65">
+          <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
             Keep names short and recognizable in the transaction table.
           </p>
 
@@ -111,12 +111,12 @@ export const Categories: FC = () => {
                 name="categoryName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+                    <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
                       Category name
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="h-11 rounded-none border-2 border-fina-ink bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
+                        className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
                         placeholder="e.g. Groceries"
                         {...field}
                       />
@@ -152,7 +152,7 @@ export const Categories: FC = () => {
             <FinaSectionLabel>Registry / Available</FinaSectionLabel>
             <h2
               id="category-list-title"
-              className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+              className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
             >
               Existing categories
             </h2>
@@ -160,11 +160,11 @@ export const Categories: FC = () => {
 
           <FinaSurface elevation="md" className="overflow-hidden">
             {categoryData?.length ? (
-              <ul className="grid divide-y-2 divide-fina-ink sm:grid-cols-2 sm:divide-y-0">
+              <ul className="grid divide-y divide-fina-grid sm:grid-cols-2 sm:divide-y-0">
                 {categoryData.map((category, index) => (
                   <li
                     key={category.id}
-                    className="flex min-h-24 items-center justify-between gap-3 border-b-2 border-fina-ink p-4 odd:sm:border-r-2"
+                    className="flex min-h-24 items-center justify-between gap-3 border-b border-fina-grid p-4 odd:sm:border-r"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <CategoryAppearance
@@ -174,10 +174,10 @@ export const Categories: FC = () => {
                         className="size-10"
                       />
                       <div className="min-w-0">
-                        <div className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/45">
+                        <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
                           / {String(index + 1).padStart(2, "0")}
                         </div>
-                        <div className="truncate font-black">
+                        <div className="truncate font-semibold">
                           {category.name}
                         </div>
                       </div>
@@ -199,8 +199,8 @@ export const Categories: FC = () => {
             ) : (
               <div className="p-10 text-center">
                 <Tag className="mx-auto size-9" />
-                <p className="mt-4 font-black uppercase">No categories yet</p>
-                <p className="mt-2 text-sm font-medium text-fina-ink/60">
+                <p className="mt-4 font-semibold">No categories yet</p>
+                <p className="mt-2 text-sm font-medium text-foreground/60">
                   Add a label to begin organizing transactions.
                 </p>
               </div>

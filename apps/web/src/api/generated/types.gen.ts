@@ -9,6 +9,7 @@ export type BankaccountListOutputDto = Array<{
     createdAt: string;
     name: string;
     type: string;
+    institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     dueDate: (number) | null;
     groupId: string;
     userId: string;
@@ -19,10 +20,37 @@ export type BankaccountOutputDto = {
     createdAt: string;
     name: string;
     type: string;
+    institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     dueDate: (number) | null;
     groupId: string;
     userId: string;
 };
+
+export namespace BankaccountOutputDto {
+    export enum institutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
+    }
+}
 
 export type CategoryListOutputDto = Array<{
     id: string;
@@ -88,9 +116,36 @@ export namespace CategoryOutputDto {
 export type CreateBankaccountInputDto = {
     name: string;
     type: string;
+    institutionId?: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     dueDate: (number) | null;
     groupId: string;
 };
+
+export namespace CreateBankaccountInputDto {
+    export enum institutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
+    }
+}
 
 export type CreateCategoryInputDto = {
     name: string;
@@ -142,6 +197,12 @@ export namespace CreateCategoryInputDto {
     }
 }
 
+export type CreateCreditCardInputDto = {
+    accountId: string;
+    name: string;
+    last4?: (string) | null;
+};
+
 export type CreateGroupInputDto = {
     name: string;
 };
@@ -149,6 +210,7 @@ export type CreateGroupInputDto = {
 export type CreateImportInputDto = {
     groupId: string;
     accountId: string;
+    creditCardId?: (string) | null;
     billMonth: (string) | null;
     reviewMonth?: string;
     fileName: string;
@@ -166,6 +228,11 @@ export type CreateImportInputDto = {
         dateColumn: number;
         descriptionColumns: Array<number>;
         installmentColumn: (number) | null;
+        creditCardColumn?: (number) | null;
+        creditCardMappings?: Array<{
+            value: string;
+            creditCardId: (string) | null;
+        }>;
         amountMode: 'signed' | 'debit-credit';
         amountColumn: (number) | null;
         debitColumn: (number) | null;
@@ -174,6 +241,8 @@ export type CreateImportInputDto = {
     };
     rows: Array<{
         sourceRow: number;
+        creditCardId?: (string) | null;
+        creditCardIdentifier?: (string) | null;
         date: string;
         amount: number;
         description: (string) | null;
@@ -220,6 +289,7 @@ export type CreateTransactionInputDto = {
     observation?: (string) | null;
     reviewMonth?: string;
     bankaccountId: string;
+    creditCardId?: (string) | null;
     categoryId?: (string) | null;
     groupId: string;
     importId?: (string) | null;
@@ -230,12 +300,15 @@ export type CreditCardBillDetailDto = {
     bill: {
         accountId: string;
         accountName: string;
+        accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
         billMonth: string;
         dueDate: string;
         reviewMonth: string;
         cashFlowDate: string;
         transactionCount: number;
         total: number;
+        matchingTransactionCount?: number;
+        matchingTotal?: number;
         status: 'empty' | 'needs-reconciliation' | 'reconciled' | 'needs-review';
         payment: {
             transactionId: string;
@@ -244,6 +317,7 @@ export type CreditCardBillDetailDto = {
             date: string;
             accountId: string;
             accountName: string;
+            accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
         } | null;
     };
     transactions: Array<{
@@ -251,6 +325,13 @@ export type CreditCardBillDetailDto = {
         createdAt: string;
         description: (string) | null;
         value: (number) | null;
+        creditCard: {
+            id: string;
+            accountId: string;
+            name: string;
+            last4: (string) | null;
+            archived: boolean;
+        } | null;
         date: (string) | null;
         installmentTotal: (number) | null;
         installmentCurrent: (string) | null;
@@ -269,6 +350,7 @@ export type CreditCardBillDetailDto = {
             id: string;
             name: string;
             type: string;
+            institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
             dueDate: (number) | null;
         } | null;
         category: {
@@ -293,10 +375,47 @@ export type CreditCardBillDetailDto = {
         date: string;
         accountId: string;
         accountName: string;
+        accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
+    }>;
+    cardRoundingAdjustment: number;
+    cardSummaries: Array<{
+        creditCard: {
+            id: string;
+            accountId: string;
+            name: string;
+            last4: (string) | null;
+            archived: boolean;
+        } | null;
+        transactionCount: number;
+        total: number;
+        unavailableValueCount: number;
     }>;
 };
 
 export namespace CreditCardBillDetailDto {
+    export enum accountInstitutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
+    }
     export enum status {
         EMPTY = 'empty',
         NEEDS_RECONCILIATION = 'needs-reconciliation',
@@ -308,12 +427,15 @@ export namespace CreditCardBillDetailDto {
 export type CreditCardBillListOutputDto = Array<{
     accountId: string;
     accountName: string;
+    accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     billMonth: string;
     dueDate: string;
     reviewMonth: string;
     cashFlowDate: string;
     transactionCount: number;
     total: number;
+    matchingTransactionCount?: number;
+    matchingTotal?: number;
     status: 'empty' | 'needs-reconciliation' | 'reconciled' | 'needs-review';
     payment: {
         transactionId: string;
@@ -322,14 +444,41 @@ export type CreditCardBillListOutputDto = Array<{
         date: string;
         accountId: string;
         accountName: string;
+        accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     } | null;
 }>;
+
+export type CreditCardListOutputDto = Array<{
+    id: string;
+    accountId: string;
+    name: string;
+    last4: (string) | null;
+    archived: boolean;
+    createdAt: string;
+    groupId: string;
+    accountName: string;
+}>;
+
+export type CreditCardOutputDto = {
+    id: string;
+    accountId: string;
+    name: string;
+    last4: (string) | null;
+    archived: boolean;
+    createdAt: string;
+    groupId: string;
+    accountName: string;
+};
 
 export type DeleteBankaccountOutputDto = {
     id: string;
 };
 
 export type DeleteCategoryOutputDto = {
+    id: string;
+};
+
+export type DeleteCreditCardOutputDto = {
     id: string;
 };
 
@@ -386,6 +535,7 @@ export type ImportListOutputDto = Array<{
     groupId: string;
     accountId: string;
     accountName: string;
+    accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     billDueDate: (string) | null;
     transactionCount: number;
     excludedRowCount: number;
@@ -400,6 +550,7 @@ export type ImportOutputDto = {
     groupId: string;
     accountId: string;
     accountName: string;
+    accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     billDueDate: (string) | null;
     transactionCount: number;
     excludedRowCount: number;
@@ -407,10 +558,37 @@ export type ImportOutputDto = {
     dateEnd: (string) | null;
 };
 
+export namespace ImportOutputDto {
+    export enum accountInstitutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
+    }
+}
+
 export type ImportProfileListOutputDto = Array<{
     id: string;
     accountId: string;
     accountName: string;
+    accountInstitutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
     accountType: string;
     sourceFingerprint: string;
     config: {
@@ -423,6 +601,11 @@ export type ImportProfileListOutputDto = Array<{
         dateColumn: number;
         descriptionColumns: Array<number>;
         installmentColumn: (number) | null;
+        creditCardColumn?: (number) | null;
+        creditCardMappings?: Array<{
+            value: string;
+            creditCardId: (string) | null;
+        }>;
         amountMode: 'signed' | 'debit-credit';
         amountColumn: (number) | null;
         debitColumn: (number) | null;
@@ -453,6 +636,7 @@ export type InviteOutputDto = {
 export type PreviewImportInputDto = {
     groupId: string;
     accountId: string;
+    creditCardId?: (string) | null;
     billMonth: (string) | null;
     reviewMonth?: string;
     fileName: string;
@@ -470,6 +654,11 @@ export type PreviewImportInputDto = {
         dateColumn: number;
         descriptionColumns: Array<number>;
         installmentColumn: (number) | null;
+        creditCardColumn?: (number) | null;
+        creditCardMappings?: Array<{
+            value: string;
+            creditCardId: (string) | null;
+        }>;
         amountMode: 'signed' | 'debit-credit';
         amountColumn: (number) | null;
         debitColumn: (number) | null;
@@ -478,6 +667,8 @@ export type PreviewImportInputDto = {
     };
     rows: Array<{
         sourceRow: number;
+        creditCardId?: (string) | null;
+        creditCardIdentifier?: (string) | null;
         date: string;
         amount: number;
         description: (string) | null;
@@ -526,7 +717,7 @@ export type PreviewImportOutputDto = {
     };
     issues: Array<{
         sourceRow: number;
-        field?: 'date' | 'description' | 'amount' | 'installment';
+        field?: 'date' | 'description' | 'amount' | 'installment' | 'creditCard';
         code: string;
         message: string;
         severity: 'error' | 'warning';
@@ -545,6 +736,13 @@ export type QueryTransactionOutputDto = {
         createdAt: string;
         description: (string) | null;
         value: (number) | null;
+        creditCard: {
+            id: string;
+            accountId: string;
+            name: string;
+            last4: (string) | null;
+            archived: boolean;
+        } | null;
         date: (string) | null;
         installmentTotal: (number) | null;
         installmentCurrent: (string) | null;
@@ -563,6 +761,7 @@ export type QueryTransactionOutputDto = {
             id: string;
             name: string;
             type: string;
+            institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
             dueDate: (number) | null;
         } | null;
         category: {
@@ -592,6 +791,13 @@ export type TransactionOutputDto = {
     createdAt: string;
     description: (string) | null;
     value: (number) | null;
+    creditCard: {
+        id: string;
+        accountId: string;
+        name: string;
+        last4: (string) | null;
+        archived: boolean;
+    } | null;
     date: (string) | null;
     installmentTotal: (number) | null;
     installmentCurrent: (string) | null;
@@ -610,6 +816,7 @@ export type TransactionOutputDto = {
         id: string;
         name: string;
         type: string;
+        institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
         dueDate: (number) | null;
     } | null;
     category: {
@@ -632,6 +839,29 @@ export namespace TransactionOutputDto {
     export enum cashFlowStatus {
         SCHEDULED = 'scheduled',
         CONFIRMED = 'confirmed'
+    }
+    export enum institutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
     }
     export enum icon {
         TAG = 'tag',
@@ -679,6 +909,36 @@ export type UnlinkCreditCardBillOutputDto = {
     accountId: string;
     billMonth: string;
 };
+
+export type UpdateBankaccountInstitutionInputDto = {
+    institutionId: ('inter' | 'itau' | 'nubank' | 'banco-do-brasil' | 'caixa' | 'bradesco' | 'santander' | 'c6' | 'btg-pactual' | 'safra' | 'sicredi' | 'sicoob' | 'banrisul' | 'banco-pan' | 'banco-bv' | 'bmg' | 'neon' | 'picpay' | 'mercado-pago' | 'pagbank' | 'xp') | null;
+};
+
+export namespace UpdateBankaccountInstitutionInputDto {
+    export enum institutionId {
+        INTER = 'inter',
+        ITAU = 'itau',
+        NUBANK = 'nubank',
+        BANCO_DO_BRASIL = 'banco-do-brasil',
+        CAIXA = 'caixa',
+        BRADESCO = 'bradesco',
+        SANTANDER = 'santander',
+        C6 = 'c6',
+        BTG_PACTUAL = 'btg-pactual',
+        SAFRA = 'safra',
+        SICREDI = 'sicredi',
+        SICOOB = 'sicoob',
+        BANRISUL = 'banrisul',
+        BANCO_PAN = 'banco-pan',
+        BANCO_BV = 'banco-bv',
+        BMG = 'bmg',
+        NEON = 'neon',
+        PICPAY = 'picpay',
+        MERCADO_PAGO = 'mercado-pago',
+        PAGBANK = 'pagbank',
+        XP = 'xp'
+    }
+}
 
 export type UpdateCategoryAppearanceInputDto = {
     icon: 'tag' | 'shopping-cart' | 'utensils' | 'car' | 'house' | 'heart-pulse' | 'plane' | 'gamepad-2' | 'briefcase' | 'book-open' | 'coffee' | 'dumbbell' | 'gift' | 'paw-print' | 'shirt' | 'smartphone' | 'music' | 'baby' | 'wrench' | 'wallet-cards' | 'bike' | 'camera' | 'graduation-cap' | 'sparkles';
@@ -733,6 +993,11 @@ export type UpdateCreditCardBillReviewMonthInputDto = {
     reviewMonth: string;
 };
 
+export type UpdateCreditCardInputDto = {
+    name?: string;
+    last4?: (string) | null;
+};
+
 export type UpdateGroupReviewSettingsInputDto = {
     creditCardReviewMonthOffset: (number);
 };
@@ -749,6 +1014,7 @@ export type UpdateTransactionInputDto = {
     calculatedDate?: unknown;
     reviewMonth?: string;
     bankaccountId?: (string) | null;
+    creditCardId?: (string) | null;
     categoryId?: (string) | null;
 };
 
@@ -764,11 +1030,17 @@ export type TransactionsControllerFindAllData = {
     accountIdList?: Array<string>;
     accountType?: 'checkout' | 'credit';
     categoryIdList?: Array<string>;
+    creditCardIdList?: Array<string>;
     dateBasis?: 'cash-flow' | 'monthly-review';
     endDate?: string;
     groupId: string;
+    importIdList?: Array<string>;
+    importSource?: 'imported' | 'manual';
+    maxValue?: number;
+    minValue?: number;
     page?: number;
     pageSize?: number;
+    reviewMonths?: Array<string>;
     search?: string;
     startDate?: string;
 };
@@ -793,6 +1065,33 @@ export type TransactionsControllerRemoveData = {
 };
 
 export type TransactionsControllerRemoveResponse = (DeleteTransactionOutputDto);
+
+export type CreditCardsControllerCreateData = {
+    requestBody: CreateCreditCardInputDto;
+};
+
+export type CreditCardsControllerCreateResponse = (CreditCardOutputDto);
+
+export type CreditCardsControllerFindAllData = {
+    accountId?: string;
+    groupId: string;
+    includeArchived?: boolean;
+};
+
+export type CreditCardsControllerFindAllResponse = (CreditCardListOutputDto);
+
+export type CreditCardsControllerUpdateData = {
+    id: string;
+    requestBody: UpdateCreditCardInputDto;
+};
+
+export type CreditCardsControllerUpdateResponse = (CreditCardOutputDto);
+
+export type CreditCardsControllerRemoveData = {
+    id: string;
+};
+
+export type CreditCardsControllerRemoveResponse = (DeleteCreditCardOutputDto);
 
 export type CategoriesControllerCreateData = {
     requestBody: CreateCategoryInputDto;
@@ -871,6 +1170,13 @@ export type BankaccountsControllerRemoveData = {
 
 export type BankaccountsControllerRemoveResponse = (DeleteBankaccountOutputDto);
 
+export type BankaccountsControllerUpdateInstitutionData = {
+    id: string;
+    requestBody: UpdateBankaccountInstitutionInputDto;
+};
+
+export type BankaccountsControllerUpdateInstitutionResponse = (BankaccountOutputDto);
+
 export type UserGroupsControllerFindAllData = {
     groupId: string;
 };
@@ -944,9 +1250,18 @@ export type ImportsControllerRemoveData = {
 export type ImportsControllerRemoveResponse = (DeleteImportOutputDto);
 
 export type CreditCardBillsControllerFindAllData = {
+    accountIdList?: Array<string>;
+    categoryIdList?: Array<string>;
+    creditCardIdList?: Array<string>;
     dateBasis?: 'cash-flow' | 'monthly-review';
     endDate?: string;
     groupId: string;
+    importIdList?: Array<string>;
+    importSource?: 'imported' | 'manual';
+    maxValue?: number;
+    minValue?: number;
+    reviewMonths?: Array<string>;
+    search?: string;
     startDate?: string;
 };
 

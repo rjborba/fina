@@ -1,36 +1,53 @@
-import { TransactionsFilter } from "@/components/transactions/TransactionsFilter"
+import {
+  TransactionFilterChips,
+  TransactionsFilter,
+  type TransactionFilterValue
+} from "@/components/transactions/TransactionsFilter"
 import { TransactionsHeader } from "@/components/transactions/TransactionsHeader"
 import { TransactionsSort } from "@/components/transactions/TransactionsSort"
+import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter"
+import { TransactionsSearch } from "@/components/transactions/TransactionsSearch"
+import { TransactionShortcuts } from "@/components/transactions/TransactionShortcuts"
+import { TransactionFilterProvider } from "@/components/transactions/TransactionFilterProvider"
 import { CreditCardBillsLedger } from "@/components/transactions/CreditCardBillsLedger"
-import type { TransactionsTableProps } from "@/components/transactions/TransactionsTable"
+import type { TransactionsListProps } from "@/components/transactions/TransactionsList"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
-import {
-  DEFAULT_TRANSACTION_SORT,
-  type TransactionSortOption
-} from "@/components/transactions/transactionSort"
+import { useTransactionDisplayPreferences } from "@/components/transactions/useTransactionDisplayPreferences"
 import { Button } from "@/components/ui/button"
-import { FinaBadge, FinaSurface } from "@/components/ui/fina"
-import { Switch } from "@/components/ui/switch"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { useCreditCardBills } from "@/data/creditCardBills/useCreditCardBills"
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
+import { transactionFiltersStorageKey } from "@/data/transactions/transactionFilterStorage"
+import {
+  reviewMonthFromDate,
+  reviewMonthStart,
+  reviewMonthEnd
+} from "@/data/transactions/reviewMonthSelection"
 import { useTransactions } from "@/data/transactions/useTransactions"
 import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
 import useLocalStorageState from "@/hooks/useLocalStorageState"
+import { useAuth } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 import { useAtom } from "jotai"
-import dayjs from "dayjs"
 import {
   ArrowDownRight,
   ArrowUpRight,
   ReceiptText,
+  Keyboard,
   Sigma,
   TriangleAlert,
   X
 } from "lucide-react"
 import {
   FC,
+  type Dispatch,
+  type SetStateAction,
   Suspense,
   lazy,
   useCallback,
@@ -42,9 +59,9 @@ import {
 import { useSearchParams } from "react-router"
 import type { CreditCardBillListQuery, TransactionOutput } from "@fina/types"
 
-const TransactionsTable = lazy(() =>
-  import("@/components/transactions/TransactionsTable").then((module) => ({
-    default: module.default as FC<TransactionsTableProps>
+const TransactionsList = lazy(() =>
+  import("@/components/transactions/TransactionsList").then((module) => ({
+    default: module.default as FC<TransactionsListProps>
   }))
 )
 
@@ -57,23 +74,30 @@ const formatCurrency = (value: number) => currencyFormatter.format(value)
 
 const EMPTY_TRANSACTIONS: TransactionOutput[] = []
 
-const creditCardBillKey = (accountId: string, billMonth: string) =>
-  `${accountId}:${billMonth}`
+export const Transactions: FC = () => {
+  const { user } = useAuth()
+  const { selectedGroup } = useActiveGroup()
 
-const transactionBillKey = (transaction: TransactionOutput) => {
-  if (transaction.bankaccount?.type !== "credit") return null
+  if (!user || !selectedGroup) {
+    return (
+      <div
+        role="status"
+        className="flex h-svh items-center justify-center bg-fina-surface text-xs text-muted-foreground dark:bg-fina-canvas"
+      >
+        Loading the ledger...
+      </div>
+    )
+  }
 
-  const billDate =
-    transaction.creditDueDate ||
-    transaction.toBeConsideredAt ||
-    transaction.calculatedDate
-
-  return billDate
-    ? creditCardBillKey(transaction.bankaccount.id, billDate.slice(0, 7))
-    : null
+  const storageKey = transactionFiltersStorageKey(user.id, selectedGroup.id)
+  return (
+    <TransactionFilterProvider key={storageKey} storageKey={storageKey}>
+      <TransactionsView />
+    </TransactionFilterProvider>
+  )
 }
 
-export const Transactions: FC = () => {
+const TransactionsView: FC = () => {
   const [searchParams] = useSearchParams()
   const linkedAccountId = searchParams.get("accountId")
   const {
@@ -82,7 +106,7 @@ export const Transactions: FC = () => {
   } = useTransactionMutation()
 
   const handleUpdateTransaction = useCallback<
-    TransactionsTableProps["onUpdateTransaction"]
+    TransactionsListProps["onUpdateTransaction"]
   >(
     async (id, transaction) => {
       await updateTransaction({ id, transaction })
@@ -91,7 +115,7 @@ export const Transactions: FC = () => {
   )
 
   const handleDeleteTransactions = useCallback<
-    TransactionsTableProps["onDeleteTransactions"]
+    TransactionsListProps["onDeleteTransactions"]
   >(
     async (ids) => {
       await removeTransactions(ids)
@@ -105,9 +129,8 @@ export const Transactions: FC = () => {
     pageIndex: 0,
     pageSize: 4000
   })
-  const [sort, setSort] = useState<TransactionSortOption>(
-    DEFAULT_TRANSACTION_SORT
-  )
+  const { sort, setSort, displayProperties, setDisplayProperties } =
+    useTransactionDisplayPreferences()
   const [inlineCreditCardPreference, setInlineCreditCardTransactions] =
     useLocalStorageState<boolean>("inlineCreditCardTransactions", true)
   const [storedDateBasis, setDateBasis] = useLocalStorageState<string>(
@@ -121,46 +144,162 @@ export const Transactions: FC = () => {
     monthlyReview && inlineCreditCardPreference
 
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
+  const changeFilter = useCallback<
+    Dispatch<SetStateAction<TransactionFilterValue>>
+  >(
+    (update) => {
+      setFilterProps((current) => {
+        const next = typeof update === "function" ? update(current) : update
+        return {
+          ...current,
+          ...next,
+          startDate: next.startDate ?? current.startDate,
+          endDate: next.endDate ?? current.endDate
+        }
+      })
+    },
+    [setFilterProps]
+  )
+  const selectedAccountIds = filterProps.accountsId
+  const accountFiltersConflict = !!(
+    linkedAccountId &&
+    selectedAccountIds?.length &&
+    !selectedAccountIds.includes(linkedAccountId)
+  )
+  const purchaseFilters = useMemo(
+    () => ({
+      search: filterProps.partialDescription || undefined,
+      categoryIdList: filterProps.categoriesId,
+      creditCardIdList: filterProps.creditCardsId?.length
+        ? filterProps.creditCardsId
+        : undefined,
+      accountIdList: linkedAccountId
+        ? [linkedAccountId]
+        : selectedAccountIds?.length
+          ? selectedAccountIds
+          : undefined,
+      importSource: filterProps.importSource,
+      importIdList: filterProps.importsId?.length
+        ? filterProps.importsId
+        : undefined,
+      minValue: filterProps.minValue,
+      maxValue: filterProps.maxValue
+    }),
+    [
+      filterProps.partialDescription,
+      filterProps.categoriesId,
+      filterProps.creditCardsId,
+      selectedAccountIds,
+      filterProps.importSource,
+      filterProps.importsId,
+      filterProps.minValue,
+      filterProps.maxValue,
+      linkedAccountId
+    ]
+  )
+  const queryDates = useMemo(
+    () => ({
+      startDate: monthlyReview
+        ? reviewMonthStart(reviewMonthFromDate(filterProps.startDate))
+        : filterProps.startDate,
+      endDate: monthlyReview
+        ? reviewMonthEnd(reviewMonthFromDate(filterProps.endDate))
+        : filterProps.endDate
+    }),
+    [filterProps.startDate, filterProps.endDate, monthlyReview]
+  )
 
   const {
     data: transactionsData,
     isLoading,
     isError
-  } = useTransactions({
-    page: pagination.pageIndex + 1,
-    pageSize: pagination.pageSize,
-    groupId: selectedGroup?.id?.toString() || "-1",
-    startDate: filterProps.startDate,
-    endDate: filterProps.endDate,
-    dateBasis,
-    search: filterProps.partialDescription || undefined,
-    categoryIdList: filterProps.categoriesId,
-    accountIdList: linkedAccountId ? [linkedAccountId] : undefined
-  })
+  } = useTransactions(
+    {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      groupId: selectedGroup?.id?.toString() || "-1",
+      ...queryDates,
+      ...purchaseFilters,
+      dateBasis,
+      reviewMonths: monthlyReview ? filterProps.reviewMonths : undefined
+    },
+    !accountFiltersConflict
+  )
 
   const billQuery = useMemo<CreditCardBillListQuery>(
     () => ({
       groupId: selectedGroup?.id?.toString() || "-1",
-      startDate: filterProps.startDate,
-      endDate: filterProps.endDate,
-      dateBasis
+      ...queryDates,
+      ...purchaseFilters,
+      dateBasis,
+      reviewMonths: monthlyReview ? filterProps.reviewMonths : undefined
     }),
-    [filterProps.endDate, filterProps.startDate, selectedGroup?.id, dateBasis]
+    [
+      queryDates,
+      purchaseFilters,
+      filterProps.reviewMonths,
+      selectedGroup?.id,
+      dateBasis,
+      monthlyReview
+    ]
   )
   const {
     data: creditCardBills = [],
     isLoading: areBillsLoading,
     isError: areBillsError
-  } = useCreditCardBills(billQuery, !inlineCreditCardTransactions)
+  } = useCreditCardBills(
+    billQuery,
+    !inlineCreditCardTransactions && !accountFiltersConflict
+  )
 
   const { data: categories } = useCategories({
     groupId: selectedGroup?.id?.toString() || ""
   })
 
-  const [isFilterOpen, setIsFilterOpen] = useLocalStorageState<boolean>(
-    "transactionsFilterOpen",
-    false
-  )
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isDisplayOpen, setIsDisplayOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchFocusRequest, setSearchFocusRequest] = useState(0)
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.altKey) return
+      const target = event.target
+      if (
+        target instanceof HTMLElement &&
+        target.closest(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="combobox"], [role="textbox"]'
+        )
+      )
+        return
+      if (
+        document.querySelector(
+          '[role="dialog"]:not([aria-hidden="true"]), [role="alertdialog"]:not([aria-hidden="true"]), [role="menu"], [role="listbox"]'
+        )
+      )
+        return
+      const key = event.key.toLowerCase()
+      if ((event.metaKey || event.ctrlKey) && key === "f") {
+        event.preventDefault()
+        setIsSearchOpen(true)
+        setSearchFocusRequest((request) => request + 1)
+      } else if (!event.metaKey && !event.ctrlKey) {
+        if (key === "f" && !event.shiftKey) {
+          event.preventDefault()
+          setIsFilterOpen(true)
+        } else if (key === "v" && event.shiftKey) {
+          event.preventDefault()
+          setIsDisplayOpen(true)
+        } else if (event.key === "?") {
+          event.preventDefault()
+          setIsShortcutsOpen(true)
+        }
+      }
+    }
+    window.addEventListener("keydown", handleShortcut)
+    return () => window.removeEventListener("keydown", handleShortcut)
+  }, [])
 
   const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
     "transactionsDrawerOpen",
@@ -188,38 +327,20 @@ export const Transactions: FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isDrawerOpen, setIsDrawerOpen])
 
-  const hasTransactionFilter =
-    filterProps.partialDescription.trim().length > 0 ||
-    filterProps.categoriesId.length > 0
-
-  const matchingCreditCardBillKeys = useMemo(
-    () =>
-      new Set(
-        (transactionsData?.data || []).flatMap((transaction) => {
-          const key = transactionBillKey(transaction)
-          return key ? [key] : []
-        })
-      ),
-    [transactionsData?.data]
-  )
-
   const visibleCreditCardBills = useMemo(
     () =>
-      creditCardBills.filter((bill) => {
-        if (linkedAccountId && bill.accountId !== linkedAccountId) return false
-        if (!hasTransactionFilter) return true
-
-        return matchingCreditCardBillKeys.has(
-          creditCardBillKey(bill.accountId, bill.billMonth)
-        )
-      }),
-    [
-      creditCardBills,
-      hasTransactionFilter,
-      linkedAccountId,
-      matchingCreditCardBillKeys
-    ]
+      accountFiltersConflict
+        ? []
+        : creditCardBills.filter(
+            (bill) =>
+              !purchaseFilters.accountIdList?.length ||
+              purchaseFilters.accountIdList.includes(bill.accountId)
+          ),
+    [creditCardBills, accountFiltersConflict, purchaseFilters.accountIdList]
   )
+  const visibleTransactions = accountFiltersConflict
+    ? EMPTY_TRANSACTIONS
+    : (transactionsData?.data ?? EMPTY_TRANSACTIONS)
 
   const linkedPaymentIds = useMemo(
     () =>
@@ -232,20 +353,17 @@ export const Transactions: FC = () => {
   )
   const visibleCheckoutTransactions = useMemo(
     () =>
-      (transactionsData?.data || []).filter(
+      visibleTransactions.filter(
         (transaction) =>
           transaction.bankaccount?.type !== "credit" &&
           !transaction.billPayment &&
           !linkedPaymentIds.has(transaction.id)
       ),
-    [linkedPaymentIds, transactionsData?.data]
+    [linkedPaymentIds, visibleTransactions]
   )
   const inlineLedgerTransactions = useMemo(
-    () =>
-      (transactionsData?.data || EMPTY_TRANSACTIONS).filter(
-        (transaction) => !transaction.billPayment
-      ),
-    [transactionsData?.data]
+    () => visibleTransactions.filter((transaction) => !transaction.billPayment),
+    [visibleTransactions]
   )
   const visibleEntryCount = inlineCreditCardTransactions
     ? inlineLedgerTransactions.length
@@ -285,7 +403,7 @@ export const Transactions: FC = () => {
   if (!inlineCreditCardTransactions) {
     for (const bill of visibleCreditCardBills) {
       const value = monthlyReview
-        ? bill.total
+        ? (bill.matchingTotal ?? bill.total)
         : (bill.payment?.value ?? bill.total)
       sum.total += value
       if (value > 0) sum.income += value
@@ -293,7 +411,7 @@ export const Transactions: FC = () => {
     }
   }
 
-  for (const transaction of transactionsData?.data || []) {
+  for (const transaction of visibleTransactions) {
     if (transaction.billPayment) continue
     if (!transaction.value || !transaction.category?.id) continue
 
@@ -302,308 +420,304 @@ export const Transactions: FC = () => {
   }
 
   return (
-    <div className="flex min-h-svh min-w-0 bg-fina-grid text-fina-ink">
-      <div className="min-w-0 flex-1">
-        <TransactionsHeader
-          isFilterOpen={isFilterOpen}
-          onFilterToggle={(isOpen) => {
-            setIsFilterOpen(isOpen)
-            if (isOpen) {
-              setIsDrawerOpen(false)
-            }
-          }}
-          totalCount={visibleEntryCount}
-          monthlyReview={monthlyReview}
-        />
-
-        <section className="px-4 py-4 md:px-8 md:py-5">
-          <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <p className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
-                Ledger / {monthlyReview ? "Monthly review" : "Cash flow"}
-              </p>
-              <h2 className="mt-1 text-2xl font-black uppercase tracking-[-0.05em] md:text-3xl">
-                {monthlyReview ? "Review together" : "Activity log"}
-              </h2>
-              <p className="mt-2 max-w-xl text-sm font-semibold text-fina-ink/65">
-                {monthlyReview
-                  ? "Organize expenses by their reference month, including whole card bills. Linked card payments are excluded."
-                  : "Paid card bills appear on their confirmed payment dates. Unpaid bills are scheduled on their due dates. Each linked payment is counted once."}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-stretch justify-end gap-3">
-              <div
-                role="group"
-                aria-label="Ledger view"
-                className="flex border-2 border-fina-ink bg-fina-surface shadow-fina-sm"
-              >
-                {(["monthly-review", "cash-flow"] as const).map((view) => (
-                  <Button
-                    key={view}
-                    variant="fina-ghost"
-                    aria-pressed={dateBasis === view}
-                    className={cn(
-                      "h-10 px-3",
-                      dateBasis === view && "bg-fina-lime"
-                    )}
-                    onClick={() => {
-                      setDateBasis(view)
-                      if (view === "monthly-review")
-                        setFilterProps((current) => ({
-                          ...current,
-                          startDate: dayjs(current.startDate)
-                            .startOf("month")
-                            .toDate(),
-                          endDate: dayjs(current.startDate)
-                            .endOf("month")
-                            .toDate()
-                        }))
-                    }}
-                  >
-                    {view === "monthly-review" ? "Monthly review" : "Cash flow"}
-                  </Button>
-                ))}
-              </div>
-              {monthlyReview ? (
-                <label
-                  htmlFor="inline-credit-card-transactions"
-                  className="flex h-11 cursor-pointer items-center gap-3 border-2 border-fina-ink bg-fina-surface px-3 shadow-fina-sm"
-                >
-                  <Switch
-                    id="inline-credit-card-transactions"
-                    checked={inlineCreditCardTransactions}
-                    onCheckedChange={setInlineCreditCardTransactions}
-                    className="rounded-none border-2 border-fina-ink bg-fina-canvas data-[state=checked]:bg-fina-lime data-[state=unchecked]:bg-fina-surface"
-                  />
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em]">
-                    Inline credit card transactions
-                  </span>
-                </label>
-              ) : null}
-              <TransactionsSort value={sort} onValueChange={setSort} />
-            </div>
-          </div>
-
-          {hasBillsNeedingAttention ? (
+    <div className="flex h-svh min-w-0 flex-col bg-fina-surface text-foreground dark:bg-fina-canvas">
+      <TransactionsHeader totalCount={visibleEntryCount}>
+        <div
+          role="toolbar"
+          aria-label="Transaction view controls"
+          className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-fina-grid px-4 py-1.5 md:px-6"
+        >
+          <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
             <div
-              role="status"
-              className="mb-3 flex items-start gap-3 border-2 border-fina-ink bg-fina-yellow p-3 font-mono text-[10px] font-black uppercase tracking-[0.08em] shadow-fina-sm"
+              role="group"
+              aria-label="Ledger view"
+              className="flex items-center gap-0.5"
             >
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-              Some bills need reconciliation or review. Linked payments are
-              counted once; an unlinked checking payment may still duplicate a
-              bill.
-            </div>
-          ) : null}
-
-          <Suspense
-            fallback={
-              <FinaSurface
-                elevation="lg"
-                className="p-10 text-center font-mono text-xs font-black uppercase"
-              >
-                Loading the ledger...
-              </FinaSurface>
-            }
-          >
-            {inlineCreditCardTransactions ? (
-              <TransactionsTable
-                data={inlineLedgerTransactions}
-                isLoading={isLoading}
-                isError={isError}
-                totalCount={visibleEntryCount}
-                pageIndex={pagination.pageIndex}
-                pageSize={pagination.pageSize}
-                sort={sort}
-                dateBasis={dateBasis}
-                onUpdateTransaction={handleUpdateTransaction}
-                onDeleteTransactions={handleDeleteTransactions}
-              />
-            ) : (
-              <CreditCardBillsLedger
-                transactions={visibleCheckoutTransactions}
-                bills={visibleCreditCardBills}
-                isLoading={isLoading || areBillsLoading}
-                isError={isError || areBillsError}
-                sort={sort}
-                dateBasis={dateBasis}
-                onUpdateTransaction={handleUpdateTransaction}
-                onDeleteTransactions={handleDeleteTransactions}
-              />
-            )}
-          </Suspense>
-
-          {linkedAccountId && (
-            <FinaBadge tone="yellow" className="mt-4 shadow-fina-sm">
-              Account filter is active
-            </FinaBadge>
-          )}
-        </section>
-
-        <Button
-          variant="fina-primary"
-          onClick={() => {
-            setIsFilterOpen(false)
-            setIsDrawerOpen(true)
-          }}
-          aria-expanded={isDrawerOpen}
-          aria-controls="transactions-summary-panel"
-          className="fixed right-0 top-1/2 z-30 h-auto -translate-y-1/2 flex-col border-r-0 px-2 py-4 shadow-[-4px_4px_0_var(--fina-ink)] hover:-translate-y-1/2 hover:bg-fina-surface hover:shadow-[-4px_4px_0_var(--fina-ink)] active:-translate-y-1/2"
-        >
-          <span className="font-mono text-[10px] font-black uppercase tracking-[0.16em] [writing-mode:vertical-rl]">
-            Totals
-          </span>
-          <Sigma className="mt-2 size-4" />
-        </Button>
-
-        <button
-          type="button"
-          aria-label="Close totals panel"
-          aria-hidden={!isDrawerOpen}
-          tabIndex={isDrawerOpen ? 0 : -1}
-          onClick={() => setIsDrawerOpen(false)}
-          className={cn(
-            "fixed inset-0 z-[60] cursor-default bg-fina-ink/60 transition-opacity duration-300 ease-out",
-            isDrawerOpen
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
-          )}
-        />
-        <aside
-          ref={drawerRef}
-          id="transactions-summary-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-hidden={!isDrawerOpen}
-          aria-label="Period totals"
-          className={cn(
-            "fixed inset-y-0 right-0 z-[70] flex w-[min(440px,calc(100vw-16px))] flex-col border-l-[3px] border-fina-ink bg-fina-canvas text-fina-ink shadow-[-10px_0_0_var(--fina-ink)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-            isDrawerOpen
-              ? "pointer-events-auto translate-x-0"
-              : "pointer-events-none translate-x-[calc(100%+10px)]"
-          )}
-        >
-          <div className="flex h-20 shrink-0 items-center justify-between border-b-2 border-fina-ink bg-fina-lime px-5">
-            <div>
-              <p className="font-mono text-[9px] font-black uppercase tracking-[0.2em]">
-                Statement / totals
-              </p>
-              <h2 className="text-2xl font-black uppercase tracking-[-0.06em]">
-                Period summary
-              </h2>
-            </div>
-            <Button
-              ref={closeDrawerButtonRef}
-              variant="ghost"
-              size="icon"
-              tabIndex={isDrawerOpen ? 0 : -1}
-              aria-label="Close totals panel"
-              onClick={() => setIsDrawerOpen(false)}
-              className="size-10 rounded-none border-2 border-fina-ink bg-fina-surface text-fina-ink shadow-fina-sm hover:bg-fina-ink hover:text-white"
-            >
-              <X className="size-5" />
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            <div className="grid grid-cols-2 border-b-2 border-fina-ink">
-              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-ink p-5 text-white">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/65">
-                    {monthlyReview ? "Review balance" : "Net flow"}
-                  </span>
-                  <Sigma className="size-5 text-fina-lime" />
-                </div>
-                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
-                  {formatCurrency(sum.total)}
-                </p>
-              </div>
-              <div className="border-b-2 border-fina-ink bg-fina-lime p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
-                    Incoming
-                  </span>
-                  <ArrowUpRight className="size-5" />
-                </div>
-                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
-                  {formatCurrency(sum.income)}
-                </p>
-              </div>
-              <div className="border-r-2 border-fina-ink bg-fina-violet p-5 text-white">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/75">
-                    Outgoing
-                  </span>
-                  <ArrowDownRight className="size-5" />
-                </div>
-                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
-                  {formatCurrency(Math.abs(sum.expense))}
-                </p>
-              </div>
-              <div className="bg-fina-sky p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em]">
-                    Entries
-                  </span>
-                  <ReceiptText className="size-5" />
-                </div>
-                <p className="mt-5 text-xl font-black tracking-[-0.05em] sm:text-2xl">
-                  {visibleEntryCount.toLocaleString("en-US")}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-b-2 border-fina-ink bg-fina-yellow px-5 py-4">
-              <div className="flex items-center justify-between gap-4">
-                <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
-                  {monthlyReview ? "Category breakdown" : "Purchase categories"}
-                </p>
-                <span className="font-mono text-[9px] font-black uppercase">
-                  {categories?.length || 0} categories
-                </span>
-              </div>
-              {!monthlyReview ? (
-                <p className="mt-2 text-xs font-semibold text-fina-ink/65">
-                  Categories describe the underlying purchases. If a paid bill
-                  changes, its purchase amounts can differ from the confirmed
-                  cash payment.
-                </p>
-              ) : null}
-            </div>
-            <div className="grid grid-cols-2 bg-fina-surface">
-              {categories?.map((category) => (
-                <div
-                  key={category.id}
-                  className="border-b border-r border-fina-ink p-4"
+              {(["monthly-review", "cash-flow"] as const).map((view) => (
+                <Button
+                  key={view}
+                  variant="fina-ghost"
+                  aria-pressed={dateBasis === view}
+                  className={cn(
+                    "h-7 px-2 text-xs font-normal",
+                    dateBasis === view
+                      ? "bg-fina-canvas text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  onClick={() => {
+                    setDateBasis(view)
+                    if (view === "monthly-review")
+                      setFilterProps((current) => ({
+                        ...current,
+                        startDate: reviewMonthStart(
+                          reviewMonthFromDate(current.startDate)
+                        ),
+                        endDate: reviewMonthEnd(
+                          reviewMonthFromDate(current.endDate)
+                        )
+                      }))
+                  }}
                 >
-                  <div className="flex items-center gap-2">
-                    <CategoryAppearance
-                      icon={category.icon}
-                      color={category.color}
-                      className="size-7 border"
-                    />
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
-                      {category.name}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-lg font-black tracking-[-0.04em]">
-                    {formatCurrency(sumCategories[category.id] || 0)}
-                  </p>
-                </div>
+                  {view === "monthly-review" ? "Monthly review" : "Cash flow"}
+                </Button>
               ))}
             </div>
+            <TransactionsFilter
+              presentation="popover"
+              isOpen={isFilterOpen}
+              onFilterToggle={setIsFilterOpen}
+              dateBasis={dateBasis}
+            />
+            <TransactionFilterChips
+              value={filterProps}
+              onChange={changeFilter}
+              dateBasis={dateBasis}
+              linkedAccountId={linkedAccountId}
+            />
+            {linkedAccountId ? (
+              <span className="text-[11px] text-muted-foreground">
+                Account filter
+              </span>
+            ) : null}
           </div>
-        </aside>
-      </div>
-
-      <TransactionsFilter
-        isOpen={isFilterOpen}
-        onFilterToggle={(isOpen) => {
-          setIsFilterOpen(isOpen)
-          if (isOpen) {
-            setIsDrawerOpen(false)
+          <div className="flex max-w-full flex-wrap items-center gap-1">
+            <TransactionsDateFilter monthlyReview={monthlyReview} />
+            <TransactionsSearch
+              open={isSearchOpen}
+              onOpenChange={setIsSearchOpen}
+              focusRequest={searchFocusRequest}
+            />
+            <TransactionsSort
+              value={sort}
+              onValueChange={setSort}
+              open={isDisplayOpen}
+              onOpenChange={setIsDisplayOpen}
+              displayProperties={displayProperties}
+              onDisplayPropertiesChange={setDisplayProperties}
+              inlineCreditCardTransactions={inlineCreditCardTransactions}
+              onInlineCreditCardTransactionsChange={
+                monthlyReview ? setInlineCreditCardTransactions : undefined
+              }
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsDrawerOpen(true)}
+              aria-label="Period totals"
+              aria-expanded={isDrawerOpen}
+              aria-controls="transactions-summary-panel"
+              className="size-7 text-muted-foreground"
+              title="Period totals"
+            >
+              <Sigma className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+              onClick={() => setIsShortcutsOpen(true)}
+              className="size-7 text-muted-foreground"
+            >
+              <Keyboard className="size-3.5" />
+            </Button>
+            {hasBillsNeedingAttention ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    role="status"
+                    aria-label="Some bills need reconciliation or review"
+                    className="flex size-7 items-center justify-center text-amber-600 dark:text-amber-400"
+                  >
+                    <TriangleAlert className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Some bills need reconciliation or review. Unlinked payments
+                  may duplicate a bill.
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
+        </div>
+      </TransactionsHeader>
+      <section
+        aria-label="Transaction ledger"
+        className="flex min-h-0 flex-1 flex-col pt-2"
+      >
+        <Suspense
+          fallback={
+            <div className="px-6 py-8 text-xs text-muted-foreground">
+              Loading the ledger...
+            </div>
           }
-        }}
+        >
+          {inlineCreditCardTransactions ? (
+            <TransactionsList
+              fillAvailableSpace
+              data={inlineLedgerTransactions}
+              isLoading={isLoading}
+              isError={isError}
+              totalCount={visibleEntryCount}
+              sort={sort}
+              displayProperties={displayProperties}
+              dateBasis={dateBasis}
+              onUpdateTransaction={handleUpdateTransaction}
+              onDeleteTransactions={handleDeleteTransactions}
+            />
+          ) : (
+            <CreditCardBillsLedger
+              transactions={visibleCheckoutTransactions}
+              bills={visibleCreditCardBills}
+              isLoading={isLoading || areBillsLoading}
+              isError={isError || areBillsError}
+              sort={sort}
+              displayProperties={displayProperties}
+              dateBasis={dateBasis}
+              onUpdateTransaction={handleUpdateTransaction}
+              onDeleteTransactions={handleDeleteTransactions}
+            />
+          )}
+        </Suspense>
+      </section>
+
+      <button
+        type="button"
+        aria-label="Close totals panel"
+        aria-hidden={!isDrawerOpen}
+        tabIndex={isDrawerOpen ? 0 : -1}
+        onClick={() => setIsDrawerOpen(false)}
+        className={cn(
+          "fixed inset-0 z-[60] cursor-default bg-fina-ink/60 transition-opacity duration-300 ease-out",
+          isDrawerOpen
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0"
+        )}
+      />
+      <aside
+        ref={drawerRef}
+        id="transactions-summary-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!isDrawerOpen}
+        aria-label="Period totals"
+        className={cn(
+          "fixed inset-y-0 right-0 z-[70] flex w-[min(440px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          isDrawerOpen
+            ? "pointer-events-auto translate-x-0"
+            : "pointer-events-none translate-x-[calc(100%+10px)]"
+        )}
+      >
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-fina-grid bg-fina-surface px-5">
+          <div>
+            <h2 className="text-sm font-medium">Period summary</h2>
+          </div>
+          <Button
+            ref={closeDrawerButtonRef}
+            variant="ghost"
+            size="icon"
+            tabIndex={isDrawerOpen ? 0 : -1}
+            aria-label="Close totals panel"
+            onClick={() => setIsDrawerOpen(false)}
+            className="size-9 rounded-md border border-fina-grid bg-fina-surface text-foreground shadow-none hover:bg-fina-canvas"
+          >
+            <X className="size-5" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-2 border-b border-fina-grid bg-fina-surface">
+            <div className="border-b border-r border-fina-grid p-5">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-medium text-foreground/50">
+                  {monthlyReview ? "Review balance" : "Net flow"}
+                </span>
+                <Sigma className="size-4 text-fina-violet" />
+              </div>
+              <p className="mt-3 text-lg font-medium tabular-nums">
+                {formatCurrency(sum.total)}
+              </p>
+            </div>
+            <div className="border-b border-fina-grid p-5">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-medium text-foreground/50">
+                  Incoming
+                </span>
+                <ArrowUpRight className="size-4 text-emerald-600" />
+              </div>
+              <p className="mt-3 text-lg font-medium tabular-nums">
+                {formatCurrency(sum.income)}
+              </p>
+            </div>
+            <div className="border-r border-fina-grid p-5">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-medium text-foreground/50">
+                  Outgoing
+                </span>
+                <ArrowDownRight className="size-4 text-red-500" />
+              </div>
+              <p className="mt-3 text-lg font-medium tabular-nums">
+                {formatCurrency(Math.abs(sum.expense))}
+              </p>
+            </div>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-medium text-foreground/50">
+                  Entries
+                </span>
+                <ReceiptText className="size-4 text-fina-violet" />
+              </div>
+              <p className="mt-3 text-lg font-medium tabular-nums">
+                {visibleEntryCount.toLocaleString("en-US")}
+              </p>
+            </div>
+          </div>
+
+          <div className="border-b border-fina-grid bg-fina-canvas px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <p
+                className="text-xs font-medium"
+                title={
+                  monthlyReview
+                    ? undefined
+                    : "Categories describe purchases; purchase totals can differ from confirmed bill payments."
+                }
+              >
+                {monthlyReview ? "Category breakdown" : "Purchase categories"}
+              </p>
+              <span className="text-[11px] text-foreground/50">
+                {categories?.length || 0} categories
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 bg-fina-surface">
+            {categories?.map((category) => (
+              <div
+                key={category.id}
+                className="border-b border-r border-fina-grid p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <CategoryAppearance
+                    icon={category.icon}
+                    color={category.color}
+                    className="size-7 border"
+                  />
+                  <p className="truncate text-xs font-medium">
+                    {category.name}
+                  </p>
+                </div>
+                <p className="mt-2 text-sm font-medium tabular-nums">
+                  {formatCurrency(sumCategories[category.id] || 0)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+      <TransactionShortcuts
+        open={isShortcutsOpen}
+        onOpenChange={setIsShortcutsOpen}
       />
     </div>
   )

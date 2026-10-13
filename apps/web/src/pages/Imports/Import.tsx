@@ -51,6 +51,13 @@ import {
 } from "@/components/ui/table"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
+import { ImportCardAttribution } from "@/components/creditCards/ImportCardAttribution"
+import {
+  formatCardLabel,
+  type CardOption
+} from "@/components/creditCards/cardLabelFormat"
+import { useCreditCards } from "@/data/creditCards/useCreditCards"
 import { useImportProfiles } from "@/data/imports/useImportProfiles"
 import { useImportsMutation } from "@/data/imports/useImportsMutation"
 import {
@@ -61,6 +68,7 @@ import {
   ImportEncoding,
   ImportNumberFormat,
   MappingSuggestion,
+  type RowPreview,
   decodeCsv,
   detectCsvStructure,
   inferFieldMapping,
@@ -123,6 +131,7 @@ type ServerPreview = {
 type ImportView = "upload" | "review"
 
 const pageSize = 100
+const noCards: readonly CardOption[] = []
 
 export const Import = () => {
   const { selectedGroup } = useActiveGroup()
@@ -132,6 +141,7 @@ export const Import = () => {
   const [loaded, setLoaded] = useState<LoadedFile | null>(null)
   const [draft, setDraft] = useState<DraftConfig | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState("")
+  const [fileCardId, setFileCardId] = useState<string | null>(null)
   const [billMonth, setBillMonth] = useState("")
   const [excludedRows, setExcludedRows] = useState<Set<number>>(new Set())
   const [importView, setImportView] = useState<ImportView>("upload")
@@ -150,6 +160,7 @@ export const Import = () => {
     count: number
   } | null>(null)
   const profileAppliedFor = useRef<string | null>(null)
+  const draftGroupId = useRef(groupId)
   const { data: profiles, isFetched: profilesFetched } = useImportProfiles({
     groupId,
     fingerprint: loaded?.fingerprint
@@ -160,6 +171,23 @@ export const Import = () => {
   )
   const creditCardSelected = selectedAccount?.type === "credit"
   const {
+    data: cards = noCards,
+    isLoading: cardsLoading,
+    isError: cardsError,
+    refetch: retryCards
+  } = useCreditCards({
+    groupId: creditCardSelected ? groupId : undefined,
+    accountId: creditCardSelected ? selectedAccountId : undefined,
+    includeArchived: true
+  })
+  const accountCards = useMemo(
+    () => cards.filter((card) => card.accountId === selectedAccountId),
+    [cards, selectedAccountId]
+  )
+  const fileCardAvailable =
+    fileCardId === null ||
+    accountCards.some((card) => card.id === fileCardId && !card.archived)
+  const {
     reviewMonth,
     setReviewMonth,
     resetReviewMonth,
@@ -169,26 +197,57 @@ export const Import = () => {
     billMonth
   )
   const config = completeConfig(draft)
+  const mappedCardsAvailable = (config?.creditCardMappings ?? []).every(
+    ({ creditCardId }) =>
+      creditCardId === null ||
+      accountCards.some((card) => card.id === creditCardId && !card.archived)
+  )
   const normalization = useMemo(
     () =>
       loaded && config
         ? normalizeImportRows({
             matrix: loaded.matrix,
             structure: loaded.structure,
-            config,
-            excludedRows
+            config: creditCardSelected
+              ? config
+              : { ...config, creditCardColumn: null, creditCardMappings: [] },
+            excludedRows,
+            ...(creditCardSelected
+              ? {
+                  creditCardId: fileCardId,
+                  creditCards: accountCards,
+                  accountId: selectedAccountId
+                }
+              : {})
           })
         : null,
-    [config, excludedRows, loaded]
+    [
+      config,
+      excludedRows,
+      loaded,
+      creditCardSelected,
+      fileCardId,
+      accountCards,
+      selectedAccountId
+    ]
   )
   const payload = useMemo<CreateImportInputDto | null>(() => {
     if (
       !loaded ||
       !config ||
       !groupId ||
-      !selectedAccountId ||
+      !selectedAccount ||
       (creditCardSelected &&
-        (!billMonth || !reviewMonth || reviewMonthLoading)) ||
+        (!billMonth ||
+          !reviewMonth ||
+          reviewMonthLoading ||
+          !fileCardAvailable ||
+          !mappedCardsAvailable ||
+          ((fileCardId !== null ||
+            (config.creditCardMappings ?? []).some(
+              (mapping) => mapping.creditCardId !== null
+            )) &&
+            (cardsLoading || cardsError)))) ||
       !normalization ||
       normalization.summary.errorCount > 0 ||
       normalization.normalizedRows.length === 0
@@ -198,6 +257,7 @@ export const Import = () => {
     return {
       groupId,
       accountId: selectedAccountId,
+      ...(creditCardSelected ? { creditCardId: fileCardId } : {}),
       billMonth: creditCardSelected ? billMonth : null,
       reviewMonth: creditCardSelected ? reviewMonth : undefined,
       fileName: loaded.file.name,
@@ -205,7 +265,9 @@ export const Import = () => {
       fileHash: loaded.hash,
       sourceFingerprint: loaded.fingerprint,
       excludedRowCount: normalization.summary.excludedRowCount,
-      config,
+      config: creditCardSelected
+        ? config
+        : { ...config, creditCardColumn: null, creditCardMappings: [] },
       rows: normalization.normalizedRows
     }
   }, [
@@ -217,11 +279,31 @@ export const Import = () => {
     groupId,
     loaded,
     normalization,
-    selectedAccountId
+    selectedAccountId,
+    selectedAccount,
+    fileCardId,
+    fileCardAvailable,
+    mappedCardsAvailable,
+    cardsLoading,
+    cardsError
   ])
   const payloadKey = payload ? JSON.stringify(payload) : ""
   const currentServerPreview =
     serverPreview?.key === payloadKey ? serverPreview.result : null
+
+  useEffect(() => {
+    if (draftGroupId.current === groupId) return
+    draftGroupId.current = groupId
+    setSelectedAccountId("")
+    setFileCardId(null)
+    setDraft((current) =>
+      current ? { ...current, creditCardMappings: [] } : current
+    )
+    setBillMonth("")
+    resetReviewMonth()
+    setServerPreview(null)
+    profileAppliedFor.current = null
+  }, [groupId, resetReviewMonth])
 
   useEffect(() => {
     if (
@@ -235,6 +317,8 @@ export const Import = () => {
     if (profiles?.length === 1) {
       setDraft({ ...profiles[0].config, version: 1 })
       setSelectedAccountId(profiles[0].accountId)
+      setFileCardId(null)
+      setServerPreview(null)
       return
     }
     if ((profiles?.length ?? 0) > 1) return
@@ -298,6 +382,7 @@ export const Import = () => {
         draftFromSuggestion(suggestion, detected.structure, decoded.encoding)
       )
       setSelectedAccountId("")
+      setFileCardId(null)
       setBillMonth("")
       setExcludedRows(new Set())
       setServerPreview(null)
@@ -350,6 +435,7 @@ export const Import = () => {
       suggestion
     })
     setDraft(draftFromSuggestion(suggestion, detected.structure, encoding))
+    setFileCardId(null)
     setExcludedRows(new Set())
     setServerPreview(null)
     profileAppliedFor.current = null
@@ -366,6 +452,7 @@ export const Import = () => {
     const suggestion = inferFieldMapping(loaded.matrix, structure)
     setLoaded({ ...loaded, structure, suggestion })
     setDraft(draftFromSuggestion(suggestion, structure, loaded.encoding))
+    setFileCardId(null)
     setExcludedRows(new Set())
     setServerPreview(null)
     setReviewPage(0)
@@ -375,6 +462,7 @@ export const Import = () => {
     setLoaded(null)
     setDraft(null)
     setSelectedAccountId("")
+    setFileCardId(null)
     setBillMonth("")
     setExcludedRows(new Set())
     setServerPreview(null)
@@ -412,7 +500,7 @@ export const Import = () => {
       <FinaPageHeader
         eyebrow="Imports"
         marker="05"
-        title="Statements, in."
+        title="Imports"
         description="Bring CSV statements into the active workspace, review every inferred field, and keep a clear import history."
         actions={
           <Button
@@ -433,9 +521,9 @@ export const Import = () => {
 
       <main className="space-y-6 p-5 md:p-8">
         {success ? (
-          <Alert className="rounded-none border-2 border-fina-ink bg-fina-lime shadow-fina-sm">
+          <Alert className="rounded-md border border-emerald-200 bg-emerald-50 text-emerald-900 shadow-fina-sm dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
             <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription className="font-semibold text-fina-ink">
+            <AlertDescription className="font-semibold text-foreground">
               Imported {success.count} transactions.{" "}
               <Link
                 className="underline"
@@ -452,12 +540,12 @@ export const Import = () => {
       </main>
 
       <Dialog open={importOpen} onOpenChange={handleImportOpenChange}>
-        <DialogContent className="left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-fina-grid p-0 text-fina-ink sm:rounded-none">
-          <DialogHeader className="shrink-0 border-b-[3px] border-fina-ink bg-fina-lime px-6 py-5 pr-14">
-            <DialogTitle className="text-2xl font-black uppercase tracking-[-0.04em]">
+        <DialogContent className="left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-fina-canvas p-0 text-foreground sm:rounded-md">
+          <DialogHeader className="shrink-0 border-b border-fina-grid bg-fina-surface px-6 py-5 pr-14">
+            <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
               {loaded ? "Review and import" : "Import a CSV file"}
             </DialogTitle>
-            <DialogDescription className="font-semibold text-fina-ink/65">
+            <DialogDescription className="text-foreground/60">
               {loaded
                 ? "Review the inferred configuration and normalized transactions before importing."
                 : `CSV only, up to ${formatBytes(IMPORT_LIMITS.maxFileBytes)}. The original file is retained securely with the import.`}
@@ -476,19 +564,19 @@ export const Import = () => {
               <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center">
                 <div className="w-full space-y-5">
                   <div>
-                    <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-fina-ink/55">
+                    <div className="font-mono text-[10px] font-semibold tracking-[0.18em] text-foreground/55">
                       Step / 01
                     </div>
-                    <h2 className="mt-2 text-3xl font-black uppercase tracking-[-0.045em]">
+                    <h2 className="mt-2 text-3xl font-semibold tracking-[-0.045em]">
                       Choose a statement
                     </h2>
-                    <p className="mt-2 text-sm font-semibold text-fina-ink/60">
+                    <p className="mt-2 text-sm font-semibold text-foreground/60">
                       Fina will infer the file structure and open the
                       transaction preview automatically.
                     </p>
                   </div>
                   <label
-                    className="flex min-h-64 cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-fina-ink bg-fina-surface p-8 text-center font-black shadow-fina-md transition-colors hover:bg-fina-yellow"
+                    className="flex min-h-64 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-fina-grid bg-fina-surface p-8 text-center font-medium shadow-fina-sm transition-colors hover:border-fina-violet/40 hover:bg-fina-canvas"
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault()
@@ -520,14 +608,14 @@ export const Import = () => {
             )}
 
             {loaded && draft && importView === "review" && (
-              <Card className="rounded-none border-2 border-fina-ink bg-fina-surface shadow-fina-md">
-                <CardHeader className="border-b-2 border-fina-ink bg-fina-yellow">
+              <Card className="rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm">
+                <CardHeader className="border-b border-fina-grid bg-fina-canvas">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <CardTitle className="text-xl font-black tracking-[-0.03em]">
+                      <CardTitle className="text-xl font-semibold tracking-[-0.03em]">
                         {loaded.file.name}
                       </CardTitle>
-                      <CardDescription className="font-semibold text-fina-ink/60">
+                      <CardDescription className="font-semibold text-foreground/60">
                         {formatBytes(loaded.file.size)} · {loaded.encoding} ·{" "}
                         {delimiterName(loaded.structure.delimiter)} delimiter ·{" "}
                         {loaded.structure.headerRecordIndex === null
@@ -569,6 +657,22 @@ export const Import = () => {
                       value={selectedAccountId}
                       onValueChange={(value) => {
                         setSelectedAccountId(value)
+                        setFileCardId(null)
+                        setDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                creditCardColumn:
+                                  accounts.find(
+                                    (account) => account.id === value
+                                  )?.type === "credit"
+                                    ? (current.creditCardColumn ??
+                                      loaded.suggestion.creditCardColumn)
+                                    : null,
+                                creditCardMappings: []
+                              }
+                            : current
+                        )
                         setBillMonth("")
                         resetReviewMonth()
                         setServerPreview(null)
@@ -576,14 +680,23 @@ export const Import = () => {
                     >
                       <SelectTrigger
                         id="destination-account"
-                        className="h-11 max-w-md rounded-none border-2 border-fina-ink bg-fina-surface font-semibold shadow-fina-sm"
+                        className="h-11 max-w-md rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm"
                       >
                         <SelectValue placeholder="Select the account to confirm" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-none border-2 border-fina-ink">
+                      <SelectContent className="rounded-md border border-fina-grid">
                         {accounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
-                            {account.name} ({account.type})
+                            <span className="flex items-center gap-2">
+                              <FinancialInstitutionLogo
+                                institutionId={account.institutionId}
+                                accountName={account.name}
+                                accountType={account.type}
+                                className="size-4"
+                                decorative
+                              />
+                              {account.name} ({account.type})
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -621,11 +734,52 @@ export const Import = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div className="border-t-2 border-fina-ink pt-5">
-                    <h3 className="text-xl font-black uppercase tracking-[-0.03em]">
+                  {creditCardSelected && draft ? (
+                    <ImportCardAttribution
+                      cards={accountCards}
+                      isLoading={cardsLoading}
+                      isError={cardsError}
+                      onRetry={() => {
+                        void retryCards()
+                      }}
+                      disabled={processing !== null}
+                      fallbackCardId={fileCardId}
+                      onFallbackChange={(id) => {
+                        setFileCardId(id)
+                        setServerPreview(null)
+                      }}
+                      column={draft.creditCardColumn ?? null}
+                      columns={columnOptions(loaded)}
+                      onColumnChange={(column) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          creditCardColumn: column,
+                          creditCardMappings: []
+                        }))
+                      }
+                      identifiers={cardSourceValues(
+                        normalization?.rows ?? [],
+                        draft.creditCardMappings ?? []
+                      )}
+                      mappings={draft.creditCardMappings ?? []}
+                      onMappingChange={(value, creditCardId) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          creditCardMappings: [
+                            ...(current.creditCardMappings ?? []).filter(
+                              (mapping) => mapping.value !== value
+                            ),
+                            { value, creditCardId }
+                          ]
+                        }))
+                      }
+                    />
+                  ) : null}
+                  <div className="border-t border-fina-grid pt-5">
+                    <h3 className="text-xl font-semibold tracking-[-0.03em]">
                       Review and map
                     </h3>
-                    <p className="text-sm font-semibold text-fina-ink/60">
+                    <p className="text-sm font-semibold text-foreground/60">
                       Edit a column header to change its CSV source. The preview
                       and validation state update immediately.
                     </p>
@@ -662,7 +816,7 @@ export const Import = () => {
                     </div>
                   )}
 
-                  <div className="overflow-auto border-2 border-fina-ink">
+                  <div className="overflow-auto border border-fina-grid">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -917,6 +1071,9 @@ export const Import = () => {
                             </MappingHeader>
                           </TableHead>
                           <TableHead>Status</TableHead>
+                          {creditCardSelected ? (
+                            <TableHead>Card</TableHead>
+                          ) : null}
                           <TableHead>Exclude</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -924,7 +1081,7 @@ export const Import = () => {
                         {!normalization ? (
                           <TableRow>
                             <TableCell
-                              colSpan={7}
+                              colSpan={creditCardSelected ? 8 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
                               Complete the Date and Amount headers to preview
@@ -934,7 +1091,7 @@ export const Import = () => {
                         ) : visibleRows.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={7}
+                              colSpan={creditCardSelected ? 8 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
                               No rows match this filter.
@@ -961,6 +1118,23 @@ export const Import = () => {
                                         .join("; ")
                                     : "Ready"}
                               </TableCell>
+                              {creditCardSelected ? (
+                                <TableCell>
+                                  {row.excluded
+                                    ? "—"
+                                    : row.issues.some(
+                                          (issue) =>
+                                            issue.field === "creditCard"
+                                        )
+                                      ? "Needs mapping"
+                                      : formatCardLabel(
+                                          accountCards.find(
+                                            (card) =>
+                                              card.id === row.creditCardId
+                                          )
+                                        )}
+                                </TableCell>
+                              ) : null}
                               <TableCell>
                                 {row.exclusionReason === "empty" ||
                                 row.exclusionReason === "repeated-header" ||
@@ -989,6 +1163,17 @@ export const Import = () => {
                       </TableBody>
                     </Table>
                   </div>
+                  {creditCardSelected && normalization ? (
+                    <p
+                      aria-label="Card attribution summary"
+                      className="text-[13px] text-muted-foreground"
+                    >
+                      {cardAttributionCounts(
+                        normalization.rows,
+                        accountCards
+                      ).join(" · ")}
+                    </p>
+                  ) : null}
                   {filteredRows.length > pageSize && (
                     <div className="flex items-center justify-between">
                       <Button
@@ -1015,7 +1200,7 @@ export const Import = () => {
                       </Button>
                     </div>
                   )}
-                  <div className="sticky bottom-0 z-10 -mx-6 -mb-6 space-y-3 border-t-2 border-fina-ink bg-fina-yellow/95 px-6 py-4 backdrop-blur">
+                  <div className="sticky bottom-0 z-10 -mx-6 -mb-6 space-y-3 border-t border-fina-grid bg-fina-surface/95 px-6 py-4 backdrop-blur">
                     {currentServerPreview?.duplicate && (
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
@@ -1033,7 +1218,18 @@ export const Import = () => {
                             ? "transaction"
                             : "transactions"}
                           {selectedAccount ? (
-                            <> → {selectedAccount.name}</>
+                            <span className="inline-flex items-center gap-1.5">
+                              {" "}
+                              →
+                              <FinancialInstitutionLogo
+                                institutionId={selectedAccount.institutionId}
+                                accountName={selectedAccount.name}
+                                accountType={selectedAccount.type}
+                                className="size-3.5"
+                                decorative
+                              />
+                              {selectedAccount.name}
+                            </span>
                           ) : null}
                         </p>
                         <p className="text-sm text-muted-foreground">
@@ -1133,18 +1329,18 @@ export const Import = () => {
               open={configurationOpen}
               onOpenChange={setConfigurationOpen}
             >
-              <DialogContent className="flex h-[92dvh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden rounded-none border-2 border-fina-ink bg-fina-grid p-0 shadow-fina-lg">
-                <DialogHeader className="shrink-0 border-b-2 border-fina-ink bg-fina-sky px-6 py-5 pr-14">
-                  <DialogTitle className="text-2xl font-black uppercase tracking-[-0.04em]">
+              <DialogContent className="flex h-[92dvh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden rounded-md border border-fina-grid bg-fina-canvas p-0 shadow-fina-lg">
+                <DialogHeader className="shrink-0 border-b border-fina-grid bg-fina-surface px-6 py-5 pr-14">
+                  <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
                     Edit file configuration
                   </DialogTitle>
-                  <DialogDescription className="font-semibold text-fina-ink/65">
+                  <DialogDescription className="text-foreground/60">
                     Click a source line to mark it as the single header, the
                     start of data, or the end of data.
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid shrink-0 gap-4 border-b-2 border-fina-ink bg-fina-surface px-6 py-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                <div className="grid shrink-0 gap-4 border-b border-fina-grid bg-fina-surface px-6 py-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <LabeledSelect
                     label="Delimiter"
                     value={draft.delimiter}
@@ -1190,7 +1386,7 @@ export const Import = () => {
                   onStructureChange={updateStructure}
                 />
 
-                <DialogFooter className="shrink-0 border-t-2 border-fina-ink bg-fina-yellow px-6 py-4">
+                <DialogFooter className="shrink-0 border-t border-fina-grid bg-fina-canvas px-6 py-4">
                   <Button
                     type="button"
                     variant="fina-primary"
@@ -1393,6 +1589,8 @@ function draftFromSuggestion(
     dateColumn: suggestion.dateColumn,
     descriptionColumns: suggestion.descriptionColumns,
     installmentColumn: suggestion.installmentColumn,
+    creditCardColumn: suggestion.creditCardColumn,
+    creditCardMappings: [],
     amountMode: suggestion.amountMode,
     amountColumn: suggestion.amountColumn,
     debitColumn: suggestion.debitColumn,
@@ -1414,6 +1612,46 @@ function completeConfig(draft: DraftConfig | null): ImportMappingConfig | null {
     return null
   }
   return draft as ImportMappingConfig
+}
+
+function cardSourceValues(
+  rows: readonly RowPreview[],
+  mappings: readonly { value: string }[]
+): { value: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    if (!row.excluded && row.creditCardIdentifier) {
+      counts.set(
+        row.creditCardIdentifier,
+        (counts.get(row.creditCardIdentifier) ?? 0) + 1
+      )
+    }
+  }
+  for (const mapping of mappings) {
+    if (!counts.has(mapping.value)) counts.set(mapping.value, 0)
+  }
+  return [...counts].map(([value, count]) => ({ value, count }))
+}
+
+function cardAttributionCounts(
+  rows: readonly RowPreview[],
+  cards: readonly CardOption[]
+): string[] {
+  const cardById = new Map(cards.map((card) => [card.id, card]))
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    if (row.excluded) continue
+    const label = row.issues.some((issue) => issue.field === "creditCard")
+      ? "Needs mapping"
+      : formatCardLabel(
+          row.creditCardId ? cardById.get(row.creditCardId) : null
+        )
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+  return [...counts].map(
+    ([label, count]) =>
+      `${label}: ${count} ${count === 1 ? "transaction" : "transactions"}`
+  )
 }
 
 function columnOptions(loaded: LoadedFile): Array<[string, string]> {

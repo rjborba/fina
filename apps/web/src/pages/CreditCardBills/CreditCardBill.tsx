@@ -4,17 +4,15 @@ import {
   FinaSectionLabel
 } from "@/components/FinaPage"
 import { TransactionsSort } from "@/components/transactions/TransactionsSort"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import {
   TransactionFilterPanel,
   type TransactionFilterValue
 } from "@/components/transactions/TransactionsFilter"
-import TransactionsTable, {
-  type TransactionsTableProps
-} from "@/components/transactions/TransactionsTable"
-import {
-  DEFAULT_TRANSACTION_SORT,
-  type TransactionSortOption
-} from "@/components/transactions/transactionSort"
+import TransactionsList, {
+  type TransactionsListProps
+} from "@/components/transactions/TransactionsList"
+import { useTransactionDisplayPreferences } from "@/components/transactions/useTransactionDisplayPreferences"
 import { Button } from "@/components/ui/button"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { FinaBadge, FinaSurface } from "@/components/ui/fina"
@@ -29,9 +27,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  CreditCard,
   Filter,
-  Landmark,
   Link2,
   ReceiptText,
   TriangleAlert,
@@ -40,6 +36,7 @@ import {
 import { useCallback, useMemo, useState } from "react"
 import { Link, useParams } from "react-router"
 import { BillReviewMonth } from "./BillReviewMonth"
+import { BillCardsBreakdown } from "./BillCardsBreakdown"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -109,9 +106,8 @@ function CreditCardBillDetails({
     updateMutation: { mutateAsync: updateTransaction },
     removeManyMutation: { mutateAsync: removeTransactions }
   } = useTransactionMutation()
-  const [sort, setSort] = useState<TransactionSortOption>(
-    DEFAULT_TRANSACTION_SORT
-  )
+  const { sort, setSort, displayProperties, setDisplayProperties } =
+    useTransactionDisplayPreferences()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filterResetKey, setFilterResetKey] = useState(0)
   const [filters, setFilters] = useState<TransactionFilterValue>({
@@ -120,15 +116,35 @@ function CreditCardBillDetails({
   })
   const hasFilters =
     filters.partialDescription.trim().length > 0 ||
-    filters.categoriesId.length > 0
+    filters.categoriesId.length > 0 ||
+    !!filters.creditCardsId?.length ||
+    !!filters.importSource ||
+    !!filters.importsId?.length ||
+    filters.minValue !== undefined ||
+    filters.maxValue !== undefined
   const filteredTransactions = useMemo(() => {
     const search = filters.partialDescription.trim().toLowerCase()
     const categoryIds = new Set(filters.categoriesId)
+    const cardIds = new Set(filters.creditCardsId)
+    const importIds = new Set(filters.importsId)
     return (data?.transactions ?? []).filter(
       (transaction) =>
         (!search ||
           (transaction.description ?? "").toLowerCase().includes(search)) &&
-        (!categoryIds.size || categoryIds.has(transaction.category?.id ?? "-1"))
+        (!categoryIds.size ||
+          categoryIds.has(transaction.category?.id ?? "-1")) &&
+        (!cardIds.size || cardIds.has(transaction.creditCard?.id ?? "-1")) &&
+        (!filters.importSource ||
+          (filters.importSource === "imported"
+            ? !!transaction.import
+            : !transaction.import)) &&
+        (!importIds.size ||
+          (!!transaction.import && importIds.has(transaction.import.id))) &&
+        (filters.minValue === undefined ||
+          (transaction.value !== null &&
+            transaction.value >= filters.minValue)) &&
+        (filters.maxValue === undefined ||
+          (transaction.value !== null && transaction.value <= filters.maxValue))
     )
   }, [data?.transactions, filters])
   const matchingTotal = filteredTransactions.reduce(
@@ -141,7 +157,7 @@ function CreditCardBillDetails({
   }
 
   const handleUpdateTransaction = useCallback<
-    TransactionsTableProps["onUpdateTransaction"]
+    TransactionsListProps["onUpdateTransaction"]
   >(
     async (id, transaction) => {
       await updateTransaction({ id, transaction })
@@ -149,7 +165,7 @@ function CreditCardBillDetails({
     [updateTransaction]
   )
   const handleDeleteTransactions = useCallback<
-    TransactionsTableProps["onDeleteTransactions"]
+    TransactionsListProps["onDeleteTransactions"]
   >(
     async (ids) => {
       await removeTransactions(ids)
@@ -160,7 +176,7 @@ function CreditCardBillDetails({
   if (isLoading) {
     return (
       <FinaPage>
-        <div className="p-8 font-mono text-xs font-black uppercase">
+        <div className="p-8 font-mono text-xs font-semibold">
           Loading credit card bill...
         </div>
       </FinaPage>
@@ -172,9 +188,7 @@ function CreditCardBillDetails({
       <FinaPage>
         <div className="p-8">
           <FinaSurface tone="danger" className="p-6">
-            <h1 className="text-2xl font-black uppercase">
-              Bill not available
-            </h1>
+            <h1 className="text-2xl font-semibold">Bill not available</h1>
             <p className="mt-2 font-semibold">
               This bill does not exist or is not available in the active group.
             </p>
@@ -223,7 +237,7 @@ function CreditCardBillDetails({
   }
 
   return (
-    <div className="flex min-h-svh min-w-0 bg-fina-grid text-fina-ink">
+    <div className="flex min-h-svh min-w-0 bg-fina-canvas text-foreground">
       <div className="min-w-0 flex-1">
         <FinaPage>
           <FinaPageHeader
@@ -232,6 +246,13 @@ function CreditCardBillDetails({
             title={`${bill.accountName} bill`}
             description={
               <div className="flex flex-wrap items-center gap-3">
+                <FinancialInstitutionLogo
+                  institutionId={bill.accountInstitutionId}
+                  accountName={bill.accountName}
+                  accountType="credit"
+                  className="size-5"
+                  decorative
+                />
                 <span>
                   Due {dayjs(bill.dueDate).format("DD MMMM YYYY")} ·{" "}
                   {bill.transactionCount} transactions
@@ -251,34 +272,41 @@ function CreditCardBillDetails({
           <main className="space-y-8 px-4 py-6 md:px-8 md:py-8">
             <section
               aria-label="Bill summary"
-              className="grid border-l-2 border-t-2 border-fina-ink sm:grid-cols-2 xl:grid-cols-4"
+              className="grid overflow-hidden rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm sm:grid-cols-2 xl:grid-cols-4"
             >
-              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-ink p-5 text-white">
-                <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white/65">
-                  <CreditCard className="size-4" /> Bill total
+              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
+                  <FinancialInstitutionLogo
+                    institutionId={bill.accountInstitutionId}
+                    accountName={bill.accountName}
+                    accountType="credit"
+                    className="size-4"
+                    decorative
+                  />
+                  Bill total
                 </div>
-                <div className="mt-4 font-mono text-3xl font-black tracking-[-0.06em]">
+                <div className="mt-4 font-mono text-3xl font-semibold tracking-[-0.06em]">
                   {currencyFormatter.format(bill.total)}
                 </div>
               </div>
-              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-lime p-5">
-                <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
-                  <CalendarDays className="size-4" /> Due date
+              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
+                  <CalendarDays className="size-4 text-fina-violet" /> Due date
                 </div>
-                <div className="mt-4 text-2xl font-black uppercase tracking-[-0.05em]">
+                <div className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
                   {dayjs(bill.dueDate).format("DD MMM YYYY")}
                 </div>
               </div>
-              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-sky p-5">
-                <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
-                  <ReceiptText className="size-4" /> Entries
+              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
+                  <ReceiptText className="size-4 text-fina-violet" /> Entries
                 </div>
-                <div className="mt-4 text-3xl font-black tracking-[-0.06em]">
+                <div className="mt-4 text-3xl font-semibold tracking-[-0.06em]">
                   {bill.transactionCount}
                 </div>
               </div>
-              <div className="border-b-2 border-r-2 border-fina-ink bg-fina-yellow p-5">
-                <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+              <div className="border-b border-fina-grid p-5 xl:border-b-0">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
                   {bill.status === "reconciled" || bill.status === "empty" ? (
                     <CheckCircle2 className="size-4" />
                   ) : (
@@ -286,7 +314,7 @@ function CreditCardBillDetails({
                   )}
                   {bill.status === "empty" ? "Bill status" : "Reconciliation"}
                 </div>
-                <div className="mt-4 text-lg font-black uppercase tracking-[-0.04em]">
+                <div className="mt-4 text-lg font-semibold tracking-[-0.04em]">
                   {status.label}
                 </div>
               </div>
@@ -303,13 +331,13 @@ function CreditCardBillDetails({
                 <FinaSectionLabel>Payment / Reconciliation</FinaSectionLabel>
                 <h2
                   id="reconciliation-title"
-                  className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+                  className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
                 >
                   {bill.status === "empty"
                     ? "No payment required"
                     : "Match the bill payment"}
                 </h2>
-                <p className="mt-2 max-w-3xl text-sm font-semibold text-fina-ink/65">
+                <p className="mt-2 max-w-3xl text-sm font-semibold text-foreground/65">
                   {status.copy}
                   {bill.status === "empty"
                     ? null
@@ -322,10 +350,8 @@ function CreditCardBillDetails({
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
                     <div>
-                      <p className="font-black uppercase">
-                        Nothing to reconcile
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-fina-ink/65">
+                      <p className="font-semibold">Nothing to reconcile</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground/65">
                         This bill stays in the ledger on its due date with a
                         zero total.
                       </p>
@@ -339,18 +365,27 @@ function CreditCardBillDetails({
                   className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between"
                 >
                   <div className="flex min-w-0 items-start gap-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-surface">
+                    <div className="flex size-11 shrink-0 items-center justify-center border border-fina-grid bg-fina-surface">
                       <Link2 className="size-5" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/55">
+                      <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/55">
                         Linked checking payment
                       </div>
-                      <div className="mt-1 truncate text-lg font-black">
+                      <div className="mt-1 truncate text-lg font-semibold">
                         {bill.payment.description || "Untitled payment"}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] font-bold uppercase">
-                        <span>{bill.payment.accountName}</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <FinancialInstitutionLogo
+                            institutionId={bill.payment.accountInstitutionId}
+                            accountName={bill.payment.accountName}
+                            accountType="checkout"
+                            className="size-3.5"
+                            decorative
+                          />
+                          {bill.payment.accountName}
+                        </span>
                         <span>
                           {dayjs(bill.payment.date).format("DD MMM YYYY")}
                         </span>
@@ -385,14 +420,20 @@ function CreditCardBillDetails({
                       className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between"
                     >
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-sky">
-                          <Landmark className="size-4" />
+                        <div className="flex size-10 shrink-0 items-center justify-center border border-fina-grid bg-fina-sky">
+                          <FinancialInstitutionLogo
+                            institutionId={candidate.accountInstitutionId}
+                            accountName={candidate.accountName}
+                            accountType="checkout"
+                            className="size-7"
+                            decorative
+                          />
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate font-black">
+                          <div className="truncate font-semibold">
                             {candidate.description || "Untitled payment"}
                           </div>
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] font-bold uppercase text-fina-ink/60">
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] font-bold uppercase text-foreground/60">
                             <span>{candidate.accountName}</span>
                             <span>
                               {dayjs(candidate.date).format("DD MMM YYYY")}
@@ -428,10 +469,8 @@ function CreditCardBillDetails({
                   <div className="flex items-start gap-3">
                     <TriangleAlert className="mt-0.5 size-5 shrink-0" />
                     <div>
-                      <p className="font-black uppercase">
-                        No matching payment
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-fina-ink/65">
+                      <p className="font-semibold">No matching payment</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground/65">
                         Add or correct the checking-account transaction, then
                         return here to reconcile it.
                       </p>
@@ -442,18 +481,38 @@ function CreditCardBillDetails({
             </section>
 
             <section aria-labelledby="bill-transactions-title">
+              <BillCardsBreakdown
+                summaries={data.cardSummaries ?? []}
+                roundingAdjustment={data.cardRoundingAdjustment ?? 0}
+                selectedIds={filters.creditCardsId ?? []}
+                onToggleCard={(id) =>
+                  setFilters((current) => ({
+                    ...current,
+                    creditCardsId: current.creditCardsId?.includes(id)
+                      ? current.creditCardsId.filter(
+                          (selected) => selected !== id
+                        )
+                      : [...(current.creditCardsId ?? []), id]
+                  }))
+                }
+              />
               <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <FinaSectionLabel>Bill / Transactions</FinaSectionLabel>
                   <h2
                     id="bill-transactions-title"
-                    className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+                    className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
                   >
                     Purchases in this bill
                   </h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <TransactionsSort value={sort} onValueChange={setSort} />
+                  <TransactionsSort
+                    value={sort}
+                    onValueChange={setSort}
+                    displayProperties={displayProperties}
+                    onDisplayPropertiesChange={setDisplayProperties}
+                  />
                   <Button
                     variant="fina-secondary"
                     lift
@@ -466,7 +525,7 @@ function CreditCardBillDetails({
               </div>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <p
-                  className="font-mono text-xs font-black uppercase tracking-[0.08em]"
+                  className="font-mono text-xs font-semibold tracking-[0.08em]"
                   aria-live="polite"
                 >
                   {filteredTransactions.length} of {bill.transactionCount}{" "}
@@ -488,21 +547,19 @@ function CreditCardBillDetails({
               !filteredTransactions.length &&
               bill.transactionCount > 0 ? (
                 <FinaSurface className="p-8 text-center">
-                  <p className="font-black uppercase">
+                  <p className="font-semibold">
                     No purchases match these filters
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-fina-ink/65">
-                    Clear the search or select different categories to see
-                    purchases in this bill.
+                  <p className="mt-2 text-sm font-semibold text-foreground/65">
+                    Adjust or clear the filters to see purchases in this bill.
                   </p>
                 </FinaSurface>
               ) : (
-                <TransactionsTable
+                <TransactionsList
                   data={filteredTransactions}
                   totalCount={filteredTransactions.length}
-                  pageIndex={0}
-                  pageSize={Math.max(1, filteredTransactions.length)}
                   sort={sort}
+                  displayProperties={displayProperties}
                   dateBasis="purchase-date"
                   isLoading={false}
                   isError={false}
@@ -520,6 +577,8 @@ function CreditCardBillDetails({
         onChange={setFilters}
         isOpen={isFilterOpen}
         onFilterToggle={setIsFilterOpen}
+        allowAccounts={false}
+        cardAccountId={accountId}
       />
     </div>
   )

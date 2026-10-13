@@ -45,12 +45,12 @@ export function ConfirmationDialog({
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent className="rounded-none border-2 border-fina-ink bg-fina-surface shadow-fina-lg">
+      <AlertDialogContent className="rounded-md border border-fina-grid bg-fina-surface shadow-fina-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-2xl font-black uppercase tracking-[-0.04em]">
+          <AlertDialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
             {title}
           </AlertDialogTitle>
-          <AlertDialogDescription className="font-semibold text-fina-ink/65">
+          <AlertDialogDescription className="font-semibold text-foreground/65">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -59,17 +59,17 @@ export function ConfirmationDialog({
             aria-label="Confirmation name"
             autoComplete="off"
             placeholder={`Type ${requiredConfirmationText} to confirm`}
-            className="h-11 rounded-none border-2 border-fina-ink bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
+            className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
           />
         ) : null}
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-none border-2 border-fina-ink">
+          <AlertDialogCancel className="rounded-md border border-fina-grid">
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
-            className="rounded-none border-2 border-fina-ink bg-fina-danger font-black text-fina-ink shadow-fina-sm hover:bg-fina-danger"
+            className="rounded-md border border-fina-grid bg-fina-danger font-semibold text-foreground shadow-fina-sm hover:bg-fina-danger"
             disabled={
               !!requiredConfirmationText &&
               confirmation !== requiredConfirmationText

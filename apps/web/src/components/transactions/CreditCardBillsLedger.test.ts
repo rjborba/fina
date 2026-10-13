@@ -10,6 +10,7 @@ const transaction = (
 ): TransactionOutput =>
   ({
     id,
+    creditCard: null,
     description: id,
     value,
     calculatedDate: date,
@@ -17,12 +18,19 @@ const transaction = (
     reviewMonth: date.slice(0, 7),
     toBeConsideredAt: null,
     date: `${date}T00:00:00.000Z`,
-    bankaccount: { id: type, name: type, type, dueDate: null }
+    bankaccount: {
+      id: type,
+      name: type,
+      type,
+      institutionId: null,
+      dueDate: null
+    }
   }) as TransactionOutput
 
 const bill = (paymentTransactionId?: string): CreditCardBillSummary => ({
   accountId: "credit",
   accountName: "Main card",
+  accountInstitutionId: null,
   billMonth: "2026-06",
   reviewMonth: "2026-05",
   cashFlowDate: "2026-06-05",
@@ -37,7 +45,8 @@ const bill = (paymentTransactionId?: string): CreditCardBillSummary => ({
         value: -100,
         date: "2026-06-05",
         accountId: "checkout",
-        accountName: "Checking"
+        accountName: "Checking",
+        accountInstitutionId: null
       }
     : null
 })

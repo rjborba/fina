@@ -1,4 +1,9 @@
-import { BankaccountOutput, CreateBankaccountInputDto } from '@fina/types';
+import {
+  BankaccountOutput,
+  CreateBankaccountInputDto,
+  inferFinancialInstitutionId,
+  UpdateBankaccountInstitutionInputDto,
+} from '@fina/types';
 import { Injectable } from '@nestjs/common';
 import { Bankaccounts } from './entities/bankaccount.entity';
 import { Groups } from 'src/groups/entities/group.entity';
@@ -25,6 +30,10 @@ export class BankaccountsService {
     const bankaccountEntity = new Bankaccounts({
       name: createBankaccountDto.name,
       type: createBankaccountDto.type,
+      institutionId:
+        createBankaccountDto.institutionId === undefined
+          ? inferFinancialInstitutionId(createBankaccountDto.name)
+          : createBankaccountDto.institutionId,
       dueDate: createBankaccountDto.dueDate,
       removed: false,
       group: { id: createBankaccountDto.groupId } as Groups,
@@ -55,19 +64,7 @@ export class BankaccountsService {
   }
 
   async remove(userId: string, id: string): Promise<{ id: string }> {
-    const account = await this.bankaccountRepository
-      .createQueryBuilder('account')
-      .innerJoinAndSelect('account.group', 'group_record')
-      .innerJoin(
-        'group_record.userGroups',
-        'membership',
-        'membership.user_id = :userId',
-        { userId },
-      )
-      .where('account.id = :id', { id })
-      .andWhere('account.removed = false')
-      .getOne();
-    if (!account) throw new NotFoundException('Resource not found');
+    const account = await this.findEntity(userId, id);
     await this.bankaccountRepository.update(
       {
         id,
@@ -78,12 +75,45 @@ export class BankaccountsService {
     return { id };
   }
 
+  async updateInstitution(
+    userId: string,
+    id: string,
+    input: UpdateBankaccountInstitutionInputDto,
+  ): Promise<BankaccountOutput> {
+    const account = await this.findEntity(userId, id);
+    await this.authorization.assertMember(userId, account.group.id);
+    await this.bankaccountRepository.update(
+      { id, group: { id: account.group.id }, removed: false },
+      { institutionId: input.institutionId },
+    );
+    return this.toOutput(await this.findEntity(userId, id));
+  }
+
+  private async findEntity(userId: string, id: string): Promise<Bankaccounts> {
+    const account = await this.bankaccountRepository
+      .createQueryBuilder('account')
+      .innerJoinAndSelect('account.group', 'group_record')
+      .innerJoinAndSelect('account.user', 'assigned_user')
+      .innerJoin(
+        'group_record.userGroups',
+        'membership',
+        'membership.user_id = :userId',
+        { userId },
+      )
+      .where('account.id = :id', { id })
+      .andWhere('account.removed = false')
+      .getOne();
+    if (!account) throw new NotFoundException('Resource not found');
+    return account;
+  }
+
   private toOutput(account: Bankaccounts): BankaccountOutput {
     return {
       id: account.id,
       createdAt: toDateTimeOutput(account.createdAt),
       name: account.name,
       type: account.type,
+      institutionId: account.institutionId ?? null,
       dueDate: account.dueDate,
       groupId: account.group.id,
       userId: account.user.id,

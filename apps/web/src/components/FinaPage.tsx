@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 
-import { FinaBadge } from "@/components/ui/fina"
 import { cn } from "@/lib/utils"
 
 interface FinaPageProps {
@@ -18,30 +17,28 @@ interface FinaPageHeaderProps {
 
 export function FinaPage({ children, className }: FinaPageProps) {
   return (
-    <div className="min-h-svh bg-fina-grid text-fina-ink">
-      <div className={cn("mx-auto w-full max-w-[1600px]", className)}>
+    <div className="min-h-svh bg-fina-canvas text-foreground">
+      <div className={cn("mx-auto w-full max-w-[1680px]", className)}>
         {children}
       </div>
     </div>
   )
 }
 
-export function FinaPageHeader({
-  actions,
-  description,
-  eyebrow,
-  marker = "01",
-  title
-}: FinaPageHeaderProps) {
+export function FinaPageHeader(props: FinaPageHeaderProps) {
+  const { actions, description, eyebrow, title } = props
+
   return (
-    <header className="transactions-hero border-b-[3px] border-fina-ink px-5 pb-10 pt-16 md:px-8 md:py-12">
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+    <header className="transactions-hero border-b border-fina-grid px-5 pb-7 pt-16 md:px-8 md:py-7">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-4xl">
-          <FinaBadge>{`${eyebrow} / ${marker}`}</FinaBadge>
-          <h1 className="mt-5 max-w-4xl text-5xl font-black uppercase leading-[0.86] tracking-[-0.075em] sm:text-6xl lg:text-7xl">
+          <div className="text-xs font-medium text-foreground/45">
+            {eyebrow}
+          </div>
+          <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-4xl">
             {title}
           </h1>
-          <div className="mt-6 max-w-2xl text-sm font-semibold leading-6 text-fina-ink/70 sm:text-base">
+          <div className="mt-2 max-w-2xl text-sm leading-6 text-foreground/60">
             {description}
           </div>
         </div>
@@ -53,8 +50,6 @@ export function FinaPageHeader({
 
 export function FinaSectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-fina-ink/60">
-      {children}
-    </div>
+    <div className="text-xs font-medium text-foreground/50">{children}</div>
   )
 }

@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { CreditCardDueDaySchema } from "./BankaccountApi.dto";
+import { FinancialInstitutionIdSchema } from "./FinancialInstitution";
 
 export const CreateBankaccountInputDtoSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
     type: z.string().trim().min(1).max(40),
+    institutionId: FinancialInstitutionIdSchema.nullable().optional(),
     dueDate: CreditCardDueDaySchema.nullable(),
     groupId: z.string().regex(/^\d+$/)
   })

@@ -1,13 +1,27 @@
 import dayjs from "dayjs"
 import { atom } from "jotai"
 
-const defaultTransactionFilter = {
-  startDate: dayjs().startOf("month").toDate(),
-  endDate: dayjs().endOf("month").toDate(),
-  partialDescription: "",
-  categoriesId: [] as string[]
+export type TransactionFilterType = {
+  startDate: Date
+  endDate: Date
+  partialDescription: string
+  categoriesId: string[]
+  accountsId?: string[]
+  creditCardsId?: string[]
+  importSource?: "imported" | "manual"
+  importsId?: string[]
+  minValue?: number
+  maxValue?: number
+  reviewMonths?: string[]
 }
 
-export type TransactionFilterType = typeof defaultTransactionFilter
+export function createDefaultTransactionFilter(): TransactionFilterType {
+  return {
+    startDate: dayjs().startOf("month").toDate(),
+    endDate: dayjs().endOf("month").toDate(),
+    partialDescription: "",
+    categoriesId: [] as string[]
+  }
+}
 
-export const transactionFilterAtom = atom(defaultTransactionFilter)
+export const transactionFilterAtom = atom(createDefaultTransactionFilter())

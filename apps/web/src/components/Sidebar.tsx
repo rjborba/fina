@@ -84,19 +84,19 @@ export function Sidebar() {
     <SidebarShadcn
       variant="sidebar"
       collapsible="icon"
-      className="border-r-2 border-fina-ink"
+      className="border-r border-sidebar-border"
     >
-      <SidebarHeader className="border-b-2 border-white/25 p-3">
-        <div className="flex h-14 items-center gap-3 overflow-hidden px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <div className="flex size-9 shrink-0 items-center justify-center border-2 border-white bg-fina-lime font-black text-fina-ink shadow-[3px_3px_0_#fff]">
+      <SidebarHeader className="border-b border-sidebar-border p-3">
+        <div className="flex h-12 items-center gap-3 overflow-hidden px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-fina-violet text-sm font-semibold text-white shadow-fina-sm">
             F
           </div>
           <div className="min-w-0 leading-none group-data-[collapsible=icon]:hidden">
-            <div className="text-xl font-black tracking-[-0.08em] text-white">
-              FINA.
+            <div className="text-[15px] font-semibold tracking-[-0.03em] text-sidebar-foreground">
+              Fina
             </div>
-            <div className="mt-1 text-[9px] font-black uppercase tracking-[0.24em] text-fina-lime">
-              Money, in focus
+            <div className="mt-1 text-[10px] text-sidebar-foreground/50">
+              Financial workspace
             </div>
           </div>
         </div>
@@ -104,8 +104,8 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
-            Navigation / 01
+          <SidebarGroupLabel className="text-[11px] font-medium text-sidebar-foreground/50">
+            Workspace
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -115,7 +115,7 @@ export function Sidebar() {
                     asChild
                     isActive={location.pathname === item.path}
                     tooltip={item.title}
-                    className="h-11 rounded-none border border-transparent px-3 font-bold uppercase tracking-[-0.02em] text-white hover:border-fina-ink hover:bg-fina-lime hover:text-fina-ink data-[active=true]:border-fina-ink data-[active=true]:bg-fina-lime data-[active=true]:text-fina-ink data-[active=true]:shadow-[3px_3px_0_#fff]"
+                    className="h-9 rounded-md border border-transparent px-3 text-[13px] font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
                   >
                     <NavLink to={item.path} end={item.path === "/"}>
                       {item.icon}
@@ -128,7 +128,7 @@ export function Sidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t-2 border-white/25 p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -137,7 +137,7 @@ export function Sidebar() {
               aria-label={
                 isCollapsed ? "Expand navigation" : "Collapse navigation"
               }
-              className="h-10 rounded-none border border-white/30 px-3 font-mono text-[10px] font-black uppercase tracking-[0.12em] text-white hover:border-fina-ink hover:bg-fina-lime hover:text-fina-ink"
+              className="h-9 rounded-md border border-transparent px-3 text-xs font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               {isCollapsed ? (
                 <PanelLeftOpen className="size-4" />

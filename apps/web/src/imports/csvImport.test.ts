@@ -361,7 +361,203 @@ describe("CSV import parsing", () => {
       await structuralFingerprint(second.matrix, second.structure)
     )
   })
+
+  it("suggests only an unambiguous card column and never uses identifiers as amounts", () => {
+    const detected = detectCsvStructure(
+      "Date;Description;Debit;Credit card;Amount\n13/08/2026;Synthetic;;4242;10,00\n14/08/2026;Synthetic;;1234;20,00"
+    )
+    expect(
+      inferFieldMapping(detected.matrix, detected.structure)
+    ).toMatchObject({
+      creditCardColumn: 3,
+      amountMode: "signed",
+      amountColumn: 4,
+      creditColumn: null,
+      accountType: "credit"
+    })
+    const withoutAmountHeader = detectCsvStructure(
+      "Date;Description;Last4;Total\n13/08/2026;Synthetic;4242;10,00\n14/08/2026;Synthetic;1234;20,00"
+    )
+    expect(
+      inferFieldMapping(
+        withoutAmountHeader.matrix,
+        withoutAmountHeader.structure
+      ).amountColumn
+    ).toBe(3)
+    const ambiguous = detectCsvStructure(
+      "Date;Card;Last4;Amount\n13/08/2026;Personal;4242;10,00\n14/08/2026;Family;1234;20,00"
+    )
+    expect(
+      inferFieldMapping(ambiguous.matrix, ambiguous.structure).creditCardColumn
+    ).toBeNull()
+  })
+
+  it("maps one combined statement to several cards, with blanks using the file fallback", () => {
+    const detected = detectCsvStructure(
+      "Date;Description;Amount;Card\n13/08/2026;First;10,00; 4242 \n14/08/2026;Second;20,00;Family\n15/08/2026;Third;30,00;\n16/08/2026;Fourth;40,00;Unknown"
+    )
+    const result = normalizeImportRows({
+      ...detected,
+      config: config({
+        descriptionColumns: [1],
+        amountColumn: 2,
+        creditCardColumn: 3,
+        creditCardMappings: [
+          { value: "4242", creditCardId: "31" },
+          { value: "Family", creditCardId: "32" },
+          { value: "Unknown", creditCardId: null }
+        ]
+      }),
+      creditCardId: "31",
+      creditCards: availableCards,
+      accountId: "21"
+    })
+    expect(result.summary.errorCount).toBe(0)
+    expect(
+      result.normalizedRows.map(({ creditCardId, creditCardIdentifier }) => ({
+        creditCardId,
+        creditCardIdentifier
+      }))
+    ).toEqual([
+      { creditCardId: "31", creditCardIdentifier: "4242" },
+      { creditCardId: "32", creditCardIdentifier: "Family" },
+      { creditCardId: "31", creditCardIdentifier: null },
+      { creditCardId: null, creditCardIdentifier: "Unknown" }
+    ])
+  })
+
+  it("does not guess a card from last four digits, nicknames, or different case", () => {
+    const detected = detectCsvStructure(
+      "Date;Description;Amount;Card\n13/08/2026;First;10,00;4242\n14/08/2026;Second;20,00;family"
+    )
+    const result = normalizeImportRows({
+      ...detected,
+      config: config({
+        descriptionColumns: [1],
+        amountColumn: 2,
+        creditCardColumn: 3,
+        creditCardMappings: [{ value: "Family", creditCardId: "32" }]
+      }),
+      creditCardId: "31",
+      creditCards: availableCards,
+      accountId: "21"
+    })
+    expect(result.normalizedRows).toHaveLength(0)
+    expect(result.issues.map(({ code }) => code)).toEqual([
+      "UNMAPPED_CARD_IDENTIFIER",
+      "UNMAPPED_CARD_IDENTIFIER"
+    ])
+  })
+
+  it("blocks archived, unknown, foreign-account, and duplicate assignments without dropping card attribution", () => {
+    const detected = detectCsvStructure(
+      "Date;Description;Amount;Card\n13/08/2026;First;10,00;4242\n14/08/2026;Second;20,00;Family"
+    )
+    for (const id of ["33", "34", "999"]) {
+      const result = normalizeImportRows({
+        ...detected,
+        config: config({
+          descriptionColumns: [1],
+          amountColumn: 2,
+          creditCardColumn: 3,
+          creditCardMappings: [
+            { value: "4242", creditCardId: id },
+            { value: "Family", creditCardId: "32" }
+          ]
+        }),
+        creditCards: availableCards,
+        accountId: "21"
+      })
+      expect(result.issues[0]).toMatchObject({
+        sourceRow: 2,
+        field: "creditCard",
+        code: "UNAVAILABLE_CREDIT_CARD",
+        severity: "error"
+      })
+      expect(result.rows[0].creditCardId).toBe(id)
+    }
+    const duplicate = normalizeImportRows({
+      ...detected,
+      config: config({
+        descriptionColumns: [1],
+        amountColumn: 2,
+        creditCardColumn: 3,
+        creditCardMappings: [
+          { value: "4242", creditCardId: "31" },
+          { value: " 4242 ", creditCardId: "32" },
+          { value: "Family", creditCardId: "32" }
+        ]
+      })
+    })
+    expect(duplicate.issues[0].code).toBe("AMBIGUOUS_CARD_MAPPING")
+  })
+
+  it("rejects unsafe card numbers without echoing or carrying them into normalized hints", () => {
+    const unsafe = "1234 5678 9012 3456"
+    const detected = detectCsvStructure(
+      `Date;Description;Amount;Card\n13/08/2026;First;10,00;${unsafe}\n14/08/2026;Second;20,00;4242`
+    )
+    const result = normalizeImportRows({
+      ...detected,
+      config: config({
+        descriptionColumns: [1],
+        amountColumn: 2,
+        creditCardColumn: 3,
+        creditCardMappings: [{ value: "4242", creditCardId: "31" }]
+      }),
+      creditCards: availableCards,
+      accountId: "21"
+    })
+    expect(result.rows[0]).toMatchObject({
+      normalized: null,
+      creditCardIdentifier: null
+    })
+    expect(result.issues[0]).toMatchObject({
+      code: "UNSAFE_CARD_IDENTIFIER",
+      field: "creditCard"
+    })
+    expect(JSON.stringify(result)).not.toContain(unsafe)
+  })
+
+  it("keeps metadata-free exports unassigned, or attributes the complete file explicitly", () => {
+    const detected = detectCsvStructure(
+      "Date;Description;Amount\n13/08/2026;First;10,00\n14/08/2026;Second;20,00"
+    )
+    const base = {
+      ...detected,
+      config: config({ descriptionColumns: [1], amountColumn: 2 })
+    }
+    expect(
+      normalizeImportRows(base).normalizedRows.every(
+        (row) => row.creditCardId == null
+      )
+    ).toBe(true)
+    const selected = normalizeImportRows({
+      ...base,
+      creditCardId: "31",
+      creditCards: availableCards,
+      accountId: "21"
+    })
+    expect(selected.normalizedRows.map((row) => row.creditCardId)).toEqual([
+      "31",
+      "31"
+    ])
+    const archived = normalizeImportRows({
+      ...base,
+      creditCardId: "33",
+      creditCards: availableCards,
+      accountId: "21"
+    })
+    expect(archived.summary.errorCount).toBe(2)
+  })
 })
+
+const availableCards = [
+  { id: "31", accountId: "21", archived: false },
+  { id: "32", accountId: "21", archived: false },
+  { id: "33", accountId: "21", archived: true },
+  { id: "34", accountId: "22", archived: false }
+]
 
 function config(
   overrides: Partial<Parameters<typeof normalizeImportRows>[0]["config"]> = {}

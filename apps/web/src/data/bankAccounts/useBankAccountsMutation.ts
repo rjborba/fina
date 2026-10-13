@@ -1,9 +1,11 @@
 import {
   bankaccountsControllerCreate,
   bankaccountsControllerRemove,
+  bankaccountsControllerUpdateInstitution,
   CreateBankaccountInputDto
 } from "@/api/generated"
-import { useQueryClient } from "@tanstack/react-query"
+import type { FinancialInstitutionId } from "@fina/types"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 export const useAccountsMutation = () => {
   const queryClient = useQueryClient()
@@ -20,5 +22,34 @@ export const useAccountsMutation = () => {
     await invalidate()
   }
 
-  return { addAccount, removeAccount }
+  const institutionMutation = useMutation({
+    mutationKey: ["bankaccounts", "institution"],
+    retry: 0,
+    mutationFn: ({
+      id,
+      institutionId
+    }: {
+      id: string
+      institutionId: FinancialInstitutionId | null
+    }) =>
+      bankaccountsControllerUpdateInstitution({
+        id,
+        requestBody: { institutionId }
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["imports"] }),
+        queryClient.invalidateQueries({ queryKey: ["import-profiles"] })
+      ])
+    }
+  })
+
+  return {
+    addAccount,
+    removeAccount,
+    updateInstitution: institutionMutation.mutateAsync
+  }
 }

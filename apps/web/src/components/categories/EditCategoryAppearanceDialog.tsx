@@ -57,9 +57,9 @@ export function EditCategoryAppearanceDialog({
           <Palette />
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-none border-2 border-fina-ink bg-fina-surface shadow-fina-lg sm:max-w-md">
+      <DialogContent className="rounded-md border border-fina-grid bg-fina-surface shadow-fina-lg sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-xl font-black uppercase">
+          <DialogTitle className="flex items-center gap-3 text-xl font-semibold">
             <CategoryAppearance icon={icon} color={color} />
             {category.name}
           </DialogTitle>

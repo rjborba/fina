@@ -15,10 +15,48 @@ import { Import } from "./Import"
 
 const previewImport = vi.fn()
 const addImport = vi.fn()
+const importFixtures = vi.hoisted(() => ({
+  groupId: "10",
+  profiles: [] as unknown[],
+  cards: [
+    {
+      id: "31",
+      accountId: "21",
+      name: "Personal",
+      last4: "4242",
+      archived: false
+    },
+    {
+      id: "32",
+      accountId: "21",
+      name: "Additional",
+      last4: "1234",
+      archived: false
+    },
+    {
+      id: "33",
+      accountId: "21",
+      name: "Old card",
+      last4: "0001",
+      archived: true
+    },
+    {
+      id: "34",
+      accountId: "22",
+      name: "Other account card",
+      last4: "7777",
+      archived: false
+    }
+  ]
+}))
 
 vi.mock("@/contexts/ActiveGroupContext", () => ({
   useActiveGroup: () => ({
-    selectedGroup: { id: "10", name: "Test", creditCardReviewMonthOffset: -1 }
+    selectedGroup: {
+      id: importFixtures.groupId,
+      name: "Test",
+      creditCardReviewMonthOffset: -1
+    }
   })
 }))
 
@@ -29,14 +67,27 @@ vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
 vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
   useBankAccounts: () => ({
     data: [
-      { id: "20", name: "Main account", type: "checkout" },
-      { id: "21", name: "Credit card", type: "credit" }
+      {
+        id: "20",
+        name: "Main account",
+        type: "checkout",
+        institutionId: "inter"
+      },
+      { id: "21", name: "Credit card", type: "credit", institutionId: "nubank" }
     ]
   })
 }))
 
 vi.mock("@/data/imports/useImportProfiles", () => ({
-  useImportProfiles: () => ({ data: [], isFetched: true })
+  useImportProfiles: () => ({ data: importFixtures.profiles, isFetched: true })
+}))
+
+vi.mock("@/data/creditCards/useCreditCards", () => ({
+  useCreditCards: () => ({
+    data: importFixtures.cards,
+    isLoading: false,
+    isError: false
+  })
 }))
 
 vi.mock("@/data/imports/useImportsMutation", () => ({
@@ -66,9 +117,24 @@ describe("adaptive CSV import", () => {
   afterEach(() => {
     cleanup()
     takePendingImportFile()
+    vi.unstubAllGlobals()
   })
 
   beforeEach(() => {
+    importFixtures.profiles = []
+    importFixtures.groupId = "10"
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    )
+    Element.prototype.scrollIntoView = () => undefined
+    Element.prototype.hasPointerCapture = () => false
+    Element.prototype.setPointerCapture = () => undefined
+    Element.prototype.releasePointerCapture = () => undefined
     previewImport.mockReset()
     addImport.mockReset()
     previewImport.mockResolvedValue({
@@ -148,6 +214,11 @@ describe("adaptive CSV import", () => {
     expect(
       screen.getByRole("combobox", { name: "Destination account" })
     ).toHaveTextContent("Main account")
+    expect(
+      screen
+        .getByRole("combobox", { name: "Destination account" })
+        .querySelector('[data-institution-id="inter"] img')
+    ).not.toBeNull()
   })
 
   it("opens the importer and previews a file queued by the global drop target", async () => {
@@ -373,10 +444,331 @@ describe("adaptive CSV import", () => {
     await userEvent.click(screen.getByLabelText("Exclude source line 6"))
     await waitFor(() => expect(validate).toBeEnabled())
   })
+
+  it("imports a combined statement with two explicitly mapped cards and one shared bill", async () => {
+    renderImport()
+    await upload(combinedCardCsv)
+    await chooseBillMonth()
+
+    const validate = screen.getByRole("button", { name: "Validate import" })
+    expect(validate).toBeDisabled()
+    expect(
+      screen.getByRole("combobox", { name: "Card for source 4242" })
+    ).toHaveTextContent("Choose a card")
+    await chooseSourceCard("4242", "Personal · ••4242")
+    await chooseSourceCard("Family", "Additional · ••1234")
+    expect(validate).toBeDisabled()
+    await chooseSourceCard("Unknown", "Not identified")
+    await chooseFileCard("Personal · ••4242")
+
+    expect(screen.getByLabelText("Card attribution summary")).toHaveTextContent(
+      "Personal · ••4242: 2 transactions"
+    )
+    expect(screen.getByLabelText("Card attribution summary")).toHaveTextContent(
+      "Additional · ••1234: 1 transaction"
+    )
+    expect(screen.getByLabelText("Card attribution summary")).toHaveTextContent(
+      "Not identified: 1 transaction"
+    )
+    expect(
+      screen.getByRole("row", {
+        name: /3 2026-08-14 Second .*Additional · ••1234/
+      })
+    ).toBeInTheDocument()
+    await waitFor(() => expect(validate).toBeEnabled())
+    await userEvent.click(validate)
+    expect(previewImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "21",
+        creditCardId: "31",
+        billMonth: `${new Date().getFullYear()}-09`,
+        config: expect.objectContaining({
+          creditCardColumn: 4,
+          creditCardMappings: [
+            { value: "4242", creditCardId: "31" },
+            { value: "Family", creditCardId: "32" },
+            { value: "Unknown", creditCardId: null }
+          ]
+        }),
+        rows: [
+          expect.objectContaining({ sourceRow: 2, creditCardId: "31" }),
+          expect.objectContaining({ sourceRow: 3, creditCardId: "32" }),
+          expect.objectContaining({ sourceRow: 4, creditCardId: "31" }),
+          expect.objectContaining({ sourceRow: 5, creditCardId: null })
+        ]
+      })
+    )
+    const confirm = screen.getByRole("button", {
+      name: "Import 4 transactions"
+    })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await userEvent.click(confirm)
+    expect(addImport).toHaveBeenCalledTimes(1)
+    expect(addImport.mock.calls[0][0].accountId).toBe("21")
+    expect(
+      addImport.mock.calls[0][0].rows.map(
+        (row: { creditCardId: string | null }) => row.creditCardId
+      )
+    ).toEqual(["31", "32", "31", null])
+  })
+
+  it("clears card assignments and validation when changing accounts", async () => {
+    renderImport()
+    await upload(combinedCardCsv)
+    await chooseBillMonth()
+    await chooseSourceCard("4242", "Personal · ••4242")
+    await chooseSourceCard("Family", "Additional · ••1234")
+    await chooseSourceCard("Unknown", "Not identified")
+    await chooseFileCard("Personal · ••4242")
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Import 4 transactions" })
+      ).toBeEnabled()
+    )
+
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Destination account" })
+    )
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Main account (checkout)" })
+    )
+    expect(
+      screen.queryByRole("region", { name: "Card attribution" })
+    ).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Import 4 transactions" })
+    ).toBeDisabled()
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    const checkingPayload = previewImport.mock.calls.at(-1)![0]
+    expect(checkingPayload).not.toHaveProperty("creditCardId")
+    expect(checkingPayload.config).toMatchObject({
+      creditCardColumn: null,
+      creditCardMappings: []
+    })
+    expect(
+      checkingPayload.rows.every(
+        (row: { creditCardId?: string | null }) =>
+          row.creditCardId === undefined
+      )
+    ).toBe(true)
+
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Destination account" })
+    )
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Credit card (credit)" })
+    )
+    expect(
+      screen.getByRole("combobox", { name: "Card for this file" })
+    ).toHaveTextContent("Not identified")
+    expect(
+      screen.getByRole("combobox", { name: "Card for source 4242" })
+    ).toHaveTextContent("Choose a card")
+    expect(
+      screen.getByRole("button", { name: "Validate import" })
+    ).toBeDisabled()
+  })
+
+  it("requires remapping an archived card restored from a saved profile", async () => {
+    importFixtures.profiles = [
+      {
+        accountId: "21",
+        config: {
+          version: 1,
+          delimiter: ";",
+          encoding: "utf-8",
+          hasHeader: true,
+          dateFormat: "DD/MM/YYYY",
+          numberFormat: "decimal-comma",
+          dateColumn: 0,
+          descriptionColumns: [1],
+          amountMode: "signed",
+          amountColumn: 3,
+          debitColumn: null,
+          creditColumn: null,
+          installmentColumn: 2,
+          chargesPositive: false,
+          creditCardColumn: 4,
+          creditCardMappings: [
+            { value: "4242", creditCardId: "33" },
+            { value: "Family", creditCardId: "32" },
+            { value: "Unknown", creditCardId: null }
+          ]
+        }
+      }
+    ]
+    renderImport()
+    await upload(combinedCardCsv)
+    await chooseBillMonth()
+    expect(
+      screen.getByRole("button", { name: "Validate import" })
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("combobox", { name: "Card for source 4242" })
+    ).toHaveTextContent("Old card · ••0001 (Archived)")
+    expect(
+      screen.getByText(/This card is no longer available/)
+    ).toBeInTheDocument()
+    await chooseSourceCard("4242", "Personal · ••4242")
+    expect(
+      screen.getByRole("button", { name: "Validate import" })
+    ).toBeEnabled()
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    expect(previewImport.mock.calls[0][0].rows[0].creditCardId).toBe("31")
+  })
+
+  it("supports a whole-file choice without metadata and invalidates preview after changing it", async () => {
+    renderImport()
+    await upload(
+      combinedCardCsv
+        .split("\n")
+        .map((line) => line.split(";").slice(0, 4).join(";"))
+        .join("\n")
+    )
+    await chooseBillMonth()
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    expect(
+      previewImport.mock.calls[0][0].rows.every(
+        (row: { creditCardId: string | null }) => row.creditCardId === null
+      )
+    ).toBe(true)
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Import 4 transactions" })
+      ).toBeEnabled()
+    )
+    await chooseFileCard("Additional · ••1234")
+    expect(
+      screen.getByRole("button", { name: "Import 4 transactions" })
+    ).toBeDisabled()
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    expect(
+      previewImport.mock.calls
+        .at(-1)![0]
+        .rows.every(
+          (row: { creditCardId: string | null }) => row.creditCardId === "32"
+        )
+    ).toBe(true)
+  })
+
+  it("requires an explicit decision for an unused archived profile mapping", async () => {
+    importFixtures.profiles = [
+      {
+        accountId: "21",
+        config: {
+          version: 1,
+          delimiter: ";",
+          encoding: "utf-8",
+          hasHeader: true,
+          dateFormat: "DD/MM/YYYY",
+          numberFormat: "decimal-comma",
+          dateColumn: 0,
+          descriptionColumns: [1],
+          amountMode: "signed",
+          amountColumn: 3,
+          debitColumn: null,
+          creditColumn: null,
+          installmentColumn: 2,
+          chargesPositive: false,
+          creditCardColumn: 4,
+          creditCardMappings: [
+            { value: "4242", creditCardId: "31" },
+            { value: "Family", creditCardId: "32" },
+            { value: "Unknown", creditCardId: null },
+            { value: "Legacy", creditCardId: "33" }
+          ]
+        }
+      }
+    ]
+    renderImport()
+    await upload(combinedCardCsv)
+    await chooseBillMonth()
+    expect(
+      screen.getByText(/0 rows \(saved mapping; not in this file\)/)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/A saved card mapping is archived or unavailable/)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Validate import" })
+    ).toBeDisabled()
+    await chooseSourceCard("Legacy", "Not identified")
+    await userEvent.click(
+      screen.getByRole("button", { name: "Validate import" })
+    )
+    expect(
+      previewImport.mock.calls[0][0].config.creditCardMappings
+    ).toContainEqual({ value: "Legacy", creditCardId: null })
+  })
+
+  it("clears explicitly selected card identity on active-group changes", async () => {
+    const { rerender } = renderImport()
+    await upload(combinedCardCsv)
+    await chooseFileCard("Personal · ••4242")
+    await chooseSourceCard("4242", "Personal · ••4242")
+    importFixtures.groupId = "11"
+    rerender(
+      <MemoryRouter>
+        <Import />
+      </MemoryRouter>
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: "Card for this file" })
+          ?.textContent
+      ).not.toContain("Personal")
+    )
+    expect(
+      screen.getByRole("button", { name: "Validate import" })
+    ).toBeDisabled()
+    expect(previewImport).not.toHaveBeenCalled()
+  })
 })
 
+const combinedCardCsv = [
+  "Date;Description;Installment;Amount;Card",
+  "13/08/2026;First;Single;10,00;4242",
+  "14/08/2026;Second;Single;20,00;Family",
+  "15/08/2026;Third;Single;30,00;",
+  "16/08/2026;Fourth;Single;40,00;Unknown"
+].join("\n")
+
+async function chooseBillMonth() {
+  await userEvent.click(await screen.findByLabelText("Bill due in"))
+  await userEvent.click(
+    screen.getByRole("button", {
+      name: `September ${new Date().getFullYear()}`
+    })
+  )
+}
+
+async function chooseSourceCard(value: string, label: string) {
+  await userEvent.click(
+    screen.getByRole("combobox", { name: `Card for source ${value}` })
+  )
+  await userEvent.click(await screen.findByRole("option", { name: label }))
+}
+
+async function chooseFileCard(label: string) {
+  await userEvent.click(
+    screen.getByRole("combobox", { name: "Card for this file" })
+  )
+  await userEvent.click(await screen.findByRole("option", { name: label }))
+}
+
 function renderImport() {
-  render(
+  return render(
     <MemoryRouter>
       <Import />
     </MemoryRouter>

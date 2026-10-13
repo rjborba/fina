@@ -19,7 +19,7 @@ const WORKSPACE_LINKS = [
     label: "Transactions",
     number: "01",
     to: "/transactions",
-    tone: "bg-fina-lime"
+    tone: "bg-fina-lime text-fina-violet"
   },
   {
     description: "Bring statement files into the active workspace.",
@@ -27,7 +27,7 @@ const WORKSPACE_LINKS = [
     label: "Imports",
     number: "02",
     to: "/imports",
-    tone: "bg-fina-violet text-white"
+    tone: "bg-fina-yellow text-fina-violet"
   },
   {
     description: "Manage checking accounts and credit cards.",
@@ -35,7 +35,7 @@ const WORKSPACE_LINKS = [
     label: "Accounts",
     number: "03",
     to: "/bank-accounts",
-    tone: "bg-fina-sky"
+    tone: "bg-fina-sky text-sky-700"
   },
   {
     description: "Shape the labels used to organize your spending.",
@@ -43,7 +43,7 @@ const WORKSPACE_LINKS = [
     label: "Categories",
     number: "04",
     to: "/categories",
-    tone: "bg-fina-yellow"
+    tone: "bg-fina-danger text-red-600"
   }
 ] as const
 
@@ -58,7 +58,7 @@ function Home() {
     <FinaPage>
       <FinaPageHeader
         eyebrow="Dashboard"
-        title="Money, in focus."
+        title="Financial overview"
         description={
           <>
             Your working view for{" "}
@@ -70,14 +70,14 @@ function Home() {
 
       <main className="space-y-8 p-5 md:p-8">
         <section aria-labelledby="workspace-title">
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <FinaSectionLabel>Workspace / Quick access</FinaSectionLabel>
+              <FinaSectionLabel>Quick access</FinaSectionLabel>
               <h2
                 id="workspace-title"
-                className="mt-2 text-2xl font-black uppercase tracking-[-0.045em]"
+                className="mt-1 text-lg font-semibold tracking-[-0.025em]"
               >
-                Keep the books moving
+                Your workspace
               </h2>
             </div>
             <FinaBadge tone="surface">
@@ -85,29 +85,33 @@ function Home() {
             </FinaBadge>
           </div>
 
-          <div className="grid border-l-2 border-t-2 border-fina-ink sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {WORKSPACE_LINKS.map((item) => {
               const Icon = item.icon
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`${item.tone} group min-h-64 border-b-2 border-r-2 border-fina-ink p-5 transition-transform hover:-translate-y-1 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-fina-violet`}
+                  className="group rounded-lg border border-fina-grid bg-fina-surface p-4 shadow-fina-sm transition-colors hover:border-fina-violet/35 hover:bg-fina-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet/50"
                 >
                   <div className="flex items-start justify-between">
-                    <span className="font-mono text-xs font-black tracking-[0.16em]">
-                      / {item.number}
+                    <div
+                      className={`${item.tone} flex size-9 items-center justify-center rounded-md`}
+                    >
+                      <Icon className="size-4" strokeWidth={2} />
+                    </div>
+                    <span className="text-[11px] font-medium text-foreground/35">
+                      {item.number}
                     </span>
-                    <Icon className="size-7" strokeWidth={2.5} />
                   </div>
-                  <div className="mt-20">
+                  <div className="mt-8">
                     <div className="flex items-end justify-between gap-4">
-                      <h3 className="text-2xl font-black uppercase tracking-[-0.05em]">
+                      <h3 className="text-base font-semibold tracking-[-0.02em]">
                         {item.label}
                       </h3>
-                      <ArrowUpRight className="size-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                      <ArrowUpRight className="size-4 text-foreground/35 transition-colors group-hover:text-fina-violet" />
                     </div>
-                    <p className="mt-3 max-w-xs text-sm font-semibold leading-5 opacity-70">
+                    <p className="mt-2 max-w-xs text-sm leading-5 text-foreground/55">
                       {item.description}
                     </p>
                   </div>
@@ -125,20 +129,13 @@ function Home() {
             ["Accounts", accounts?.length ?? "—", "Active money sources"],
             ["Categories", categories?.length ?? "—", "Ledger labels"],
             ["Imports", imports?.length ?? "—", "Statement files"]
-          ].map(([label, value, helper], index) => (
-            <FinaSurface
-              key={label}
-              elevation="sm"
-              tone={index === 1 ? "yellow" : "surface"}
-              className="p-5"
-            >
+          ].map(([label, value, helper]) => (
+            <FinaSurface key={label} elevation="sm" className="p-5">
               <FinaSectionLabel>{label}</FinaSectionLabel>
-              <div className="mt-3 text-5xl font-black tracking-[-0.06em]">
+              <div className="mt-3 text-3xl font-semibold tracking-[-0.04em]">
                 {value}
               </div>
-              <p className="mt-2 text-xs font-bold uppercase tracking-[0.08em] text-fina-ink/55">
-                {helper}
-              </p>
+              <p className="mt-2 text-xs text-foreground/50">{helper}</p>
             </FinaSurface>
           ))}
         </section>

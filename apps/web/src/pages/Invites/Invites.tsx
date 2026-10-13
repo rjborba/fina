@@ -17,15 +17,15 @@ function InviteItem({ invite }: { invite: Invite }) {
   return (
     <li className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-yellow">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-fina-grid bg-fina-yellow">
           <Mail className="size-5" strokeWidth={2.5} />
         </div>
         <div className="min-w-0">
           <FinaSectionLabel>Workspace invitation</FinaSectionLabel>
-          <p className="mt-1 text-lg font-black tracking-[-0.025em]">
+          <p className="mt-1 text-lg font-semibold tracking-[-0.025em]">
             {invite.groupName}
           </p>
-          <p className="mt-1 text-sm font-semibold text-fina-ink/60">
+          <p className="mt-1 text-sm font-semibold text-foreground/60">
             You have been invited to join this group.
           </p>
         </div>
@@ -51,7 +51,7 @@ const Invites = () => {
       <FinaPageHeader
         eyebrow="Invitations"
         marker="07"
-        title="Join the group."
+        title="Invitations"
         description="Accept a workspace invitation to access the financial records shared with you."
         actions={
           <FinaBadge tone="yellow">
@@ -63,7 +63,7 @@ const Invites = () => {
       <main className="p-5 md:p-8">
         <div className="mb-4">
           <FinaSectionLabel>Inbox / Access</FinaSectionLabel>
-          <h2 className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]">
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
             Pending invitations
           </h2>
         </div>
@@ -71,13 +71,13 @@ const Invites = () => {
         <FinaSurface elevation="md" className="overflow-hidden">
           {isLoading ? (
             <div className="p-10 text-center">
-              <div className="mx-auto size-8 animate-spin border-[3px] border-fina-ink border-t-fina-lime" />
-              <p className="mt-4 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+              <div className="mx-auto size-8 animate-spin border border-fina-grid border-t-fina-lime" />
+              <p className="mt-4 font-mono text-[10px] font-semibold tracking-[0.16em]">
                 Loading invitations
               </p>
             </div>
           ) : invites?.length ? (
-            <ul className="divide-y-2 divide-fina-ink">
+            <ul className="divide-y divide-fina-grid">
               {invites.map((invite) => (
                 <InviteItem key={invite.id} invite={invite} />
               ))}
@@ -85,8 +85,8 @@ const Invites = () => {
           ) : (
             <div className="p-10 text-center">
               <Users className="mx-auto size-10" />
-              <p className="mt-4 font-black uppercase">Inbox is clear</p>
-              <p className="mt-2 text-sm font-semibold text-fina-ink/60">
+              <p className="mt-4 font-semibold">Inbox is clear</p>
+              <p className="mt-2 text-sm font-semibold text-foreground/60">
                 No workspace invitations are waiting for you.
               </p>
             </div>

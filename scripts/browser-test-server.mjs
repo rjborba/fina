@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -27,6 +28,7 @@ let administrator;
 let database;
 let application;
 let vite;
+let viteCacheDirectory;
 let auth;
 let createdDatabase = false;
 let stopping = false;
@@ -43,6 +45,9 @@ async function cleanup() {
     }
   };
   await close(() => vite?.close());
+  if (viteCacheDirectory) {
+    await close(() => rm(viteCacheDirectory, { recursive: true, force: true }));
+  }
   await close(() => application?.close());
   if (auth) await close(() => new Promise((resolve) => auth.close(resolve)));
   if (database?.isInitialized) await close(() => database.destroy());
@@ -234,8 +239,12 @@ async function start() {
   const { createServer: createViteServer } = await import(
     pathToFileURL(requireWeb.resolve("vite")).href
   );
+  // Never reuse or invalidate the interactive development server's optimized
+  // dependencies. Shared workspace exports can change without Vite's cache hash.
+  viteCacheDirectory = await mkdtemp(join(tmpdir(), "fina-browser-vite-"));
   vite = await createViteServer({
     root: join(root, "apps/web"),
+    cacheDir: viteCacheDirectory,
     mode: "test",
     logLevel: "error",
     server: { host: "127.0.0.1", port: 4180, strictPort: true },

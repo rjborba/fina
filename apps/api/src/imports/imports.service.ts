@@ -10,9 +10,16 @@ import {
   CreateImportInputDto,
   ImportProfile,
   ImportSummary,
+  ImportIssue,
+  CreditCardSafeLabelSchema,
   PreviewImportOutput,
 } from '@fina/types';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { AuthorizationService } from '../auth/authorization.service';
 import { Bankaccounts } from '../bankaccounts/entities/bankaccount.entity';
 import { toDateTimeOutput, toNullableDateOutput } from '../common/date-output';
@@ -25,6 +32,9 @@ import { ImportFiles } from './entities/import-file.entity';
 import { ensureBillReviewMonth } from '../common/review-month';
 import { utcTimestampTransformer } from '../common/utc-timestamp';
 import { readImportSourceAmounts } from '../common/import-source-amounts-v1';
+import { readImportSourceCardIdentifiers } from '../common/import-source-card-identifiers-v1';
+import { CreditCardsService } from '../credit-cards/credit-cards.service';
+import { CreditCards } from '../credit-cards/entities/credit-card.entity';
 
 export type UploadedImportFile = {
   buffer: Buffer;
@@ -44,6 +54,7 @@ export class ImportsService {
     private readonly accounts: Repository<Bankaccounts>,
     private readonly dataSource: DataSource,
     private readonly authorization: AuthorizationService,
+    private readonly creditCards: CreditCardsService,
   ) {}
 
   async preview(
@@ -82,10 +93,15 @@ export class ImportsService {
       input.accountId,
       input.fileHash,
     );
+    const { assignments, issues } = this.resolveCardAssignments(input);
+    await this.dataSource.transaction((manager) =>
+      this.validateCardAssignments(manager, account, input, assignments),
+    );
+    const summary = this.summarize(input);
     return {
-      valid: duplicate === null,
-      summary: this.summarize(input),
-      issues: [],
+      valid: duplicate === null && issues.length === 0,
+      summary: { ...summary, errorCount: summary.errorCount + issues.length },
+      issues,
       duplicate,
     };
   }
@@ -118,6 +134,38 @@ export class ImportsService {
     const summary = this.summarize(input);
     try {
       const savedId = await this.dataSource.transaction(async (manager) => {
+        let sourceIdentifiers: Map<number, string> | undefined;
+        if (input.config.creditCardColumn != null) {
+          try {
+            sourceIdentifiers = readImportSourceCardIdentifiers(
+              fileContent,
+              input.config,
+            );
+          } catch {
+            throw new BadRequestException({
+              code: 'INVALID_IMPORT_CREDIT_CARD',
+              message:
+                'Card attribution could not be verified from the CSV source',
+            });
+          }
+        }
+        const { assignments, issues } = this.resolveCardAssignments(
+          input,
+          sourceIdentifiers,
+        );
+        if (issues.length)
+          throw new BadRequestException({
+            code: 'INVALID_IMPORT_CREDIT_CARD',
+            message:
+              'Map each card identifier to a card or Unassigned before importing',
+            details: { fields: issues },
+          });
+        await this.validateCardAssignments(
+          manager,
+          account,
+          input,
+          assignments,
+        );
         if (account.type === 'credit') {
           await ensureBillReviewMonth(
             manager,
@@ -174,6 +222,9 @@ export class ImportsService {
             observation: null,
             removed: false,
             bankaccount: { id: input.accountId } as Bankaccounts,
+            creditCard: assignments.get(row.sourceRow)
+              ? ({ id: assignments.get(row.sourceRow)! } as CreditCards)
+              : null,
             category: null,
             group: { id: input.groupId } as Groups,
             import: { id: importRecord.id } as Imports,
@@ -213,6 +264,98 @@ export class ImportsService {
       }
       throw error;
     }
+  }
+
+  private resolveCardAssignments(
+    input: CreateImportInputDto,
+    sourceIdentifiers?: Map<number, string>,
+  ): { assignments: Map<number, string | null>; issues: ImportIssue[] } {
+    const assignments = new Map<number, string | null>();
+    const issues: ImportIssue[] = [];
+    const mappings = new Map(
+      (input.config.creditCardMappings ?? []).map((mapping) => [
+        mapping.value,
+        mapping.creditCardId,
+      ]),
+    );
+    const mapped = input.config.creditCardColumn != null;
+    for (const row of input.rows) {
+      let cardId =
+        row.creditCardId === undefined
+          ? (input.creditCardId ?? null)
+          : row.creditCardId;
+      if (mapped) {
+        const identifier = sourceIdentifiers
+          ? sourceIdentifiers.get(row.sourceRow)
+          : row.creditCardIdentifier;
+        if (identifier === undefined) {
+          issues.push({
+            sourceRow: row.sourceRow,
+            field: 'creditCard',
+            severity: 'error',
+            code: 'MISSING_CARD_IDENTIFIER',
+            message: 'Card attribution must be verified for this source row',
+          });
+          continue;
+        }
+        if (identifier === null || identifier.trim() === '')
+          cardId = input.creditCardId ?? null;
+        else if (!CreditCardSafeLabelSchema.safeParse(identifier).success) {
+          issues.push({
+            sourceRow: row.sourceRow,
+            field: 'creditCard',
+            severity: 'error',
+            code: 'INVALID_CARD_IDENTIFIER',
+            message:
+              'Use a nickname or masked last four digits, never a full card number',
+          });
+          continue;
+        } else if (!mappings.has(identifier.trim())) {
+          issues.push({
+            sourceRow: row.sourceRow,
+            field: 'creditCard',
+            severity: 'error',
+            code: 'UNMAPPED_CREDIT_CARD',
+            message: 'Map this card identifier to a card or Unassigned',
+          });
+          continue;
+        } else cardId = mappings.get(identifier.trim())!;
+      }
+      assignments.set(row.sourceRow, cardId);
+    }
+    return { assignments, issues };
+  }
+
+  private async validateCardAssignments(
+    manager: EntityManager,
+    account: Bankaccounts,
+    input: CreateImportInputDto,
+    assignments: Map<number, string | null>,
+  ): Promise<void> {
+    const ids = new Set(
+      [
+        input.creditCardId,
+        ...(input.config.creditCardMappings ?? []).map(
+          (mapping) => mapping.creditCardId,
+        ),
+        ...assignments.values(),
+      ].filter((id): id is string => typeof id === 'string'),
+    );
+    if (
+      account.type !== 'credit' &&
+      (ids.size > 0 || input.config.creditCardColumn != null)
+    ) {
+      throw new BadRequestException(
+        'Individual card attribution is only available for credit account imports',
+      );
+    }
+    for (const id of [...ids].sort())
+      await this.creditCards.assertAssignment(
+        manager,
+        input.groupId,
+        account.id,
+        id,
+      );
   }
 
   private normalizeInvertedAmounts(
@@ -298,6 +441,7 @@ export class ImportsService {
       id: profile.id,
       accountId: profile.account.id,
       accountName: profile.account.name,
+      accountInstitutionId: profile.account.institutionId ?? null,
       accountType: profile.account.type,
       sourceFingerprint: profile.sourceFingerprint.trim(),
       config: profile.mappingConfig,
@@ -477,6 +621,7 @@ export class ImportsService {
       groupId: importRecord.group.id,
       accountId: importRecord.account.id,
       accountName: importRecord.account.name,
+      accountInstitutionId: importRecord.account.institutionId ?? null,
       billDueDate: toNullableDateOutput(importRecord.billDueDate),
       transactionCount: importRecord.transactionCount,
       excludedRowCount: importRecord.excludedRowCount,

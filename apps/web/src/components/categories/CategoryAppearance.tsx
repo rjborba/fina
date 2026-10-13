@@ -25,7 +25,7 @@ export function CategoryAppearance({
       aria-label={label}
       aria-hidden={label ? undefined : true}
       className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center border-2 border-fina-ink",
+        "inline-flex size-8 shrink-0 items-center justify-center border border-fina-grid",
         getCategoryColorClassName(color),
         className
       )}

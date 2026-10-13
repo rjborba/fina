@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn()
 }))
 
+vi.mock("@/data/creditCards/useCreditCards", () => ({
+  useCreditCards: () => ({ data: [], isLoading: false, isError: false })
+}))
+
 const categories = [
   {
     id: "10",
@@ -58,6 +62,7 @@ vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }))
 
 const transaction: TransactionOutput = {
   id: "7",
+  creditCard: null,
   createdAt: "2026-09-27T00:00:00.000Z",
   description: "Historical transaction",
   value: -10,
@@ -96,6 +101,7 @@ describe("TransactionDetailsModal", () => {
             id: "20",
             name: "Checking",
             type: "checkout",
+            institutionId: "inter",
             dueDate: null
           }
         }}
@@ -107,6 +113,9 @@ describe("TransactionDetailsModal", () => {
         onPreviousTransaction={vi.fn()}
       />
     )
+    expect(
+      document.querySelector('[data-institution-id="inter"] img')
+    ).not.toBeNull()
     fireEvent.change(screen.getByLabelText("Reference month"), {
       target: { value: "2026-08" }
     })
@@ -130,7 +139,13 @@ describe("TransactionDetailsModal", () => {
         transaction={{
           ...transaction,
           creditDueDate: "2026-07-10",
-          bankaccount: { id: "21", name: "Card", type: "credit", dueDate: 10 }
+          bankaccount: {
+            id: "21",
+            name: "Card",
+            type: "credit",
+            institutionId: "nubank",
+            dueDate: 10
+          }
         }}
         open
         onOpenChange={vi.fn()}
@@ -140,6 +155,9 @@ describe("TransactionDetailsModal", () => {
         onPreviousTransaction={vi.fn()}
       />
     )
+    expect(
+      document.querySelector('[data-institution-id="nubank"] img')
+    ).not.toBeNull()
     expect(
       screen.getByRole("link", { name: "Change month for the whole bill" })
     ).toHaveAttribute("href", "/credit-card-bills/21/2026-07")

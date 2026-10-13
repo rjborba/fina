@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { ImportMappingConfigSchema } from "./CreateImport.input.dto";
+import { FinancialInstitutionIdSchema } from "../BankAccount/FinancialInstitution";
 
 export const ImportIssueSchema = z
   .object({
     sourceRow: z.number().int().min(1),
-    field: z.enum(["date", "description", "amount", "installment"]).optional(),
+    field: z
+      .enum(["date", "description", "amount", "installment", "creditCard"])
+      .optional(),
     code: z.string(),
     message: z.string(),
     severity: z.enum(["error", "warning"])
@@ -44,6 +47,7 @@ export const ImportSummarySchema = z.object({
   groupId: z.string(),
   accountId: z.string(),
   accountName: z.string(),
+  accountInstitutionId: FinancialInstitutionIdSchema.nullable(),
   billDueDate: z.string().date().nullable(),
   transactionCount: z.number().int().min(0),
   excludedRowCount: z.number().int().min(0),
@@ -55,6 +59,7 @@ export const ImportProfileSchema = z.object({
   id: z.string(),
   accountId: z.string(),
   accountName: z.string(),
+  accountInstitutionId: FinancialInstitutionIdSchema.nullable(),
   accountType: z.string(),
   sourceFingerprint: z.string(),
   config: ImportMappingConfigSchema,

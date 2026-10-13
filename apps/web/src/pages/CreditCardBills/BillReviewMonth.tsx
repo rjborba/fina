@@ -19,10 +19,10 @@ export function BillReviewMonth({
 
   return (
     <FinaSurface className="p-5 sm:p-6">
-      <h2 className="text-xl font-black uppercase tracking-[-0.035em]">
+      <h2 className="text-xl font-semibold tracking-[-0.035em]">
         Monthly review assignment
       </h2>
-      <p className="mt-2 max-w-2xl text-sm font-semibold text-fina-ink/65">
+      <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/65">
         All purchases, installments, fees, and credits in this bill belong to{" "}
         {dayjs(`${bill.reviewMonth}-01`).format("MMMM YYYY")}. Moving the bill
         changes its review month; purchase dates, the due date, and payments

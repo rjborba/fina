@@ -36,6 +36,19 @@ export class CreditCardBillsController {
   @ApiQuery({ name: 'groupId', type: String, required: true })
   @ApiQuery({ name: 'startDate', type: String, required: false })
   @ApiQuery({ name: 'endDate', type: String, required: false })
+  @ApiQuery({ name: 'reviewMonths', type: [String], required: false })
+  @ApiQuery({ name: 'accountIdList', type: [String], required: false })
+  @ApiQuery({ name: 'creditCardIdList', type: [String], required: false })
+  @ApiQuery({ name: 'categoryIdList', type: [String], required: false })
+  @ApiQuery({ name: 'search', type: String, required: false })
+  @ApiQuery({ name: 'importIdList', type: [String], required: false })
+  @ApiQuery({
+    name: 'importSource',
+    enum: ['imported', 'manual'],
+    required: false,
+  })
+  @ApiQuery({ name: 'minValue', type: Number, required: false })
+  @ApiQuery({ name: 'maxValue', type: Number, required: false })
   @ApiQuery({
     name: 'dateBasis',
     enum: ['cash-flow', 'monthly-review'],
@@ -51,6 +64,15 @@ export class CreditCardBillsController {
       startDate: query.startDate ? new Date(query.startDate) : undefined,
       endDate: query.endDate ? new Date(query.endDate) : undefined,
       dateBasis: query.dateBasis,
+      reviewMonths: query.reviewMonths,
+      accountIdList: query.accountIdList,
+      creditCardIdList: query.creditCardIdList,
+      categoryIdList: query.categoryIdList,
+      search: query.search,
+      importIdList: query.importIdList,
+      importSource: query.importSource,
+      minValue: query.minValue,
+      maxValue: query.maxValue,
     });
   }
 

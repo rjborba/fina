@@ -63,7 +63,7 @@ export function Settings() {
       <FinaPageHeader
         eyebrow="Settings"
         marker="06"
-        title="Your workspaces."
+        title="Workspaces"
         description="Groups separate people and financial data. Open a workspace to manage its members, invitations, and lifecycle."
         actions={<FinaBadge tone="surface">{groups.length} groups</FinaBadge>}
       />
@@ -74,7 +74,7 @@ export function Settings() {
             <FinaSectionLabel>Groups / Access</FinaSectionLabel>
             <h2
               id="group-list-title"
-              className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+              className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
             >
               Available workspaces
             </h2>
@@ -82,36 +82,36 @@ export function Settings() {
 
           <FinaSurface elevation="md" className="overflow-hidden">
             {groups.length ? (
-              <ul className="divide-y-2 divide-fina-ink">
+              <ul className="divide-y divide-fina-grid">
                 {groups.map((group, index) => {
                   const isActive = group.id === selectedGroup?.id
                   return (
                     <li key={group.id}>
                       <Link
                         to={`/group-details/${group.id}`}
-                        className="group flex min-h-24 items-center justify-between gap-4 p-4 transition-colors hover:bg-fina-yellow focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-fina-violet sm:p-5"
+                        className="group flex min-h-24 items-center justify-between gap-4 p-4 transition-colors hover:bg-fina-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fina-violet sm:p-5"
                       >
                         <div className="flex min-w-0 items-center gap-4">
                           <div
-                            className={`flex size-12 shrink-0 items-center justify-center border-2 border-fina-ink ${isActive ? "bg-fina-lime" : "bg-fina-surface"}`}
+                            className={`flex size-12 shrink-0 items-center justify-center border border-fina-grid ${isActive ? "bg-fina-lime" : "bg-fina-surface"}`}
                           >
                             <Users className="size-5" strokeWidth={2.5} />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-fina-ink/45">
+                            <div className="font-mono text-[10px] font-semibold tracking-[0.16em] text-foreground/45">
                               Workspace / {String(index + 1).padStart(2, "0")}
                             </div>
-                            <div className="mt-1 truncate text-lg font-black tracking-[-0.025em]">
+                            <div className="mt-1 truncate text-lg font-semibold tracking-[-0.025em]">
                               {group.name}
                             </div>
                             {isActive ? (
-                              <div className="mt-1 text-[10px] font-black uppercase tracking-[0.12em]">
+                              <div className="mt-1 text-[10px] font-semibold tracking-[0.12em]">
                                 Active group
                               </div>
                             ) : null}
                           </div>
                         </div>
-                        <ArrowUpRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                        <ArrowUpRight className="size-5 shrink-0 text-foreground/35 transition-colors group-hover:text-fina-violet" />
                       </Link>
                     </li>
                   )
@@ -120,18 +120,18 @@ export function Settings() {
             ) : (
               <div className="p-10 text-center">
                 <Users className="mx-auto size-9" />
-                <p className="mt-4 font-black uppercase">No groups yet</p>
+                <p className="mt-4 font-semibold">No groups yet</p>
               </div>
             )}
           </FinaSurface>
         </section>
 
-        <FinaSurface tone="lime" elevation="lg" className="p-5 sm:p-6">
+        <FinaSurface elevation="sm" className="p-5 sm:p-6">
           <FinaSectionLabel>New / Workspace</FinaSectionLabel>
-          <h2 className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]">
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
             Create group
           </h2>
-          <p className="mt-2 text-sm font-semibold leading-5 text-fina-ink/65">
+          <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
             A group is a private boundary for accounts, transactions and people.
           </p>
 
@@ -145,12 +145,12 @@ export function Settings() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+                    <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
                       Group name
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="h-11 rounded-none border-2 border-fina-ink bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
+                        className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
                         placeholder="e.g. Home"
                         {...field}
                       />

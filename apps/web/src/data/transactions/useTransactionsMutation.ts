@@ -68,7 +68,9 @@ export const useTransactionMutation = () => {
         categoryId:
           transaction.category === null ? null : transaction.category?.id,
         bankaccountId:
-          transaction.bankaccount === null ? null : transaction.bankaccount?.id
+          transaction.bankaccount === null ? null : transaction.bankaccount?.id,
+        creditCardId:
+          transaction.creditCard === null ? null : transaction.creditCard?.id
       }
       const validated = UpdateTransactionInputDtoSchema.parse(update)
       return transactionsControllerUpdate({ id, requestBody: validated })

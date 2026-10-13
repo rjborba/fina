@@ -16,7 +16,16 @@ export const creditCardBillKeys = {
       query.groupId,
       query.startDate?.toISOString(),
       query.endDate?.toISOString(),
-      query.dateBasis
+      query.dateBasis,
+      query.reviewMonths,
+      query.accountIdList,
+      query.creditCardIdList,
+      query.categoryIdList,
+      query.search,
+      query.importSource,
+      query.importIdList,
+      query.minValue,
+      query.maxValue
     ] as const,
   detail: (groupId: string, accountId: string, billMonth: string) =>
     [
@@ -39,6 +48,15 @@ export function useCreditCardBills(
       creditCardBillsControllerFindAll({
         groupId: query.groupId,
         dateBasis: query.dateBasis,
+        reviewMonths: query.reviewMonths,
+        accountIdList: query.accountIdList,
+        creditCardIdList: query.creditCardIdList,
+        categoryIdList: query.categoryIdList,
+        search: query.search,
+        importSource: query.importSource,
+        importIdList: query.importIdList,
+        minValue: query.minValue,
+        maxValue: query.maxValue,
         startDate: query.startDate
           ? dayjs(query.startDate).format("YYYY-MM-DD")
           : undefined,

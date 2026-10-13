@@ -10,11 +10,15 @@ import {
   TransactionOutput,
   UpdateTransactionInputDto,
 } from '@fina/types';
-import { Brackets, DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, EntityManager, Repository } from 'typeorm';
 import { AuthorizationService } from '../auth/authorization.service';
 import { Bankaccounts } from '../bankaccounts/entities/bankaccount.entity';
 import { Categories } from '../categories/entities/category.entity';
 import { Imports } from '../imports/entities/import.entity';
+import {
+  CreditCardsService,
+  toCreditCardReference,
+} from '../credit-cards/credit-cards.service';
 import { Transactions } from './entities/transaction.entity';
 import {
   toDateTimeOutput,
@@ -67,6 +71,7 @@ export class TransactionsService {
     private readonly transactions: Repository<Transactions>,
     private readonly dataSource: DataSource,
     private readonly authorization: AuthorizationService,
+    private readonly creditCards: CreditCardsService,
   ) {}
 
   async create(
@@ -77,6 +82,12 @@ export class TransactionsService {
     if (!account) throw new NotFoundException('Resource not found');
     const billDueDate = this.resolveBillDueDate(account, input.billMonth);
     const saved = await this.dataSource.transaction(async (manager) => {
+      const card = await this.creditCards.assertAssignment(
+        manager,
+        input.groupId,
+        account.id,
+        input.creditCardId,
+      );
       if (account.type === 'credit') {
         await ensureBillReviewMonth(
           manager,
@@ -104,6 +115,7 @@ export class TransactionsService {
               ? `${input.reviewMonth}-01`
               : null,
           bankaccount: { id: input.bankaccountId },
+          creditCard: card ? { id: card.id } : null,
           category: input.categoryId ? { id: input.categoryId } : null,
           group: { id: input.groupId },
           import: input.importId ? { id: input.importId } : null,
@@ -123,17 +135,27 @@ export class TransactionsService {
       endDate,
       categoryIdList,
       accountIdList,
+      creditCardIdList,
       accountType,
       search,
       dateBasis,
+      reviewMonths,
+      importSource,
+      importIdList,
+      minValue,
+      maxValue,
     }: QueryTransactionInputDto,
     billMonth?: string,
+    manager: EntityManager = this.dataSource.manager,
   ): Promise<{ data: TransactionOutput[]; totalCount: number }> {
     await this.authorization.assertMember(userId, groupId);
-    const query = this.transactions
+    const query = manager
+      .getRepository(Transactions)
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
+      .leftJoinAndSelect('transaction.creditCard', 'credit_card')
+      .leftJoinAndSelect('credit_card.account', 'credit_card_account')
       .leftJoinAndMapOne(
         'transaction.billReview',
         CreditCardBillReviews,
@@ -175,11 +197,15 @@ export class TransactionsService {
       );
 
     if (dateBasis === 'monthly-review') {
-      if (startDate)
+      if (reviewMonths?.length)
+        query.andWhere(`${REVIEW_MONTH_SQL} IN (:...reviewMonthDates)`, {
+          reviewMonthDates: reviewMonths.map((month) => `${month}-01`),
+        });
+      if (!reviewMonths && startDate)
         query.andWhere(`${REVIEW_MONTH_SQL} >= :reviewStartDate`, {
           reviewStartDate: startDate.toISOString().slice(0, 10),
         });
-      if (endDate)
+      if (!reviewMonths && endDate)
         query.andWhere(`${REVIEW_MONTH_SQL} <= :reviewEndDate`, {
           reviewEndDate: endDate.toISOString().slice(0, 10),
         });
@@ -221,10 +247,41 @@ export class TransactionsService {
     if (accountType) {
       query.andWhere('bankaccount.type = :accountType', { accountType });
     }
+    if (creditCardIdList?.length) {
+      const cardIds = creditCardIdList.filter((id) => id !== '-1');
+      query.andWhere(
+        new Brackets((cards) => {
+          if (cardIds.length)
+            cards.where('transaction.credit_card_id IN (:...creditCardIds)', {
+              creditCardIds: cardIds,
+            });
+          if (creditCardIdList.includes('-1'))
+            cards.orWhere(
+              "transaction.credit_card_id IS NULL AND bankaccount.type = 'credit'",
+            );
+        }),
+      );
+    }
     if (search) {
       query.andWhere('transaction.description ILIKE :search', {
         search: `%${search}%`,
       });
+    }
+    if (importSource) {
+      query.andWhere(
+        `transaction.import_id IS ${importSource === 'imported' ? 'NOT ' : ''}NULL`,
+      );
+    }
+    if (importIdList?.length) {
+      query.andWhere('transaction.import_id IN (:...importIdList)', {
+        importIdList,
+      });
+    }
+    if (minValue !== undefined) {
+      query.andWhere('transaction.value >= :minValue', { minValue });
+    }
+    if (maxValue !== undefined) {
+      query.andWhere('transaction.value <= :maxValue', { maxValue });
     }
 
     query.orderBy('transaction.calculatedDate', 'DESC');
@@ -321,6 +378,17 @@ export class TransactionsService {
       const account =
         nextAccount ??
         (input.bankaccountId === null ? null : current.bankaccount);
+      if (
+        input.creditCardId !== undefined &&
+        input.creditCardId !== current.creditCard?.id
+      ) {
+        current.creditCard = await this.creditCards.assertAssignment(
+          manager,
+          current.group.id,
+          account?.id ?? null,
+          input.creditCardId,
+        );
+      }
       const billMonth = toNullableDateOutput(current.creditDueDate)?.slice(
         0,
         7,
@@ -352,6 +420,8 @@ export class TransactionsService {
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.bankaccount', 'bankaccount')
+      .leftJoinAndSelect('transaction.creditCard', 'credit_card')
+      .leftJoinAndSelect('credit_card.account', 'credit_card_account')
       .leftJoinAndMapOne(
         'transaction.billReview',
         CreditCardBillReviews,
@@ -462,6 +532,9 @@ export class TransactionsService {
       createdAt: toDateTimeOutput(transaction.createdAt),
       description: transaction.description,
       value: transaction.value,
+      creditCard: transaction.creditCard
+        ? toCreditCardReference(transaction.creditCard)
+        : null,
       date: toNullableDateTimeOutput(transactionOccurrenceDate(transaction)),
       installmentTotal: transaction.installmentTotal ?? null,
       installmentCurrent: transaction.installmentCurrent ?? null,
@@ -519,6 +592,7 @@ export class TransactionsService {
             id: transaction.bankaccount.id,
             name: transaction.bankaccount.name,
             type: transaction.bankaccount.type,
+            institutionId: transaction.bankaccount.institutionId ?? null,
             dueDate: transaction.bankaccount.dueDate,
           }
         : null,

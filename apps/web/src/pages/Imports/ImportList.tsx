@@ -1,4 +1,5 @@
-import { CalendarDays, FileSpreadsheet, Landmark, Trash2 } from "lucide-react"
+import { CalendarDays, FileSpreadsheet, Trash2 } from "lucide-react"
+import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import { type FC } from "react"
 
 import { FinaSectionLabel } from "@/components/FinaPage"
@@ -22,11 +23,11 @@ export const ImportList: FC = () => {
           <FinaSectionLabel>Files / History</FinaSectionLabel>
           <h2
             id="import-history-title"
-            className="mt-2 text-2xl font-black uppercase tracking-[-0.04em]"
+            className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
           >
             Import history
           </h2>
-          <p className="mt-2 max-w-2xl text-sm font-semibold text-fina-ink/60">
+          <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/60">
             Removing an import archives it and its transactions, allowing a
             corrected file to be imported again.
           </p>
@@ -36,26 +37,33 @@ export const ImportList: FC = () => {
 
       <FinaSurface elevation="md" className="overflow-hidden">
         {importsData?.length ? (
-          <ul className="divide-y-2 divide-fina-ink">
+          <ul className="divide-y divide-fina-grid">
             {importsData.map((item, index) => (
               <li
                 className="flex flex-col gap-5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
                 key={item.id}
               >
                 <div className="flex min-w-0 items-start gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center border-2 border-fina-ink bg-fina-violet text-white">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-fina-grid bg-fina-violet text-white">
                     <FileSpreadsheet className="size-5" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fina-ink/45">
+                    <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
                       File / {String(index + 1).padStart(2, "0")}
                     </div>
-                    <div className="mt-1 truncate text-lg font-black tracking-[-0.025em]">
+                    <div className="mt-1 truncate text-lg font-semibold tracking-[-0.025em]">
                       {item.fileName}
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-fina-ink/60">
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-foreground/60">
                       <span className="inline-flex items-center gap-1.5">
-                        <Landmark className="size-3.5" /> {item.accountName}
+                        <FinancialInstitutionLogo
+                          institutionId={item.accountInstitutionId}
+                          accountName={item.accountName}
+                          accountType={item.billDueDate ? "credit" : "checkout"}
+                          className="size-3.5"
+                          decorative
+                        />
+                        {item.accountName}
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <FileSpreadsheet className="size-3.5" />
@@ -74,7 +82,7 @@ export const ImportList: FC = () => {
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-fina-ink/40">
+                    <div className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-foreground/40">
                       Added {new Date(item.createdAt).toLocaleString()}
                     </div>
                   </div>
@@ -93,8 +101,8 @@ export const ImportList: FC = () => {
         ) : (
           <div className="p-10 text-center">
             <FileSpreadsheet className="mx-auto size-10" />
-            <p className="mt-4 font-black uppercase">No imports yet</p>
-            <p className="mt-2 text-sm font-semibold text-fina-ink/60">
+            <p className="mt-4 font-semibold">No imports yet</p>
+            <p className="mt-2 text-sm font-semibold text-foreground/60">
               Import a CSV statement to start the history.
             </p>
           </div>

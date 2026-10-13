@@ -49,8 +49,18 @@ export class TransactionsController {
   @ApiQuery({ name: 'pageSize', type: Number, required: false })
   @ApiQuery({ name: 'startDate', type: String, required: false })
   @ApiQuery({ name: 'endDate', type: String, required: false })
+  @ApiQuery({ name: 'reviewMonths', type: [String], required: false })
   @ApiQuery({ name: 'categoryIdList', type: [String], required: false })
   @ApiQuery({ name: 'accountIdList', type: [String], required: false })
+  @ApiQuery({ name: 'creditCardIdList', type: [String], required: false })
+  @ApiQuery({ name: 'importIdList', type: [String], required: false })
+  @ApiQuery({
+    name: 'importSource',
+    enum: ['imported', 'manual'],
+    required: false,
+  })
+  @ApiQuery({ name: 'minValue', type: Number, required: false })
+  @ApiQuery({ name: 'maxValue', type: Number, required: false })
   @ApiQuery({
     name: 'accountType',
     enum: ['checkout', 'credit'],
@@ -75,9 +85,15 @@ export class TransactionsController {
       endDate,
       categoryIdList,
       accountIdList,
+      creditCardIdList,
       accountType,
       search,
       dateBasis,
+      reviewMonths,
+      importSource,
+      importIdList,
+      minValue,
+      maxValue,
     } = query;
 
     const { data, totalCount } = await this.transactionsService.findAll(
@@ -90,9 +106,15 @@ export class TransactionsController {
         endDate: endDate ? new Date(endDate) : undefined,
         categoryIdList,
         accountIdList,
+        creditCardIdList,
         accountType,
         search,
         dateBasis,
+        reviewMonths,
+        importSource,
+        importIdList,
+        minValue,
+        maxValue,
       },
     );
 

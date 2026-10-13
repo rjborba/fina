@@ -24,7 +24,7 @@ const signupSchema = loginSchema.extend({
 type SignupFormData = z.infer<typeof signupSchema>
 
 const inputClassName =
-  "h-12 rounded-none border-2 border-fina-ink bg-fina-surface px-4 font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
+  "h-11 rounded-md border border-fina-grid bg-fina-surface px-3 shadow-none focus-visible:border-fina-violet focus-visible:ring-fina-violet/20"
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -74,39 +74,44 @@ export default function Login() {
   }
 
   return (
-    <main className="grid min-h-svh bg-fina-grid text-fina-ink lg:grid-cols-[minmax(0,1.05fr)_minmax(30rem,0.95fr)]">
-      <section className="transactions-hero relative hidden overflow-hidden border-r-[3px] border-fina-ink p-10 lg:flex lg:flex-col lg:justify-between xl:p-14">
+    <main className="grid min-h-svh bg-fina-canvas text-foreground lg:grid-cols-[minmax(0,1.05fr)_minmax(30rem,0.95fr)]">
+      <section className="relative hidden overflow-hidden border-r border-fina-grid bg-[#202024] p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center border-2 border-fina-ink bg-fina-lime text-xl font-black shadow-fina-md">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-fina-violet text-lg font-semibold text-white shadow-fina-md">
             F
           </div>
           <div>
-            <div className="text-2xl font-black tracking-[-0.08em]">FINA.</div>
-            <div className="font-mono text-[9px] font-black uppercase tracking-[0.22em]">
+            <div className="text-lg font-semibold tracking-[-0.04em]">Fina</div>
+            <div className="mt-0.5 text-[10px] text-white/45">
               Money, in focus
             </div>
           </div>
         </div>
 
         <div className="relative z-10 max-w-2xl">
-          <FinaBadge tone="sky">Personal finance / Clear</FinaBadge>
-          <h1 className="mt-6 text-7xl font-black uppercase leading-[0.82] tracking-[-0.08em] xl:text-8xl">
-            See every move.
+          <FinaBadge
+            tone="surface"
+            className="border-white/10 bg-white/10 text-white/70"
+          >
+            Personal finance, clearly organized
+          </FinaBadge>
+          <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-[-0.055em] xl:text-6xl">
+            See where your money moves.
           </h1>
-          <p className="mt-8 max-w-xl text-lg font-semibold leading-7 text-fina-ink/70">
+          <p className="mt-6 max-w-xl text-base leading-7 text-white/55">
             Import statements, organize transactions, and keep shared money in
             one focused workspace.
           </p>
         </div>
 
-        <div className="relative z-10 grid max-w-2xl grid-cols-3 border-l-2 border-t-2 border-fina-ink bg-fina-surface shadow-fina-lg">
+        <div className="relative z-10 grid max-w-2xl grid-cols-3 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
           {["Import", "Review", "Understand"].map((item) => (
             <div
               key={item}
-              className="border-b-2 border-r-2 border-fina-ink p-4"
+              className="border-r border-white/10 p-4 last:border-r-0"
             >
-              <Check className="size-4" strokeWidth={3} />
-              <div className="mt-3 font-mono text-[10px] font-black uppercase tracking-[0.12em]">
+              <Check className="size-4 text-[#8b95eb]" strokeWidth={2} />
+              <div className="mt-3 text-xs font-medium text-white/70">
                 {item}
               </div>
             </div>
@@ -115,21 +120,21 @@ export default function Login() {
       </section>
 
       <section className="flex items-center justify-center px-5 py-12 sm:px-10 lg:px-14">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-sm">
           <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <div className="flex size-10 items-center justify-center border-2 border-fina-ink bg-fina-lime font-black shadow-fina-sm">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-fina-violet font-semibold text-white shadow-fina-sm">
               F
             </div>
-            <div className="text-xl font-black tracking-[-0.08em]">FINA.</div>
+            <div className="text-lg font-semibold tracking-[-0.04em]">Fina</div>
           </div>
 
           <FinaBadge tone={isSignUp ? "sky" : "lime"}>
             {isSignUp ? "New workspace member" : "Secure access"}
           </FinaBadge>
-          <h2 className="mt-5 text-4xl font-black uppercase leading-[0.9] tracking-[-0.065em] sm:text-5xl">
+          <h2 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.04em]">
             {isSignUp ? "Create account." : "Welcome back."}
           </h2>
-          <p className="mt-4 text-sm font-semibold leading-6 text-fina-ink/60">
+          <p className="mt-2 text-sm leading-6 text-foreground/55">
             {isSignUp
               ? "Set up your profile and start organizing your financial workspace."
               : "Sign in to continue to your financial workspace."}
@@ -139,7 +144,7 @@ export default function Login() {
             {error ? (
               <Alert
                 variant="destructive"
-                className="rounded-none border-2 border-fina-ink bg-fina-danger text-fina-ink"
+                className="rounded-md border border-red-200 bg-fina-danger text-red-700"
               >
                 <AlertDescription className="font-semibold">
                   {error}
@@ -149,7 +154,7 @@ export default function Login() {
 
             {isSignUp ? (
               <label className="block">
-                <span className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+                <span className="text-xs font-medium text-foreground/70">
                   Name
                 </span>
                 <Input
@@ -167,7 +172,7 @@ export default function Login() {
             ) : null}
 
             <label className="block">
-              <span className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+              <span className="text-xs font-medium text-foreground/70">
                 Email address
               </span>
               <Input
@@ -185,7 +190,7 @@ export default function Login() {
             </label>
 
             <label className="block">
-              <span className="font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+              <span className="text-xs font-medium text-foreground/70">
                 Password
               </span>
               <Input
@@ -219,11 +224,11 @@ export default function Login() {
             </Button>
 
             <div className="flex items-center gap-3 py-1">
-              <div className="h-0.5 flex-1 bg-fina-ink" />
-              <span className="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-fina-ink/50">
+              <div className="h-px flex-1 bg-fina-canvas" />
+              <span className="text-[11px] text-foreground/45">
                 Or continue with
               </span>
-              <div className="h-0.5 flex-1 bg-fina-ink" />
+              <div className="h-px flex-1 bg-fina-canvas" />
             </div>
 
             <Button
@@ -237,7 +242,7 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="mt-7 border-t-2 border-fina-ink pt-5 text-center">
+          <div className="mt-7 border-t border-fina-grid pt-5 text-center">
             <Button variant="fina-ghost" onClick={toggleMode}>
               {isSignUp
                 ? "Already have an account? Sign in"
