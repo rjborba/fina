@@ -168,6 +168,19 @@ release follow-ups. The abandoned Vercel `fina-api` project is not a supported
 API target; remove it separately after its deployment history is no longer
 needed.
 
+On 2026-10-20, the data-only
+`BackfillImportedCardMetadata1792501867419` migration from `3fa3a2f` was applied
+to production using verified TLS and a session-mode PostgreSQL connection.
+The retained originals supplied card names and final four digits for all 520
+active credit purchases across three imports. All 602 active transactions kept
+their category assignments. Before/after fingerprints confirmed every other
+transaction field, retained CSV, saved mapping, reconciliation, and other
+application record was unchanged; deleted and checking transactions were
+unchanged in full. A private recovery manifest records the original empty card
+fields and expected-result hashes without storing card values or CSV bytes.
+The verified migration is committed; `pnpm verify`, 56 disposable-PostgreSQL
+integration tests, and all eight browser journeys passed before application.
+
 Supabase's security advisor also reports separate follow-ups for
 [PostgreSQL security updates](https://supabase.com/docs/guides/platform/upgrading),
 [email OTP expiry](https://supabase.com/docs/guides/platform/going-into-prod#security),

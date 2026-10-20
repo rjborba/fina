@@ -266,7 +266,10 @@ Production observability around authentication and import failures remains.
    alone. Transaction IDs, categories, manual financial edits, source files,
    saved mappings, and reconciliation links are preserved. Invalid or ambiguous
    source rows abort the repair; concurrent card changes abort the transaction.
-   The migration is idempotent and forward-only.
+   The migration is idempotent and forward-only. It was applied to production
+   on 2026-10-20 after disposable PostgreSQL and browser verification, enriching
+   520 existing purchases while preserving every category assignment and all
+   other financial/source records.
 
 ### Credit-card bill grouping and reconciliation
 
