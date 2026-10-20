@@ -136,7 +136,8 @@ function expectInitialQuery(filters: typeof marchFilters, groupId = "group-1") {
 
 const checkingTransaction = {
   id: "checking-transaction",
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   createdAt: "2026-02-10T00:00:00.000Z",
   description: "Checking purchase",
   value: -40,
@@ -282,10 +283,6 @@ vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
     ],
     isLoading: false
   })
-}))
-
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: () => ({ data: [], isLoading: false, isError: false })
 }))
 
 vi.mock("@/data/imports/useImports", () => ({
@@ -1034,11 +1031,15 @@ describe("Transactions cash-flow ledger", () => {
     await screen.findByTestId("transactions-list")
     await user.click(screen.getByRole("button", { name: "Display options" }))
     const display = screen.getByRole("dialog", { name: "Display options" })
-    for (const name of ["Account", "Category", "Import"]) {
+    for (const [name, pressed] of [
+      ["Account", "true"],
+      ["Card number", "true"],
+      ["Category", "false"]
+    ]) {
       await user.click(within(display).getByRole("button", { name }))
       expect(within(display).getByRole("button", { name })).toHaveAttribute(
         "aria-pressed",
-        "false"
+        pressed
       )
       expect(display).toBeVisible()
     }
@@ -1052,9 +1053,9 @@ describe("Transactions cash-flow ledger", () => {
     )
     const preference = {
       ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
-      account: false,
+      accountName: true,
       category: false,
-      sourceImport: false
+      cardNumber: true
     }
     expect(
       JSON.parse(localStorage.getItem("transactionDisplay:v1") || "null")

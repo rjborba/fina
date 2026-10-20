@@ -71,7 +71,7 @@ describe("transaction review-month queries", () => {
     const base: QueryTransactionInputDto = { groupId: "10", page: 1 }
     const criteria: Partial<QueryTransactionInputDto>[] = [
       { accountIdList: ["11"] },
-      { creditCardIdList: ["71", "-1"] },
+      { cardList: ["71", "-1"] },
       { importSource: "imported" },
       { importIdList: ["31"] },
       { minValue: -100 },

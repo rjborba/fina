@@ -1,19 +1,8 @@
 import { useState } from "react"
 import { ChevronDown, CreditCard } from "lucide-react"
-import { useActiveGroup } from "@/contexts/ActiveGroupContext"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
-import { CardLabel } from "@/components/creditCards/CardLabel"
-import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
-import type { CreditCardReference } from "@fina/types"
+import { CardMetadataEditor } from "@/components/creditCards/CardMetadataEditor"
+import type { CardMetadata } from "@fina/types"
 import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from "@/components/ui/command"
 import {
   Popover,
   PopoverContent,
@@ -27,25 +16,17 @@ export function BulkCardAssignment({
 }: {
   accountId: string | null
   busy: boolean
-  onAssignCard: (card: CreditCardReference | null) => Promise<void>
+  onAssignCard: (card: CardMetadata) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
   const [assigning, setAssigning] = useState(false)
-  const { selectedGroup } = useActiveGroup()
-  const query = useCreditCards({
-    groupId: accountId ? selectedGroup?.id : undefined,
-    accountId: accountId ?? undefined
-  })
-  const disabled =
-    busy || assigning || !accountId || query.isLoading || query.isError
-  const assign = async (card: CreditCardReference | null) => {
+  const disabled = busy || assigning || !accountId
+  const assign = async (card: CardMetadata) => {
     if (disabled) return
     setAssigning(true)
     try {
       await onAssignCard(card)
       setOpen(false)
-    } catch {
-      // The ledger reports partial failures; retain this editor for retry.
     } finally {
       setAssigning(false)
     }
@@ -67,9 +48,7 @@ export function BulkCardAssignment({
           title={
             !accountId
               ? "Select credit purchases from one account to assign their card"
-              : query.isError
-                ? "Could not load cards"
-                : "All selected purchases retain one shared account bill"
+              : "Edit the card details on all selected purchases"
           }
           className="h-7 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
         >
@@ -83,36 +62,13 @@ export function BulkCardAssignment({
         align="end"
         sideOffset={8}
         aria-label="Card for selected purchases"
-        className="w-64 rounded-xl border-fina-grid bg-fina-surface p-0 shadow-fina-md"
+        className="w-64 rounded-xl border-fina-grid bg-fina-surface p-3 shadow-fina-md"
       >
-        <Command label="Search cards" className="bg-transparent">
-          <CommandInput
-            placeholder="Search cards..."
-            disabled={busy || assigning}
-          />
-          <CommandList>
-            <CommandEmpty>No matching cards.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                value="Not identified"
-                disabled={busy || assigning}
-                onSelect={() => void assign(null)}
-              >
-                Not identified
-              </CommandItem>
-              {(query.data ?? []).map((card) => (
-                <CommandItem
-                  key={card.id}
-                  value={`${card.id} ${formatCardLabel(card)}`}
-                  disabled={busy || assigning}
-                  onSelect={() => void assign(card)}
-                >
-                  <CardLabel card={card} />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <CardMetadataEditor
+          value={{ cardName: null, cardLast4: null }}
+          disabled={disabled}
+          onSave={assign}
+        />
       </PopoverContent>
     </Popover>
   )

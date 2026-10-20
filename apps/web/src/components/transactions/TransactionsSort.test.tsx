@@ -91,16 +91,16 @@ describe("transaction Display options", () => {
     const labels = [
       "Date",
       "Account",
-      "Card",
+      "Card name",
+      "Card number",
       "Category",
       "Installment",
-      "Amount",
-      "Import"
+      "Amount"
     ]
     for (const name of labels) {
       expect(within(properties).getByRole("button", { name })).toHaveAttribute(
         "aria-pressed",
-        "true"
+        ["Account", "Card number"].includes(name) ? "false" : "true"
       )
     }
     await user.click(
@@ -112,19 +112,23 @@ describe("transaction Display options", () => {
     for (const name of labels.filter((label) => label !== "Category")) {
       expect(within(properties).getByRole("button", { name })).toHaveAttribute(
         "aria-pressed",
-        "true"
+        ["Account", "Card number"].includes(name) ? "false" : "true"
       )
     }
-    await user.click(within(properties).getByRole("button", { name: "Card" }))
+    await user.click(
+      within(properties).getByRole("button", { name: "Card name" })
+    )
     expect(
-      within(properties).getByRole("button", { name: "Card" })
+      within(properties).getByRole("button", { name: "Card name" })
     ).toHaveAttribute("aria-pressed", "false")
     expect(
       within(properties).getByRole("button", { name: "Account" })
-    ).toHaveAttribute("aria-pressed", "true")
-    await user.click(within(properties).getByRole("button", { name: "Card" }))
+    ).toHaveAttribute("aria-pressed", "false")
+    await user.click(
+      within(properties).getByRole("button", { name: "Card name" })
+    )
     expect(
-      within(properties).getByRole("button", { name: "Card" })
+      within(properties).getByRole("button", { name: "Card name" })
     ).toHaveAttribute("aria-pressed", "true")
     const inline = within(display).getByRole("switch", {
       name: "Inline credit card transactions"

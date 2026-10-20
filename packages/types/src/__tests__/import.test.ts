@@ -90,6 +90,13 @@ describe("import contracts", () => {
         billMonth: "2026-13"
       }).success
     ).toBe(false);
+    expect(
+      CreateImportInputDtoSchema.safeParse({
+        ...validPayload,
+        billMonth: "2026-02",
+        reviewMonth: "2026-01"
+      }).success
+    ).toBe(false);
   });
 
   it("rejects client-selected account ownership", () => {

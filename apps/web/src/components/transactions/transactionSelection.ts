@@ -1,4 +1,8 @@
-import type { CategoryOutput, TransactionOutput } from "@fina/types"
+import type {
+  CardMetadata,
+  CategoryOutput,
+  TransactionOutput
+} from "@fina/types"
 
 export const toggleTransactionSelection = (
   selection: ReadonlySet<string>,
@@ -68,17 +72,13 @@ export function selectedCreditAccountId(
 
 export async function assignCardToTransactionSelection(
   transactionIds: readonly string[],
-  creditCard: TransactionOutput["creditCard"],
+  card: CardMetadata,
   updateTransaction: (
     id: string,
     transaction: Partial<TransactionOutput>
   ) => Promise<void>
 ) {
-  return updateTransactionSelection(
-    transactionIds,
-    { creditCard },
-    updateTransaction
-  )
+  return updateTransactionSelection(transactionIds, card, updateTransaction)
 }
 
 async function updateTransactionSelection(

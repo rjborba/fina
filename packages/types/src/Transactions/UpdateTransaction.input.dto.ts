@@ -4,9 +4,10 @@ import { TransactionWriteFieldsSchema } from "./CreateTransaction.input.dto";
 export const UpdateTransactionInputDtoSchema =
   TransactionWriteFieldsSchema.extend({
     bankaccountId: z.string().regex(/^\d+$/).nullable(),
-    creditCardId: z.string().regex(/^\d+$/).nullable(),
     categoryId: z.string().regex(/^\d+$/).nullable()
-  }).partial();
+  })
+    .partial()
+    .strict();
 
 export type UpdateTransactionInputDtoType = z.infer<
   typeof UpdateTransactionInputDtoSchema

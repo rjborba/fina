@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CardFilterValueSchema } from "./CardMetadata";
 
 const queryList = <Item extends z.ZodTypeAny>(item: Item) =>
   z
@@ -24,10 +25,8 @@ export const TransactionFilterQueryShape = {
   accountIdList: queryList(z.string().regex(/^\d+$/)).describe(
     "Account IDs to filter by"
   ),
-  creditCardIdList: queryList(
-    z.union([z.string().regex(/^\d+$/), z.literal("-1")])
-  ).describe(
-    "Individual card IDs; -1 matches unassigned credit purchases only"
+  cardList: queryList(CardFilterValueSchema).describe(
+    "Transaction card name/last-four pairs; -1 matches unidentified credit purchases only"
   ),
   search: z.string().optional().describe("Search transaction descriptions"),
   importSource: z

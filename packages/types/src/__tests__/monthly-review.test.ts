@@ -1,51 +1,34 @@
 import { describe, expect, it } from "vitest";
 import {
-  UpdateGroupReviewSettingsInputSchema,
-  UpdateCreditCardBillReviewMonthInputSchema,
+  CreateTransactionInputDtoSchema,
   QueryTransactionInputDtoSchema,
   CreditCardBillListQuerySchema,
   UpdateTransactionInputDtoSchema
 } from "../index";
 
 describe("monthly review contracts", () => {
-  it("permits only supported group defaults and rejects client identity", () => {
-    for (const offset of [0, -1]) {
-      expect(
-        UpdateGroupReviewSettingsInputSchema.safeParse({
-          creditCardReviewMonthOffset: offset
-        }).success
-      ).toBe(true);
-    }
+  it("rejects explicit review assignments on transaction creation and editing", () => {
+    const transaction = {
+      groupId: "1",
+      bankaccountId: "2",
+      description: "Synthetic purchase",
+      value: -10,
+      date: "2026-01-20",
+      billMonth: "2026-02"
+    };
+    expect(CreateTransactionInputDtoSchema.safeParse(transaction).success).toBe(
+      true
+    );
     expect(
-      UpdateGroupReviewSettingsInputSchema.safeParse({
-        creditCardReviewMonthOffset: 1
+      CreateTransactionInputDtoSchema.safeParse({
+        ...transaction,
+        reviewMonth: "2026-03"
       }).success
     ).toBe(false);
     expect(
-      UpdateGroupReviewSettingsInputSchema.safeParse({
-        creditCardReviewMonthOffset: -1,
-        userId: "3"
-      }).success
+      UpdateTransactionInputDtoSchema.safeParse({ reviewMonth: "2026-03" })
+        .success
     ).toBe(false);
-  });
-
-  it("validates explicit reference months independently of bill month", () => {
-    expect(
-      UpdateCreditCardBillReviewMonthInputSchema.parse({
-        groupId: "1",
-        reviewMonth: "2026-06"
-      })
-    ).toEqual({ groupId: "1", reviewMonth: "2026-06" });
-    expect(
-      UpdateCreditCardBillReviewMonthInputSchema.safeParse({
-        groupId: "1",
-        reviewMonth: "2026-13"
-      }).success
-    ).toBe(false);
-    expect(
-      UpdateTransactionInputDtoSchema.parse({ reviewMonth: "2026-06" })
-        .reviewMonth
-    ).toBe("2026-06");
   });
 
   it("allows the same explicit date basis on both ledger presentations", () => {

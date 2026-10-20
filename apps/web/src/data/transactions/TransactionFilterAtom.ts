@@ -7,7 +7,7 @@ export type TransactionFilterType = {
   partialDescription: string
   categoriesId: string[]
   accountsId?: string[]
-  creditCardsId?: string[]
+  cards?: string[]
   importSource?: "imported" | "manual"
   importsId?: string[]
   minValue?: number

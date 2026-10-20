@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -23,7 +22,6 @@ import {
   CreditCardBillSummaryDto,
   ReconcileCreditCardBillInputDto,
   UnlinkCreditCardBillOutputDto,
-  UpdateCreditCardBillReviewMonthInputDto,
 } from '../contracts/api-dtos';
 import { CreditCardBillsService } from './credit-card-bills.service';
 
@@ -38,7 +36,7 @@ export class CreditCardBillsController {
   @ApiQuery({ name: 'endDate', type: String, required: false })
   @ApiQuery({ name: 'reviewMonths', type: [String], required: false })
   @ApiQuery({ name: 'accountIdList', type: [String], required: false })
-  @ApiQuery({ name: 'creditCardIdList', type: [String], required: false })
+  @ApiQuery({ name: 'cardList', type: [String], required: false })
   @ApiQuery({ name: 'categoryIdList', type: [String], required: false })
   @ApiQuery({ name: 'search', type: String, required: false })
   @ApiQuery({ name: 'importIdList', type: [String], required: false })
@@ -66,7 +64,7 @@ export class CreditCardBillsController {
       dateBasis: query.dateBasis,
       reviewMonths: query.reviewMonths,
       accountIdList: query.accountIdList,
-      creditCardIdList: query.creditCardIdList,
+      cardList: query.cardList,
       categoryIdList: query.categoryIdList,
       search: query.search,
       importIdList: query.importIdList,
@@ -92,24 +90,6 @@ export class CreditCardBillsController {
       query.groupId,
       params.accountId,
       params.billMonth,
-    );
-  }
-
-  @Patch(':accountId/:billMonth/review-month')
-  @ApiOkResponse({ type: CreditCardBillDetailDto })
-  @ApiParam({ name: 'accountId', type: String })
-  @ApiParam({ name: 'billMonth', type: String })
-  @ZodSerializerDto(CreditCardBillDetailDto)
-  updateReviewMonth(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param() params: CreditCardBillParamsDto,
-    @Body() input: UpdateCreditCardBillReviewMonthInputDto,
-  ) {
-    return this.creditCardBills.updateReviewMonth(
-      user.id,
-      params.accountId,
-      params.billMonth,
-      input,
     );
   }
 

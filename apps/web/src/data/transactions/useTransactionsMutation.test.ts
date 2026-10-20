@@ -7,13 +7,15 @@ const page = {
   data: [
     {
       id: "transaction-1",
-      creditCard: null,
+      cardName: null,
+      cardLast4: null,
       description: "Groceries",
       category: null
     },
     {
       id: "transaction-2",
-      creditCard: null,
+      cardName: null,
+      cardLast4: null,
       description: "Rent",
       category: {
         id: "category-home",

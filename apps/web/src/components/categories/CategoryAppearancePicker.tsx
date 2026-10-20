@@ -1,60 +1,21 @@
-import type { CategoryColor, CategoryIcon } from "@fina/types"
+import type { CategoryColor } from "@fina/types"
+import { useId } from "react"
 
 import { cn } from "@/lib/utils"
 import { CategoryAppearance } from "./CategoryAppearance"
-import {
-  categoryColorOptions,
-  categoryIconOptions
-} from "./categoryAppearanceOptions"
+import { categoryColorOptions } from "./categoryAppearanceOptions"
 
 export function CategoryAppearancePicker({
-  icon,
   color,
-  onIconChange,
   onColorChange
 }: {
-  icon: CategoryIcon
   color: CategoryColor
-  onIconChange: (icon: CategoryIcon) => void
   onColorChange: (color: CategoryColor) => void
 }) {
+  const colorGroupId = useId()
+
   return (
     <div className="space-y-4">
-      <fieldset>
-        <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
-          Icon
-        </legend>
-        <div
-          role="radiogroup"
-          aria-label="Category icon"
-          className="grid grid-cols-6 gap-2"
-        >
-          {categoryIconOptions.map((option, index) => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={icon === option.value}
-              aria-label={`Icon ${index + 1}`}
-              title={`Icon ${index + 1}`}
-              onClick={() => onIconChange(option.value)}
-              className={cn(
-                "flex aspect-square items-center justify-center border border-fina-grid bg-fina-surface p-1 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet",
-                icon === option.value
-                  ? "-translate-y-0.5 shadow-fina-sm"
-                  : "opacity-65 hover:opacity-100"
-              )}
-            >
-              <CategoryAppearance
-                icon={option.value}
-                color={color}
-                className="size-8 border"
-              />
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
       <fieldset>
         <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
           Color
@@ -65,27 +26,27 @@ export function CategoryAppearancePicker({
           className="grid grid-cols-6 gap-2"
         >
           {categoryColorOptions.map((option) => (
-            <button
+            <label
               key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={color === option.value}
-              aria-label={option.label}
               title={option.label}
-              onClick={() => onColorChange(option.value)}
               className={cn(
-                "flex h-10 items-center justify-center border border-fina-grid bg-fina-surface transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet",
+                "relative flex h-9 items-center justify-center rounded-md border bg-transparent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet",
                 color === option.value
-                  ? "-translate-y-0.5 shadow-fina-sm"
-                  : "opacity-60 hover:opacity-100"
+                  ? "border-fina-violet bg-fina-violet/5"
+                  : "border-transparent hover:bg-foreground/5"
               )}
             >
-              <CategoryAppearance
-                icon={icon}
-                color={option.value}
-                className="size-7 border"
+              <input
+                type="radio"
+                name={colorGroupId}
+                value={option.value}
+                checked={color === option.value}
+                aria-label={option.label}
+                onChange={() => onColorChange(option.value)}
+                className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
               />
-            </button>
+              <CategoryAppearance color={option.value} className="size-3" />
+            </label>
           ))}
         </div>
       </fieldset>

@@ -155,28 +155,24 @@ describe("transaction filter storage", () => {
     )
   })
 
-  it("persists only deduplicated card IDs, including unidentified, within the user and group scope", () => {
-    const otherGroup = transactionFiltersStorageKey("fixture-user", "group-2")
-    const otherUser = transactionFiltersStorageKey("other-user", "group-1")
-    const withCardMetadata = {
+  it("does not persist transaction card values or restore obsolete saved-card identifiers", () => {
+    const metadata = {
       ...filter(),
-      creditCardsId: ["71", "-1", "71", "72"],
-      creditCards: [{ id: "71", name: "Synthetic nickname", last4: "0042" }]
+      cards: [JSON.stringify(["Synthetic nickname", "0042"]), "-1"]
     }
-    writeTransactionFilters(key, withCardMetadata)
-    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({
-      ...savedFilter,
-      creditCardsId: ["71", "-1", "72"]
-    })
-    expect(readTransactionFilters(key).creditCardsId).toEqual([
-      "71",
-      "-1",
-      "72"
-    ])
-    expect(readTransactionFilters(otherGroup).creditCardsId).toBeUndefined()
-    expect(readTransactionFilters(otherUser).creditCardsId).toBeUndefined()
+    writeTransactionFilters(key, metadata)
+    expect(JSON.parse(localStorage.getItem(key)!)).toEqual(savedFilter)
+    expect(readTransactionFilters(key).cards).toBeUndefined()
     expect(localStorage.getItem(key)).not.toContain("Synthetic nickname")
     expect(localStorage.getItem(key)).not.toContain("0042")
+    localStorage.setItem(
+      key,
+      JSON.stringify({ ...savedFilter, creditCardsId: ["71", "-1"] })
+    )
+    expect(readTransactionFilters(key).cards).toBeUndefined()
+    expect(readTransactionFilters(key).categoriesId).toEqual(
+      savedFilter.categoriesId
+    )
   })
 
   it("uses fresh current-month defaults when no preference is saved", () => {

@@ -10,7 +10,6 @@ import {
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type {
-  CreditCardOutput,
   QueryTransactionOutputDtoType,
   TransactionOutput
 } from "@fina/types"
@@ -34,7 +33,6 @@ import TransactionsList from "./TransactionsList"
 
 const api = vi.hoisted(() => ({
   categories: vi.fn(),
-  creditCards: vi.fn(),
   toast: vi.fn(),
   update: vi.fn()
 }))
@@ -46,7 +44,6 @@ vi.mock("@/hooks/use-toast", () => ({
 
 vi.mock("@/api/generated", () => ({
   categoriesControllerFindAll: api.categories,
-  creditCardsControllerFindAll: api.creditCards,
   transactionsControllerUpdate: api.update
 }))
 
@@ -91,7 +88,8 @@ const categories = [
 
 const initialTransaction: TransactionOutput = {
   id: "7",
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
   description: "Test purchase",
   value: -10,
@@ -136,8 +134,6 @@ describe("transaction detail category shortcut flow", () => {
   beforeEach(() => {
     api.categories.mockReset()
     api.categories.mockResolvedValue(categories)
-    api.creditCards.mockReset()
-    api.creditCards.mockResolvedValue([])
     api.update.mockReset()
     api.toast.mockReset()
   })
@@ -145,40 +141,17 @@ describe("transaction detail category shortcut flow", () => {
   afterEach(cleanup)
 
   it.each(["success", "failure"] as const)(
-    "locks mouse and keyboard edits and navigation until a deferred card save settles with %s",
+    "saves ordinary card fields through the generated mutation and preserves persisted values after %s",
     async (outcome) => {
-      const card: CreditCardOutput = {
-        id: "70",
-        accountId: "2",
-        accountName: "Test card",
-        groupId: "1",
-        createdAt: "2026-06-01T00:00:00.000Z",
-        name: "Main physical",
-        last4: "0042",
-        archived: false
-      }
-      api.creditCards.mockResolvedValue([card])
-      let completeCardSave!: () => void
-      const cardSaveReady = new Promise<void>((resolve) => {
-        completeCardSave = resolve
-      })
-      let storedTransaction = initialTransaction
+      let stored = { ...initialTransaction }
       api.update.mockImplementation(async ({ requestBody }) => {
-        if (requestBody.creditCardId !== undefined) {
-          await cardSaveReady
-          if (outcome === "failure") {
-            throw new Error("Synthetic rejected card assignment")
-          }
-          storedTransaction = { ...storedTransaction, creditCard: card }
-        } else if (requestBody.categoryId !== undefined) {
-          storedTransaction = {
-            ...storedTransaction,
-            category:
-              categories.find((item) => item.id === requestBody.categoryId) ??
-              null
-          }
+        if (outcome === "failure") throw new Error("Synthetic save failure")
+        stored = {
+          ...stored,
+          cardName: requestBody.cardName,
+          cardLast4: requestBody.cardLast4
         }
-        return storedTransaction
+        return stored
       })
       const client = new QueryClient({
         defaultOptions: {
@@ -186,254 +159,63 @@ describe("transaction detail category shortcut flow", () => {
           mutations: { retry: false }
         }
       })
-      const queryKey = ["transactions", "1", "deferred-card-save", outcome]
-      const readTransactions = vi.fn(async () => ({
-        data: [storedTransaction],
-        totalCount: 1
-      }))
-      const onNext = vi.fn()
-      const onPrevious = vi.fn()
-      const onOpenChange = vi.fn()
-      function PurchaseDetails() {
-        const { data } = useQuery({ queryKey, queryFn: readTransactions })
+      function Flow() {
+        const { data } = useQuery({
+          queryKey: ["transactions", "1", "metadata"],
+          queryFn: async () => ({ data: [stored], totalCount: 1 })
+        })
         return (
           <TransactionDetailsModal
             transaction={data?.data[0] ?? null}
             open
-            onOpenChange={onOpenChange}
-            totalTransactions={3}
-            currentTransactionIndex={1}
-            onNextTransaction={onNext}
-            onPreviousTransaction={onPrevious}
+            onOpenChange={() => {}}
+            onNextTransaction={() => {}}
+            onPreviousTransaction={() => {}}
+            totalTransactions={1}
+            currentTransactionIndex={0}
           />
         )
       }
-      const user = userEvent.setup()
       render(
         <QueryClientProvider client={client}>
-          <PurchaseDetails />
+          <Flow />
         </QueryClientProvider>
       )
-      const picker = await screen.findByRole("combobox", {
-        name: "Change purchase card"
-      })
-      await waitFor(() => expect(picker).toBeEnabled())
-      const firstCategory = screen.getByRole("button", {
-        name: "1 First category"
-      })
-      const clearCategory = screen.getByRole("button", {
-        name: "0 Uncategorized"
-      })
-      const previous = screen.getByRole("button", { name: "Previous" })
-      const next = screen.getByRole("button", { name: "Next" })
-      for (const button of [firstCategory, clearCategory, previous, next]) {
-        expect(button).toBeEnabled()
-      }
-      await user.click(picker)
+      const user = userEvent.setup()
+      await user.type(await screen.findByLabelText("Card name"), "Personal")
+      await user.type(screen.getByLabelText("Last four digits"), "0042")
       await user.click(
-        screen.getByRole("option", { name: "Main physical · ••0042" })
+        screen.getByRole("button", { name: "Save card details" })
       )
-      await waitFor(() => expect(api.update).toHaveBeenCalledTimes(1))
-      expect(client.isMutating()).toBe(1)
-      expect(picker).toBeDisabled()
-      for (const button of [firstCategory, clearCategory, previous, next]) {
-        expect(button).toBeDisabled()
-        await user.click(button)
-      }
-      expect(
-        screen.getByRole("button", { name: "2 Second category" })
-      ).toBeDisabled()
-      const dialog = screen.getByRole("dialog", { name: "Test purchase" })
-      act(() => dialog.focus())
-      await user.keyboard("10 {ArrowLeft}{ArrowRight}{ArrowUp}{ArrowDown}")
-      expect(api.update).toHaveBeenCalledTimes(1)
-      expect(onNext).not.toHaveBeenCalled()
-      expect(onPrevious).not.toHaveBeenCalled()
-      expect(onOpenChange).not.toHaveBeenCalled()
-      expect(dialog).toHaveTextContent("2 / 3")
-      expect(storedTransaction.creditCard).toBeNull()
-      expect(storedTransaction.category).toBeNull()
-      expect(readTransactions).toHaveBeenCalledTimes(1)
-
-      await act(async () => completeCardSave())
-      await waitFor(() => {
-        expect(client.isMutating()).toBe(0)
-        expect(picker).toBeEnabled()
-        for (const button of [firstCategory, clearCategory, previous, next]) {
-          expect(button).toBeEnabled()
-        }
-      })
-      const persistedCard = outcome === "success" ? card : null
-      expect(storedTransaction.creditCard).toEqual(persistedCard)
-      expect(
-        client.getQueryData<QueryTransactionOutputDtoType>(queryKey)?.data[0]
-          .creditCard
-      ).toEqual(persistedCard)
-      expect(picker).toHaveTextContent(
-        outcome === "success" ? "Main physical · ••0042" : "Not identified"
+      await waitFor(() =>
+        expect(api.update).toHaveBeenCalledWith({
+          id: initialTransaction.id,
+          requestBody: expect.objectContaining({
+            cardName: "Personal",
+            cardLast4: "0042"
+          })
+        })
       )
       if (outcome === "failure") {
-        expect(api.toast).toHaveBeenCalledWith({
-          title: "Could not change the purchase card",
-          variant: "destructive"
-        })
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+          "could not be saved"
+        )
+        expect(stored).toMatchObject({ cardName: null, cardLast4: null })
+        expect(screen.getByLabelText("Card name")).toHaveValue("Personal")
+      } else {
+        await waitFor(() =>
+          expect(stored).toMatchObject({
+            cardName: "Personal",
+            cardLast4: "0042"
+          })
+        )
+        expect(
+          client.getQueryData(["transactions", "1", "metadata"])
+        ).toMatchObject({ data: [{ cardName: "Personal", cardLast4: "0042" }] })
       }
-      await user.click(firstCategory)
-      await waitFor(() => {
-        expect(client.isMutating()).toBe(0)
-        expect(firstCategory).toHaveAttribute("aria-pressed", "true")
-      })
-      act(() => dialog.focus())
-      await user.keyboard("0")
-      await waitFor(() => {
-        expect(client.isMutating()).toBe(0)
-        expect(clearCategory).toHaveAttribute("aria-pressed", "true")
-      })
-      await user.keyboard("{ArrowLeft}{ArrowRight}")
-      expect(onPrevious).toHaveBeenCalledTimes(1)
-      expect(onNext).toHaveBeenCalledTimes(1)
-      expect(api.update).toHaveBeenCalledTimes(3)
-      expect(storedTransaction.creditCard).toEqual(persistedCard)
       client.clear()
     }
   )
-
-  it("assigns, changes and clears purchase cards through the generated mutation, retaining persisted attribution after failure and picker Escape", async () => {
-    const cards: CreditCardOutput[] = [
-      {
-        id: "70",
-        accountId: "2",
-        accountName: "Test card",
-        groupId: "1",
-        createdAt: "2026-06-01T00:00:00.000Z",
-        name: "Main physical",
-        last4: "0042",
-        archived: false
-      },
-      {
-        id: "71",
-        accountId: "2",
-        accountName: "Test card",
-        groupId: "1",
-        createdAt: "2026-06-01T00:00:00.000Z",
-        name: "Online virtual",
-        last4: null,
-        archived: false
-      }
-    ]
-    api.creditCards.mockResolvedValue(cards)
-    let storedTransaction = initialTransaction
-    api.update.mockImplementation(async ({ requestBody }) => {
-      storedTransaction = {
-        ...storedTransaction,
-        creditCard:
-          cards.find((card) => card.id === requestBody.creditCardId) ?? null
-      }
-      return storedTransaction
-    })
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
-    })
-    const queryKey = ["transactions", "1", "card-attribution"]
-    const readTransactions = vi.fn(async () => ({
-      data: [storedTransaction],
-      totalCount: 1
-    }))
-    const onOpenChange = vi.fn()
-    function PurchaseDetails() {
-      const { data } = useQuery({ queryKey, queryFn: readTransactions })
-      return (
-        <TransactionDetailsModal
-          transaction={data?.data[0] ?? null}
-          open
-          onOpenChange={onOpenChange}
-          totalTransactions={1}
-          currentTransactionIndex={0}
-          onNextTransaction={vi.fn()}
-          onPreviousTransaction={vi.fn()}
-        />
-      )
-    }
-    const user = userEvent.setup()
-    render(
-      <QueryClientProvider client={client}>
-        <PurchaseDetails />
-      </QueryClientProvider>
-    )
-    const picker = await screen.findByRole("combobox", {
-      name: "Change purchase card"
-    })
-    await waitFor(() => expect(picker).toBeEnabled())
-    expect(api.creditCards).toHaveBeenCalledWith({
-      groupId: "1",
-      accountId: "2",
-      includeArchived: false
-    })
-    await user.click(picker)
-    const search = screen.getByRole("combobox", { name: "Search cards" })
-    await user.type(search, "0042")
-    await user.keyboard("{Escape}")
-    expect(
-      screen.queryByRole("combobox", { name: "Search cards" })
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("dialog", { name: "Test purchase" })
-    ).toBeInTheDocument()
-    expect(onOpenChange).not.toHaveBeenCalled()
-    expect(api.update).not.toHaveBeenCalled()
-    for (const [id, label] of [
-      ["70", "Main physical · ••0042"],
-      ["71", "Online virtual"],
-      [null, "Not identified"]
-    ] as const) {
-      if (id === "71") {
-        api.update.mockRejectedValueOnce(
-          new Error("Synthetic rejected assignment")
-        )
-        await user.click(picker)
-        await user.click(screen.getByRole("option", { name: label }))
-        await waitFor(() =>
-          expect(api.toast).toHaveBeenCalledWith({
-            title: "Could not change the purchase card",
-            variant: "destructive"
-          })
-        )
-        await waitFor(() => expect(client.isMutating()).toBe(0))
-        expect(picker).toHaveTextContent("Main physical · ••0042")
-        expect(
-          client.getQueryData<QueryTransactionOutputDtoType>(queryKey)?.data[0]
-            .creditCard?.id
-        ).toBe("70")
-      }
-      await user.click(picker)
-      await user.click(screen.getByRole("option", { name: label }))
-      await waitFor(() => {
-        expect(picker).toHaveTextContent(label)
-        expect(client.isMutating()).toBe(0)
-      })
-      const patch = api.update.mock.lastCall![0]
-      expect(patch.id).toBe("7")
-      expect(
-        Object.fromEntries(
-          Object.entries(patch.requestBody).filter(
-            ([, value]) => value !== undefined
-          )
-        )
-      ).toEqual({ creditCardId: id })
-      expect(storedTransaction.creditCard?.id ?? null).toBe(id)
-      expect(
-        client.getQueryData<QueryTransactionOutputDtoType>(queryKey)?.data[0]
-          .creditCard?.id ?? null
-      ).toBe(id)
-    }
-    expect(storedTransaction).toEqual({
-      ...initialTransaction,
-      creditCard: null
-    })
-    expect(api.update).toHaveBeenCalledTimes(4)
-    expect(readTransactions).toHaveBeenCalledTimes(5)
-    client.clear()
-  })
 
   it("saves number-key categories through the real mutation hook and renders the bill purchase update", async () => {
     let storedTransaction = initialTransaction

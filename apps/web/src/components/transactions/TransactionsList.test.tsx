@@ -10,7 +10,7 @@ import {
   within
 } from "@testing-library/react"
 import type {
-  CreditCardOutput,
+  CardMetadata,
   TransactionOutput as Transaction
 } from "@fina/types"
 import userEvent from "@testing-library/user-event"
@@ -62,15 +62,7 @@ const virtualizerMock = vi.hoisted(() => {
 
 const activeGroup = vi.hoisted(() => ({ id: "1" }))
 const toastMock = vi.hoisted(() => vi.fn())
-const cardFixtures = vi.hoisted(() => ({ data: [] as CreditCardOutput[] }))
-
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: ({ accountId }: { accountId?: string }) => ({
-    data: cardFixtures.data.filter((card) => card.accountId === accountId),
-    isLoading: false,
-    isError: false
-  })
-}))
+const cardFixtures = vi.hoisted(() => ({ data: [] as CardMetadata[] }))
 
 vi.mock("@/contexts/ActiveGroupContext", () => ({
   useActiveGroup: () => ({ selectedGroup: { id: activeGroup.id } })
@@ -158,7 +150,8 @@ vi.mock("./TransactionDetailsModal", () => ({
 
 const transaction = (id: string, description: string): Transaction => ({
   id,
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
   description,
   value: -10,
@@ -238,15 +231,161 @@ describe("TransactionsList", () => {
     )
   })
 
+  it("keeps ordered metadata icons and accessible card tooltips while toggling account names, masked numbers and category text independently", async () => {
+    const user = userEvent.setup()
+    const identified = {
+      ...creditTransaction("a", "Alpha purchase"),
+      cardName: "Travel card",
+      cardLast4: "0042",
+      import: { id: "31", fileName: "cards.csv" },
+      category: {
+        id: "category-1",
+        name: "Groceries",
+        icon: "shopping-cart" as const,
+        color: "lime" as const
+      }
+    }
+    const props: TransactionsListProps = {
+      data: [
+        identified,
+        creditTransaction("b", "Bravo purchase"),
+        transaction("c", "Charlie purchase")
+      ],
+      sort: "description-asc",
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const view = render(<TransactionsList {...props} />)
+    const rows = screen.getAllByRole("row")
+    expect(
+      Array.from(
+        rows[0].querySelectorAll("[data-inline-metadata]"),
+        (element) => element.getAttribute("data-inline-metadata")
+      )
+    ).toEqual(["import", "card-icon"])
+    expect(screen.queryByTestId("transaction-account")).not.toBeInTheDocument()
+    expect(rows[0].querySelector('[data-metadata-slot="account"]')).toBeNull()
+    expect(within(rows[0]).getByTestId("transaction-card")).toHaveTextContent(
+      "Travel card"
+    )
+    expect(
+      screen.queryByTestId("transaction-card-number")
+    ).not.toBeInTheDocument()
+    expect(within(rows[1]).getByText("Not identified")).toBeInTheDocument()
+    expect(within(rows[1]).getByRole("combobox")).toHaveTextContent(
+      "Uncategorized"
+    )
+    const cardIcon = within(rows[0]).getByRole("img", {
+      name: "Credit card: Travel card · ••0042"
+    })
+    for (const icon of rows[0].querySelectorAll(
+      '[data-transaction-metadata="true"]'
+    )) {
+      expect(icon).toHaveClass("cursor-default")
+      expect(icon).not.toHaveClass("cursor-help")
+    }
+    await user.hover(cardIcon)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Travel card · ••0042"
+    )
+    await user.unhover(cardIcon)
+    await user.keyboard("{Escape}")
+    fireEvent.click(within(rows[0]).getByRole("checkbox"))
+
+    view.rerender(
+      <TransactionsList
+        {...props}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true,
+          card: false,
+          cardNumber: true,
+          category: false
+        }}
+      />
+    )
+    expect(
+      within(rows[0]).getByText(identified.bankaccount!.name)
+    ).toBeInTheDocument()
+    const accountChip = within(rows[0]).getByTestId("transaction-account")
+    expect(accountChip).toHaveClass("rounded-full", "border", "h-6")
+    expect(accountChip).toHaveAttribute("role", "group")
+    expect(accountChip.querySelector('[aria-hidden="true"]')).not.toBeNull()
+    await user.hover(accountChip)
+    expect(
+      await screen.findByRole("tooltip", {
+        name: identified.bankaccount!.name
+      })
+    ).toHaveTextContent(identified.bankaccount!.name)
+    await user.unhover(accountChip)
+    await user.keyboard("{Escape}")
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("tooltip", {
+          name: identified.bankaccount!.name
+        })
+      ).not.toBeInTheDocument()
+    )
+    expect(
+      rows[0].querySelector('[data-inline-metadata="account-icon"]')
+    ).toBeNull()
+    expect(
+      within(rows[0]).queryByTestId("transaction-card")
+    ).not.toBeInTheDocument()
+    expect(
+      within(rows[0]).getByTestId("transaction-card-number")
+    ).toHaveTextContent("••0042")
+    expect(within(rows[0]).queryByRole("combobox")).not.toBeInTheDocument()
+    expect(rows[0].querySelector("[data-category-dot]")).toBeNull()
+    expect(rows[0].querySelector('[data-metadata-slot="category"]')).toBeNull()
+    expect(within(rows[0]).queryByText("Groceries")).not.toBeInTheDocument()
+    expect(rows[0]).toHaveAttribute("aria-selected", "true")
+    expectEmptyMetadataSlot(rows[1], "card-number")
+    expect(
+      rows[2].querySelector('[data-inline-metadata="card-icon"]')
+    ).toBeNull()
+    expectEmptyMetadataSlot(rows[2], "card-number")
+    expect(
+      within(rows[0]).getByRole("img", { name: "Imported from cards.csv" })
+    ).toBeInTheDocument()
+    expect(cardIcon).toBeInTheDocument()
+    const unknownIcon = within(rows[1]).getByRole("img", {
+      name: "Credit card: Not identified"
+    })
+    act(() => unknownIcon.focus())
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Not identified"
+    )
+    await user.keyboard("{Escape}")
+
+    view.rerender(
+      <TransactionsList
+        {...props}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: false,
+          card: true,
+          cardNumber: false
+        }}
+      />
+    )
+    expect(within(rows[0]).getByTestId("transaction-card")).toHaveTextContent(
+      "Travel card"
+    )
+    expect(
+      screen.queryByTestId("transaction-card-number")
+    ).not.toBeInTheDocument()
+    expect(rows[0].querySelector('[data-metadata-slot="account"]')).toBeNull()
+    expect(screen.queryByTestId("transaction-account")).not.toBeInTheDocument()
+    expect(within(rows[0]).getByRole("combobox")).toHaveTextContent("Groceries")
+    expect(cardIcon).toBeInTheDocument()
+  })
+
   it("hides and restores purchase card metadata without changing compact row geometry or ordering", () => {
     const identified = creditTransaction("a", "Alpha purchase")
-    identified.creditCard = {
-      id: "70",
-      accountId: "20",
-      name: "Old physical",
-      last4: "0042",
-      archived: true
-    }
+    Object.assign(identified, { cardName: "Old physical", cardLast4: "0042" })
     const props: TransactionsListProps = {
       data: [creditTransaction("b", "Bravo purchase"), identified],
       sort: "description-asc",
@@ -257,9 +396,15 @@ describe("TransactionsList", () => {
     }
     const view = render(<TransactionsList {...props} />)
     expect(screen.getAllByTestId("transaction-card")).toHaveLength(2)
-    expect(screen.getByText("Old physical · ••0042")).toBeInTheDocument()
-    expect(screen.getByText("Archived")).toBeInTheDocument()
+    expect(screen.getByText("Old physical")).toBeInTheDocument()
+    expect(screen.queryByText("Archived")).not.toBeInTheDocument()
     expect(screen.getByText("Not identified")).toBeInTheDocument()
+    expect(screen.getAllByRole("img", { name: /^Credit card:/ })).toHaveLength(
+      2
+    )
+    expect(
+      screen.queryByTestId("transaction-card-number")
+    ).not.toBeInTheDocument()
     view.rerender(
       <TransactionsList
         {...props}
@@ -270,7 +415,11 @@ describe("TransactionsList", () => {
       />
     )
     expect(screen.queryByTestId("transaction-card")).not.toBeInTheDocument()
-    expect(screen.queryByText("Old physical · ••0042")).not.toBeInTheDocument()
+    expect(screen.queryByText("Old physical")).not.toBeInTheDocument()
+    expect(screen.queryByText("Not identified")).not.toBeInTheDocument()
+    expect(screen.getAllByRole("img", { name: /^Credit card:/ })).toHaveLength(
+      2
+    )
     const rows = screen.getAllByRole("row")
     expect(
       rows.map((row) =>
@@ -286,7 +435,7 @@ describe("TransactionsList", () => {
     expect(document.querySelectorAll('[data-column="value"]')).toHaveLength(2)
     view.rerender(<TransactionsList {...props} />)
     expect(screen.getAllByTestId("transaction-card")).toHaveLength(2)
-    expect(screen.getByText("Old physical · ••0042")).toBeInTheDocument()
+    expect(screen.getByText("Old physical")).toBeInTheDocument()
   })
 
   it("keeps the installment track stable across changed result lengths and entirely blank results until hidden", () => {
@@ -309,7 +458,7 @@ describe("TransactionsList", () => {
       "--transaction-metadata-desktop-columns"
     )
     const minimumWidth = grid.style.minWidth
-    expect(baseColumns).toContain("64px")
+    expect(baseColumns).toContain("40px")
     expect(screen.getByText("1/2")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("checkbox"))
     view.rerender(
@@ -366,20 +515,15 @@ describe("TransactionsList", () => {
       layoutElement.style.getPropertyValue(
         "--transaction-metadata-base-columns"
       )
-    ).not.toContain("64px")
+    ).not.toContain("40px")
     expect(row).toHaveAttribute("aria-selected", "true")
   })
 
   it("retains the same enabled metadata tracks across mixed rows without inventing values or controls in blank slots", () => {
     const rich: Transaction = {
       ...creditTransaction("a", "Alpha purchase"),
-      creditCard: {
-        id: "70",
-        accountId: "20",
-        name: "Old physical",
-        last4: "0042",
-        archived: true
-      },
+      cardName: "Old physical",
+      cardLast4: "0042",
       installmentCurrent: "1",
       installmentTotal: 123,
       import: { id: "31", fileName: "alignment-fixture.csv" }
@@ -410,48 +554,65 @@ describe("TransactionsList", () => {
     const rows = screen.getAllByRole("row")
     const enabledSlots = [
       "description",
-      "account-icon",
-      "import",
       "status",
-      "account",
       "card",
       "installment",
       "category"
     ]
     for (const row of rows) {
       expect(metadataSlots(row)).toEqual(enabledSlots)
+      for (const slot of row.querySelectorAll(
+        '[data-metadata-slot]:not([data-metadata-slot="description"])'
+      )) {
+        expect(slot).toHaveClass("justify-end", "text-right")
+      }
+      expect(
+        within(row).getByRole("button", { name: /Open transaction:/ })
+      ).toHaveClass("text-left")
       expect(within(row).getAllByRole("gridcell")).toHaveLength(1)
       expect(row).toHaveStyle({ height: "40px" })
       expect(
         within(row).getByRole("combobox", { name: /Change category for/ })
       ).toBeEnabled()
+      expect(
+        within(row).getByRole("combobox", { name: /Change category for/ })
+      ).toHaveClass("w-auto", "max-w-full", "justify-end", "text-right")
+      expect(
+        within(row).getByRole("combobox", { name: /Change category for/ })
+          .parentElement
+      ).toHaveClass("w-full")
     }
-    expect(
-      within(rows[0]).getByText("Old physical · ••0042")
-    ).toBeInTheDocument()
-    expect(within(rows[0]).getByText("Archived")).toBeInTheDocument()
+    expect(within(rows[0]).getByText("Old physical")).toBeInTheDocument()
+    expect(within(rows[0]).queryByText("Archived")).not.toBeInTheDocument()
     expect(within(rows[0]).getByText("1/123")).toBeInTheDocument()
+    expect(within(rows[0]).getByText("1/123")).toHaveClass(
+      "w-full",
+      "truncate",
+      "text-right"
+    )
+    expect(
+      within(rows[0]).getByTestId("transaction-card").firstElementChild
+    ).toHaveClass("w-full", "justify-end")
     expect(
       within(rows[0]).getByRole("img", {
         name: "Imported from alignment-fixture.csv"
       })
     ).toBeInTheDocument()
-    for (const id of ["card", "installment", "import", "status"])
+    expect(rows[1].querySelector('[data-inline-metadata="import"]')).toBeNull()
+    for (const id of ["card", "installment", "status"])
       expectEmptyMetadataSlot(rows[1], id)
-    for (const id of [
-      "account-icon",
-      "account",
-      "card",
-      "installment",
-      "import",
-      "status"
-    ])
+    for (const id of ["card", "installment", "status"])
       expectEmptyMetadataSlot(rows[2], id)
+    expect(rows[2].querySelector("[data-inline-metadata]")).toBeNull()
     expect(within(rows[2]).queryByRole("img")).not.toBeInTheDocument()
-    expect(within(rows[3]).getByText("Not identified")).toBeInTheDocument()
+    expect(within(rows[3]).getByTestId("transaction-card")).toHaveTextContent(
+      "Not identified"
+    )
     expect(
-      rows[3].querySelector('[data-metadata-slot="card"]')
-    ).not.toHaveAttribute("data-empty", "true")
+      within(rows[3]).getByRole("img", {
+        name: "Credit card: Not identified"
+      })
+    ).toBeInTheDocument()
     expect(within(rows[4]).getByText("Reconciled")).toBeInTheDocument()
     expectEmptyMetadataSlot(rows[4], "card")
     fireEvent.click(within(rows[1]).getByRole("checkbox"))
@@ -462,10 +623,10 @@ describe("TransactionsList", () => {
         {...props}
         displayProperties={{
           ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
-          account: false,
+          accountName: false,
           card: false,
-          installment: false,
-          sourceImport: false
+          cardNumber: false,
+          installment: false
         }}
       />
     )
@@ -487,7 +648,7 @@ describe("TransactionsList", () => {
     view.rerender(<TransactionsList {...props} />)
     for (const row of screen.getAllByRole("row"))
       expect(metadataSlots(row)).toEqual(enabledSlots)
-    expect(screen.getByText("Old physical · ••0042")).toBeInTheDocument()
+    expect(screen.getByText("Old physical")).toBeInTheDocument()
     expect(rows[1]).toHaveAttribute("aria-selected", "true")
   })
 
@@ -529,16 +690,7 @@ describe("TransactionsList", () => {
   )
 
   it("assigns only same-account selected purchases and retains the editor and selection after a busy partial failure", async () => {
-    const card: CreditCardOutput = {
-      id: "70",
-      accountId: "20",
-      accountName: "Family credit",
-      groupId: "1",
-      createdAt: "2026-06-01T00:00:00.000Z",
-      name: "Main physical",
-      last4: "0042",
-      archived: false
-    }
+    const card: CardMetadata = { cardName: "Main physical", cardLast4: "0042" }
     cardFixtures.data = [card]
     let resolveUpdate!: () => void
     const pending = new Promise<void>((resolve) => {
@@ -571,13 +723,11 @@ describe("TransactionsList", () => {
     await user.click(
       screen.getByRole("button", { name: "Card for selected purchases" })
     )
-    await user.click(
-      screen.getByRole("option", { name: "Main physical · ••0042" })
-    )
+    await user.type(screen.getByLabelText("Card name"), card.cardName!)
+    await user.type(screen.getByLabelText("Last four digits"), card.cardLast4!)
+    await user.click(screen.getByRole("button", { name: "Save card details" }))
     await waitFor(() => expect(onUpdateTransaction).toHaveBeenCalledTimes(2))
-    expect(
-      screen.getByRole("combobox", { name: "Search cards" })
-    ).toBeDisabled()
+    expect(screen.getByLabelText("Card name")).toBeDisabled()
     expect(screen.getByRole("button", { name: "Unselect all" })).toBeDisabled()
     expect(
       screen.getByRole("button", { name: "Category for selected transactions" })
@@ -600,24 +750,32 @@ describe("TransactionsList", () => {
     expect(
       screen.getByRole("dialog", { name: "Card for selected purchases" })
     ).toBeInTheDocument()
-    expect(screen.getByRole("combobox", { name: "Search cards" })).toBeEnabled()
+    expect(screen.getByLabelText("Card name")).toBeEnabled()
     expect(screen.getByRole("status")).toHaveTextContent("2 selected")
     expect(within(rows[0]).getByRole("checkbox")).toBeChecked()
     expect(within(rows[1]).getByRole("checkbox")).toBeChecked()
     expect(within(rows[2]).getByRole("checkbox")).not.toBeChecked()
-    expect(onUpdateTransaction).toHaveBeenCalledWith("a", { creditCard: card })
-    expect(onUpdateTransaction).toHaveBeenCalledWith("b", { creditCard: card })
+    expect(onUpdateTransaction).toHaveBeenCalledWith("a", card)
+    expect(onUpdateTransaction).toHaveBeenCalledWith("b", card)
     expect(onUpdateTransaction).not.toHaveBeenCalledWith("c", expect.anything())
     rejectSecond = false
-    await user.click(screen.getByRole("option", { name: "Not identified" }))
+    await user.clear(screen.getByLabelText("Card name"))
+    await user.clear(screen.getByLabelText("Last four digits"))
+    await user.click(screen.getByRole("button", { name: "Save card details" }))
     await waitFor(() =>
       expect(
         screen.queryByRole("dialog", { name: "Card for selected purchases" })
       ).not.toBeInTheDocument()
     )
     expect(onUpdateTransaction).toHaveBeenCalledTimes(4)
-    expect(onUpdateTransaction).toHaveBeenCalledWith("a", { creditCard: null })
-    expect(onUpdateTransaction).toHaveBeenCalledWith("b", { creditCard: null })
+    expect(onUpdateTransaction).toHaveBeenCalledWith("a", {
+      cardName: null,
+      cardLast4: null
+    })
+    expect(onUpdateTransaction).toHaveBeenCalledWith("b", {
+      cardName: null,
+      cardLast4: null
+    })
     expect(screen.getByRole("status")).toHaveTextContent("2 selected")
   })
 
@@ -1007,6 +1165,10 @@ describe("TransactionsList", () => {
         isError={false}
         onUpdateTransaction={vi.fn()}
         onDeleteTransactions={vi.fn()}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true
+        }}
       />
     )
 
@@ -1041,10 +1203,14 @@ describe("TransactionsList", () => {
       isLoading: false,
       isError: false,
       onUpdateTransaction: vi.fn(),
-      onDeleteTransactions: vi.fn()
+      onDeleteTransactions: vi.fn(),
+      displayProperties: {
+        ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+        accountName: true
+      }
     }
     const { rerender } = render(<TransactionsList {...props} />)
-    const metadata = screen.getByRole("img", {
+    const metadata = screen.getByRole("group", {
       name: "Checking account: Household account"
     })
     expect(
@@ -1066,7 +1232,7 @@ describe("TransactionsList", () => {
       metadata.querySelector('[data-institution-id="itau"] img')
     ).not.toBeNull()
     expect(
-      screen.getByRole("img", { name: "Checking account: Household account" })
+      screen.getByRole("group", { name: "Checking account: Household account" })
     ).toBe(metadata)
   })
 
@@ -1092,7 +1258,10 @@ describe("TransactionsList", () => {
       isError: false,
       onUpdateTransaction,
       onDeleteTransactions: vi.fn(),
-      displayProperties: DEFAULT_TRANSACTION_DISPLAY_PROPERTIES
+      displayProperties: {
+        ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+        accountName: true
+      }
     }
     const { rerender } = render(<TransactionsList {...props} />)
     expect(
@@ -1105,11 +1274,11 @@ describe("TransactionsList", () => {
         {...props}
         displayProperties={{
           date: false,
-          account: false,
+          accountName: false,
           category: false,
           installment: false,
           value: false,
-          sourceImport: false,
+          cardNumber: false,
           card: false
         }}
       />
@@ -1120,15 +1289,14 @@ describe("TransactionsList", () => {
     expect(within(rows[1]).getByText("Bravo purchase")).toBeInTheDocument()
     expect(document.querySelector('[data-column="date"]')).toBeNull()
     expect(document.querySelector('[data-column="value"]')).toBeNull()
+    expect(screen.queryByTestId("transaction-account")).not.toBeInTheDocument()
     expect(
-      screen.queryByRole("img", { name: "Checking account: Checking" })
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("img", { name: "Imported from fixture.csv" })
-    ).not.toBeInTheDocument()
+      screen.getByRole("img", { name: "Imported from fixture.csv" })
+    ).toBeInTheDocument()
     expect(screen.queryByText("Checking")).not.toBeInTheDocument()
     expect(screen.queryByText("2/6")).not.toBeInTheDocument()
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+    expect(screen.queryByText("Groceries")).not.toBeInTheDocument()
     fireEvent.click(rows[0])
     expect(screen.getByTestId("modal-description")).toHaveTextContent(
       "Alpha purchase"
@@ -1143,7 +1311,7 @@ describe("TransactionsList", () => {
     expect(document.querySelector('[data-column="date"]')).not.toBeNull()
     expect(document.querySelector('[data-column="value"]')).not.toBeNull()
     expect(
-      screen.getAllByRole("img", { name: "Checking account: Checking" })
+      screen.getAllByRole("group", { name: "Checking account: Checking" })
     ).toHaveLength(2)
     expect(
       screen.getByRole("img", { name: "Imported from fixture.csv" })
@@ -1847,11 +2015,15 @@ describe("TransactionsList", () => {
         isError={false}
         onUpdateTransaction={vi.fn()}
         onDeleteTransactions={vi.fn()}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true
+        }}
       />
     )
     const rows = screen.getAllByRole("row")
     fireEvent.keyDown(window, { key: "j" })
-    const metadata = within(rows[1]).getByRole("img", {
+    const metadata = within(rows[1]).getByRole("group", {
       name: "Checking account: Checking"
     })
     act(() => metadata.focus())

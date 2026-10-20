@@ -40,7 +40,8 @@ export const useTransactionMutation = () => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["transaction-card-values"] })
       ])
     }
   })
@@ -64,13 +65,12 @@ export const useTransactionMutation = () => {
         observation: transaction.observation,
         toBeConsideredAt: transaction.toBeConsideredAt,
         calculatedDate: transaction.calculatedDate,
-        reviewMonth: transaction.reviewMonth,
         categoryId:
           transaction.category === null ? null : transaction.category?.id,
         bankaccountId:
           transaction.bankaccount === null ? null : transaction.bankaccount?.id,
-        creditCardId:
-          transaction.creditCard === null ? null : transaction.creditCard?.id
+        cardName: transaction.cardName,
+        cardLast4: transaction.cardLast4
       }
       const validated = UpdateTransactionInputDtoSchema.parse(update)
       return transactionsControllerUpdate({ id, requestBody: validated })
@@ -109,7 +109,8 @@ export const useTransactionMutation = () => {
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["transaction-card-values"] })
       ])
     }
   })
@@ -120,7 +121,8 @@ export const useTransactionMutation = () => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["transaction-card-values"] })
       ])
     }
   })
@@ -139,7 +141,8 @@ export const useTransactionMutation = () => {
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
+        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] }),
+        queryClient.invalidateQueries({ queryKey: ["transaction-card-values"] })
       ])
     }
   })

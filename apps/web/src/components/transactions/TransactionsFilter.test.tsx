@@ -11,7 +11,8 @@ import {
 import userEvent from "@testing-library/user-event"
 import { createStore, Provider } from "jotai"
 import { useState } from "react"
-import type { CreditCardOutput } from "@fina/types"
+import type { CardMetadata } from "@fina/types"
+import { cardMetadataKey } from "@fina/types"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
@@ -42,10 +43,10 @@ vi.mock("@/data/categories/useCategories", () => ({
 }))
 
 const closePanel = () => undefined
-const cardFixtures = vi.hoisted(() => ({ data: [] as CreditCardOutput[] }))
+const cardFixtures = vi.hoisted(() => ({ data: [] as CardMetadata[] }))
 
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: () => ({
+vi.mock("@/data/transactions/useTransactionCardValues", () => ({
+  useTransactionCardValues: () => ({
     data: cardFixtures.data,
     isLoading: false,
     isError: false
@@ -168,28 +169,10 @@ describe("reusable transaction filters", () => {
     vi.stubGlobal("PointerEvent", TestPointerEvent)
   })
 
-  it("combines named and unidentified card choices and searches archived history without altering other filters", () => {
+  it("combines named and unidentified card values without requiring saved card identities or altering other filters", () => {
     cardFixtures.data = [
-      {
-        id: "71",
-        accountId: "30",
-        accountName: "Family credit",
-        groupId: "1",
-        createdAt: "2026-06-01T00:00:00.000Z",
-        name: "Main physical",
-        last4: "0042",
-        archived: false
-      },
-      {
-        id: "72",
-        accountId: "30",
-        accountName: "Family credit",
-        groupId: "1",
-        createdAt: "2026-06-01T00:00:00.000Z",
-        name: "Old virtual",
-        last4: null,
-        archived: true
-      }
+      { cardName: "Main physical", cardLast4: "0042" },
+      { cardName: "Old virtual", cardLast4: null }
     ]
     render(
       <LocalFilters
@@ -203,7 +186,7 @@ describe("reusable transaction filters", () => {
     const cards = within(screen.getByRole("region", { name: "Card filter" }))
     fireEvent.click(
       cards.getByRole("checkbox", {
-        name: "Main physical · ••0042 (Family credit)"
+        name: "Main physical · ••0042"
       })
     )
     fireEvent.click(cards.getByRole("checkbox", { name: "Not identified" }))
@@ -211,7 +194,7 @@ describe("reusable transaction filters", () => {
       partialDescription: "Coffee",
       categoriesId: ["20"],
       accountsId: ["30"],
-      creditCardsId: ["71", "-1"]
+      cards: [cardMetadataKey(cardFixtures.data[0]), "-1"]
     })
     fireEvent.change(cards.getByRole("textbox", { name: "Search cards" }), {
       target: { value: "Old virtual" }
@@ -221,10 +204,14 @@ describe("reusable transaction filters", () => {
     ).not.toBeInTheDocument()
     fireEvent.click(
       cards.getByRole("checkbox", {
-        name: "Old virtual (Family credit) · Archived"
+        name: "Old virtual"
       })
     )
-    expect(readLocalFilter().creditCardsId).toEqual(["71", "-1", "72"])
+    expect(readLocalFilter().cards).toEqual([
+      cardMetadataKey(cardFixtures.data[0]),
+      "-1",
+      cardMetadataKey(cardFixtures.data[1])
+    ])
     fireEvent.change(cards.getByRole("textbox", { name: "Search cards" }), {
       target: { value: "" }
     })
@@ -233,10 +220,13 @@ describe("reusable transaction filters", () => {
     ).toBeChecked()
     fireEvent.click(
       cards.getByRole("checkbox", {
-        name: "Main physical · ••0042 (Family credit)"
+        name: "Main physical · ••0042"
       })
     )
-    expect(readLocalFilter().creditCardsId).toEqual(["-1", "72"])
+    expect(readLocalFilter().cards).toEqual([
+      "-1",
+      cardMetadataKey(cardFixtures.data[1])
+    ])
   })
   afterEach(() => {
     cleanup()

@@ -2,8 +2,7 @@ import type { BankaccountOutputDto, CategoryOutputDto } from "@/api/generated"
 import { FinaBadge } from "@/components/ui/fina"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
-import { CardPicker } from "@/components/creditCards/CardPicker"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
+import { CardMetadataEditor } from "@/components/creditCards/CardMetadataEditor"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { useCategories } from "@/data/categories/useCategories"
@@ -11,7 +10,7 @@ import { useTransactionMutation } from "@/data/transactions/useTransactionsMutat
 import { dayjs } from "@/dayjs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import type { TransactionOutput } from "@fina/types"
+import type { CardMetadata, TransactionOutput } from "@fina/types"
 import {
   ArrowDown,
   ArrowLeft,
@@ -34,7 +33,6 @@ import React, {
 } from "react"
 
 import { Button } from "../ui/button"
-import { TransactionReviewMonth } from "./TransactionReviewMonth"
 import {
   Dialog,
   DialogContent,
@@ -115,16 +113,6 @@ export function TransactionDetailsModal({
   const { data: categoriesData } = useCategories({
     groupId: selectedGroup?.id?.toString()
   })
-  const cardQuery = useCreditCards({
-    groupId:
-      open && transaction?.bankaccount?.type === "credit"
-        ? selectedGroup?.id
-        : undefined,
-    accountId:
-      transaction?.bankaccount?.type === "credit"
-        ? transaction.bankaccount.id
-        : undefined
-  })
 
   const [highlightNextButton, setHighlightNextButton] = useState(false)
   const [highlightPreviousButton, setHighlightPreviousButton] = useState(false)
@@ -179,29 +167,9 @@ export function TransactionDetailsModal({
     [transaction, updateTransaction, updateMutation.isPending]
   )
 
-  const handleCardSelect = async (cardId: string | null) => {
-    if (
-      !transaction ||
-      updateMutation.isPending ||
-      (transaction.creditCard?.id ?? null) === cardId
-    )
-      return
-    const card =
-      cardId === null
-        ? null
-        : cardQuery.data?.find((item) => item.id === cardId)
-    if (card === undefined) return
-    try {
-      await updateTransaction({
-        id: transaction.id,
-        transaction: { creditCard: card }
-      })
-    } catch {
-      toast({
-        title: "Could not change the purchase card",
-        variant: "destructive"
-      })
-    }
+  const handleCardSave = async (metadata: CardMetadata) => {
+    if (!transaction || updateMutation.isPending) return
+    await updateTransaction({ id: transaction.id, transaction: metadata })
   }
 
   useEffect(() => {
@@ -210,7 +178,7 @@ export function TransactionDetailsModal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
       const target = event.target
-      // The card picker owns its search, option navigation, and first Escape.
+      // Open pickers own their search, option navigation, and first Escape.
       if (
         target instanceof HTMLElement &&
         (target.closest('[cmdk-root], [role="listbox"]') ||
@@ -321,11 +289,6 @@ export function TransactionDetailsModal({
       transaction.category.name)
     : null
   const accountIsCredit = accountData?.type === "credit"
-  const billMonth = (
-    transaction?.creditDueDate ??
-    transaction?.toBeConsideredAt ??
-    transaction?.calculatedDate
-  )?.slice(0, 7)
   const AccountIcon = accountIsCredit ? CreditCard : Landmark
   const hasInstallment = Boolean(
     transaction?.installmentCurrent && transaction.installmentTotal
@@ -442,29 +405,17 @@ export function TransactionDetailsModal({
                     label="Purchase card"
                     value={
                       <div>
-                        <CardPicker
-                          cards={cardQuery.data ?? []}
-                          value={transaction?.creditCard?.id ?? null}
-                          selectedCard={transaction?.creditCard}
-                          onChange={(id) => void handleCardSelect(id)}
-                          isLoading={cardQuery.isLoading}
-                          disabled={
-                            updateMutation.isPending || cardQuery.isError
-                          }
-                          ariaLabel="Change purchase card"
-                          className="h-8"
-                        />
+                        {transaction ? (
+                          <CardMetadataEditor
+                            key={`${transaction.id}:${transaction.cardName}:${transaction.cardLast4}`}
+                            value={transaction}
+                            onSave={handleCardSave}
+                            disabled={updateMutation.isPending}
+                          />
+                        ) : null}
                         <p className="mt-1.5 text-xs font-normal text-muted-foreground">
                           One shared account bill.
                         </p>
-                        {cardQuery.isError ? (
-                          <p
-                            role="alert"
-                            className="mt-1 text-xs font-normal text-destructive"
-                          >
-                            Could not load cards.
-                          </p>
-                        ) : null}
                       </div>
                     }
                   />
@@ -476,31 +427,6 @@ export function TransactionDetailsModal({
                     icon={<CalendarDays className="size-3.5" />}
                     label="Credit due date"
                     value={formatDate(transaction.creditDueDate)}
-                  />
-                </div>
-              ) : null}
-              {transaction?.reviewMonth ? (
-                <div className="border-b border-r border-fina-grid">
-                  <DetailCell
-                    icon={<CalendarDays className="size-3.5" />}
-                    label="Review month"
-                    value={
-                      <div>
-                        {dayjs(`${transaction.reviewMonth}-01`).format(
-                          "MMMM YYYY"
-                        )}
-                        {accountIsCredit &&
-                        transaction.bankaccount &&
-                        billMonth ? (
-                          <a
-                            className="mt-2 block text-xs font-bold underline underline-offset-2"
-                            href={`/credit-card-bills/${transaction.bankaccount.id}/${billMonth}`}
-                          >
-                            Change month for the whole bill
-                          </a>
-                        ) : null}
-                      </div>
-                    }
                   />
                 </div>
               ) : null}
@@ -570,19 +496,6 @@ export function TransactionDetailsModal({
             </div>
           </section>
 
-          {transaction && !accountIsCredit && !transaction.billPayment ? (
-            <TransactionReviewMonth
-              key={`${transaction.id}:${transaction.reviewMonth}`}
-              reviewMonth={transaction.reviewMonth}
-              onSave={async (reviewMonth) => {
-                await updateTransaction({
-                  id: transaction.id,
-                  transaction: { reviewMonth }
-                })
-              }}
-            />
-          ) : null}
-
           <section
             aria-labelledby="transaction-category-title"
             className="border-t border-fina-grid bg-fina-surface p-4 sm:p-5 xl:grid xl:grid-cols-[11rem_minmax(0,1fr)] xl:items-center xl:gap-5"
@@ -617,11 +530,7 @@ export function TransactionDetailsModal({
                     aria-pressed={isSelected}
                   >
                     <KeyboardKey>{index < 9 ? index + 1 : "—"}</KeyboardKey>
-                    <CategoryAppearance
-                      icon={category.icon}
-                      color={category.color}
-                      className="size-6 border"
-                    />
+                    <CategoryAppearance color={category.color} />
                     <span className="min-w-0 whitespace-normal break-words text-left text-[11px] font-semibold leading-tight">
                       {category.name || "Untitled"}
                     </span>

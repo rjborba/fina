@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import {
   CreateGroupInputDto,
@@ -15,7 +7,6 @@ import {
   GroupListOutputDto,
   GroupOutputDto,
   IdParamDto,
-  UpdateGroupReviewSettingsInputDto,
 } from '../contracts/api-dtos';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user';
@@ -49,18 +40,6 @@ export class GroupsController {
   @ZodSerializerDto(GroupOutputDto)
   findOne(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.groupsService.findOne(user.id, params.id);
-  }
-
-  @Patch(':id/review-settings')
-  @ApiOkResponse({ type: GroupOutputDto })
-  @ApiParam({ name: 'id', type: String })
-  @ZodSerializerDto(GroupOutputDto)
-  updateReviewSettings(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param() params: IdParamDto,
-    @Body() input: UpdateGroupReviewSettingsInputDto,
-  ) {
-    return this.groupsService.updateReviewSettings(user.id, params.id, input);
   }
 
   @Delete(':id')

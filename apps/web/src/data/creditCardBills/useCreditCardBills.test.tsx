@@ -68,7 +68,7 @@ describe("credit-card bill review-month queries", () => {
     const base: CreditCardBillListQuery = { groupId: "10" }
     const criteria: Partial<CreditCardBillListQuery>[] = [
       { accountIdList: ["11"] },
-      { creditCardIdList: ["71", "-1"] },
+      { cardList: ["71", "-1"] },
       { categoryIdList: ["20", "-1"] },
       { search: "fixture" },
       { importSource: "manual" },

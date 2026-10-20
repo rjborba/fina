@@ -23,7 +23,7 @@ export const useTransactions = (
       fetchTransactionsOptions.reviewMonths,
       fetchTransactionsOptions.categoryIdList,
       fetchTransactionsOptions.accountIdList,
-      fetchTransactionsOptions.creditCardIdList,
+      fetchTransactionsOptions.cardList,
       fetchTransactionsOptions.accountType,
       fetchTransactionsOptions.importSource,
       fetchTransactionsOptions.importIdList,

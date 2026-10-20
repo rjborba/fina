@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AppControllerGetHelloResponse, TransactionsControllerCreateData, TransactionsControllerCreateResponse, TransactionsControllerFindAllData, TransactionsControllerFindAllResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CreditCardsControllerCreateData, CreditCardsControllerCreateResponse, CreditCardsControllerFindAllData, CreditCardsControllerFindAllResponse, CreditCardsControllerUpdateData, CreditCardsControllerUpdateResponse, CreditCardsControllerRemoveData, CreditCardsControllerRemoveResponse, CategoriesControllerCreateData, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, CategoriesControllerUpdateAppearanceData, CategoriesControllerUpdateAppearanceResponse, GroupsControllerCreateData, GroupsControllerCreateResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, GroupsControllerUpdateReviewSettingsData, GroupsControllerUpdateReviewSettingsResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, BankaccountsControllerUpdateInstitutionData, BankaccountsControllerUpdateInstitutionResponse, UserGroupsControllerFindAllData, UserGroupsControllerFindAllResponse, InvitesControllerCreateData, InvitesControllerCreateResponse, InvitesControllerFindAllData, InvitesControllerFindAllResponse, InvitesControllerFindMineResponse, InvitesControllerAcceptData, InvitesControllerAcceptResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerPreviewData, ImportsControllerPreviewResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindProfilesData, ImportsControllerFindProfilesResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, CreditCardBillsControllerFindAllData, CreditCardBillsControllerFindAllResponse, CreditCardBillsControllerFindOneData, CreditCardBillsControllerFindOneResponse, CreditCardBillsControllerUpdateReviewMonthData, CreditCardBillsControllerUpdateReviewMonthResponse, CreditCardBillsControllerReconcileData, CreditCardBillsControllerReconcileResponse, CreditCardBillsControllerUnlinkData, CreditCardBillsControllerUnlinkResponse } from './types.gen';
+import type { AppControllerGetHelloResponse, TransactionsControllerCreateData, TransactionsControllerCreateResponse, TransactionsControllerFindAllData, TransactionsControllerFindAllResponse, TransactionsControllerCardValuesData, TransactionsControllerCardValuesResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CategoriesControllerCreateData, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, CategoriesControllerUpdateAppearanceData, CategoriesControllerUpdateAppearanceResponse, GroupsControllerCreateData, GroupsControllerCreateResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, BankaccountsControllerUpdateInstitutionData, BankaccountsControllerUpdateInstitutionResponse, UserGroupsControllerFindAllData, UserGroupsControllerFindAllResponse, InvitesControllerCreateData, InvitesControllerCreateResponse, InvitesControllerFindAllData, InvitesControllerFindAllResponse, InvitesControllerFindMineResponse, InvitesControllerAcceptData, InvitesControllerAcceptResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerPreviewData, ImportsControllerPreviewResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindProfilesData, ImportsControllerFindProfilesResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, CreditCardBillsControllerFindAllData, CreditCardBillsControllerFindAllResponse, CreditCardBillsControllerFindOneData, CreditCardBillsControllerFindOneResponse, CreditCardBillsControllerReconcileData, CreditCardBillsControllerReconcileResponse, CreditCardBillsControllerUnlinkData, CreditCardBillsControllerUnlinkResponse } from './types.gen';
 
 /**
  * @returns unknown
@@ -41,7 +41,7 @@ export const transactionsControllerCreate = (data: TransactionsControllerCreateD
  * @param data.minValue
  * @param data.importSource
  * @param data.importIdList
- * @param data.creditCardIdList
+ * @param data.cardList
  * @param data.accountIdList
  * @param data.categoryIdList
  * @param data.reviewMonths
@@ -64,7 +64,7 @@ export const transactionsControllerFindAll = (data: TransactionsControllerFindAl
             minValue: data.minValue,
             importSource: data.importSource,
             importIdList: data.importIdList,
-            creditCardIdList: data.creditCardIdList,
+            cardList: data.cardList,
             accountIdList: data.accountIdList,
             categoryIdList: data.categoryIdList,
             reviewMonths: data.reviewMonths,
@@ -72,6 +72,24 @@ export const transactionsControllerFindAll = (data: TransactionsControllerFindAl
             startDate: data.startDate,
             pageSize: data.pageSize,
             page: data.page,
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.groupId
+ * @param data.accountId
+ * @returns TransactionCardValuesOutputDto
+ * @throws ApiError
+ */
+export const transactionsControllerCardValues = (data: TransactionsControllerCardValuesData): CancelablePromise<TransactionsControllerCardValuesResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/transactions/card-values',
+        query: {
+            accountId: data.accountId,
             groupId: data.groupId
         }
     });
@@ -122,76 +140,6 @@ export const transactionsControllerRemove = (data: TransactionsControllerRemoveD
     return __request(OpenAPI, {
         method: 'DELETE',
         url: '/transactions/{id}',
-        path: {
-            id: data.id
-        }
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.requestBody
- * @returns CreditCardOutputDto
- * @throws ApiError
- */
-export const creditCardsControllerCreate = (data: CreditCardsControllerCreateData): CancelablePromise<CreditCardsControllerCreateResponse> => {
-    return __request(OpenAPI, {
-        method: 'POST',
-        url: '/credit-cards',
-        body: data.requestBody,
-        mediaType: 'application/json'
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.groupId
- * @param data.includeArchived
- * @param data.accountId
- * @returns CreditCardListOutputDto
- * @throws ApiError
- */
-export const creditCardsControllerFindAll = (data: CreditCardsControllerFindAllData): CancelablePromise<CreditCardsControllerFindAllResponse> => {
-    return __request(OpenAPI, {
-        method: 'GET',
-        url: '/credit-cards',
-        query: {
-            includeArchived: data.includeArchived,
-            accountId: data.accountId,
-            groupId: data.groupId
-        }
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.id
- * @param data.requestBody
- * @returns CreditCardOutputDto
- * @throws ApiError
- */
-export const creditCardsControllerUpdate = (data: CreditCardsControllerUpdateData): CancelablePromise<CreditCardsControllerUpdateResponse> => {
-    return __request(OpenAPI, {
-        method: 'PATCH',
-        url: '/credit-cards/{id}',
-        path: {
-            id: data.id
-        },
-        body: data.requestBody,
-        mediaType: 'application/json'
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.id
- * @returns DeleteCreditCardOutputDto
- * @throws ApiError
- */
-export const creditCardsControllerRemove = (data: CreditCardsControllerRemoveData): CancelablePromise<CreditCardsControllerRemoveResponse> => {
-    return __request(OpenAPI, {
-        method: 'DELETE',
-        url: '/credit-cards/{id}',
         path: {
             id: data.id
         }
@@ -333,25 +281,6 @@ export const groupsControllerRemove = (data: GroupsControllerRemoveData): Cancel
     return __request(OpenAPI, {
         method: 'DELETE',
         url: '/groups/{id}',
-        path: {
-            id: data.id
-        },
-        body: data.requestBody,
-        mediaType: 'application/json'
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.id
- * @param data.requestBody
- * @returns GroupOutputDto
- * @throws ApiError
- */
-export const groupsControllerUpdateReviewSettings = (data: GroupsControllerUpdateReviewSettingsData): CancelablePromise<GroupsControllerUpdateReviewSettingsResponse> => {
-    return __request(OpenAPI, {
-        method: 'PATCH',
-        url: '/groups/{id}/review-settings',
         path: {
             id: data.id
         },
@@ -622,7 +551,7 @@ export const importsControllerRemove = (data: ImportsControllerRemoveData): Canc
  * @param data.importIdList
  * @param data.search
  * @param data.categoryIdList
- * @param data.creditCardIdList
+ * @param data.cardList
  * @param data.accountIdList
  * @param data.reviewMonths
  * @param data.endDate
@@ -642,7 +571,7 @@ export const creditCardBillsControllerFindAll = (data: CreditCardBillsController
             importIdList: data.importIdList,
             search: data.search,
             categoryIdList: data.categoryIdList,
-            creditCardIdList: data.creditCardIdList,
+            cardList: data.cardList,
             accountIdList: data.accountIdList,
             reviewMonths: data.reviewMonths,
             endDate: data.endDate,
@@ -671,27 +600,6 @@ export const creditCardBillsControllerFindOne = (data: CreditCardBillsController
         query: {
             groupId: data.groupId
         }
-    });
-};
-
-/**
- * @param data The data for the request.
- * @param data.billMonth
- * @param data.accountId
- * @param data.requestBody
- * @returns CreditCardBillDetailDto
- * @throws ApiError
- */
-export const creditCardBillsControllerUpdateReviewMonth = (data: CreditCardBillsControllerUpdateReviewMonthData): CancelablePromise<CreditCardBillsControllerUpdateReviewMonthResponse> => {
-    return __request(OpenAPI, {
-        method: 'PATCH',
-        url: '/credit-card-bills/{accountId}/{billMonth}/review-month',
-        path: {
-            billMonth: data.billMonth,
-            accountId: data.accountId
-        },
-        body: data.requestBody,
-        mediaType: 'application/json'
     });
 };
 

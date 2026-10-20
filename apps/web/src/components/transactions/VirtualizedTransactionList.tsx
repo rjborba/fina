@@ -9,7 +9,10 @@ import {
   type ReactNode
 } from "react"
 import type { TransactionDisplayProperties } from "./transactionDisplay"
-import type { TransactionRowLayout } from "./transactionRowLayout"
+import {
+  TRANSACTION_DATE_WIDTH,
+  type TransactionRowLayout
+} from "./transactionRowLayout"
 
 export const TRANSACTION_LIST_ROW_HEIGHT = 40
 export const TRANSACTION_LIST_OVERSCAN = 30
@@ -36,7 +39,7 @@ export function VirtualizedTransactionList({
     height: totalSize + TRANSACTION_LIST_BOTTOM_PADDING,
     minWidth: `calc(${layout.minWidth}px + var(--transaction-responsive-space))`,
     "--transaction-list-columns": [
-      displayProperties.date ? "112px" : null,
+      displayProperties.date ? `${TRANSACTION_DATE_WIDTH}px` : null,
       "minmax(0, 1fr)",
       displayProperties.value ? "132px" : null
     ]
@@ -141,7 +144,7 @@ export const VirtualizedTransactionRow = memo(
           tabIndex={tabIndex}
           data-list-focus-target="true"
           aria-keyshortcuts="ArrowDown ArrowUp J K Enter Space X Shift+ArrowDown Shift+ArrowUp Meta+A Control+A Escape"
-          className="grid h-full w-full min-w-0 items-center gap-3 rounded-[inherit] px-6 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fina-violet/35"
+          className="grid h-full w-full min-w-0 items-center gap-2 rounded-[inherit] px-6 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fina-violet/35"
           style={{ gridTemplateColumns: "var(--transaction-list-columns)" }}
         >
           {onSelectionClick ? (

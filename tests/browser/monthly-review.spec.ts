@@ -247,14 +247,6 @@ async function expectOriginalArtworkCornerAlpha(
   expect(pixels.corners).toEqual(Array(4).fill(expectedAlpha));
 }
 
-type FixturePurchaseCard = {
-  id: string;
-  accountId: string;
-  name: string;
-  last4: string | null;
-  archived: boolean;
-};
-
 type FixtureSharedBill = {
   bill: {
     accountId: string;
@@ -267,53 +259,16 @@ type FixtureSharedBill = {
   transactions: Array<{
     id: string;
     description: string | null;
-    creditCard: FixturePurchaseCard | null;
+    cardName: string | null;
+    cardLast4: string | null;
   }>;
   cardSummaries: Array<{
-    creditCard: FixturePurchaseCard | null;
+    cardName: string | null;
+    cardLast4: string | null;
     transactionCount: number;
     total: number;
   }>;
 };
-
-async function addFixturePurchaseCard(
-  page: Page,
-  accountName: string,
-  accountId: string,
-  name: string,
-  last4: string,
-) {
-  const disclosure = page.getByRole("button", {
-    name: `Cards for ${accountName}`,
-    exact: true,
-  });
-  if ((await disclosure.getAttribute("aria-expanded")) !== "true")
-    await disclosure.click();
-  await page
-    .getByRole("button", { name: `Add card to ${accountName}`, exact: true })
-    .click();
-  const editor = page.getByRole("dialog", { name: "Add card", exact: true });
-  await editor.getByLabel("Card nickname", { exact: true }).fill(name);
-  await editor
-    .getByLabel("Last 4 digits (optional)", { exact: true })
-    .fill(last4);
-  const created = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      new URL(response.url()).pathname === "/credit-cards" &&
-      response.ok(),
-  );
-  await editor.getByRole("button", { name: "Add card", exact: true }).click();
-  const card = (await (await created).json()) as FixturePurchaseCard;
-  expect(card).toMatchObject({ accountId, name, last4, archived: false });
-  await expect(editor).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("list", { name: `Cards on ${accountName}`, exact: true })
-      .getByText(`${name} · ••${last4}`, { exact: true }),
-  ).toBeVisible();
-  return card;
-}
 
 async function openFixtureSharedBill(
   page: Page,
@@ -453,13 +408,19 @@ async function importMonthFixture(
       "en-US",
       { month: "long", year: "numeric", timeZone: "UTC" },
     );
-    for (const name of ["Bill due in", "Include in monthly review"]) {
-      await page.getByRole("button", { name, exact: true }).click();
-      await page.getByRole("button", { name: label, exact: true }).click();
-      await expect(
-        page.getByRole("button", { name: label, exact: true }),
-      ).toHaveCount(0);
-    }
+    await page
+      .getByRole("button", { name: "Bill due in", exact: true })
+      .click();
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: label, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: "Include in monthly review",
+        exact: true,
+      }),
+    ).toHaveCount(0);
   }
   await page
     .getByRole("button", { name: "Validate import", exact: true })
@@ -536,7 +497,10 @@ async function reloadWithSavedTransactionFilters(
   }
 }
 
-async function expectCompactTransactionList(page: Page) {
+async function expectCompactTransactionList(
+  page: Page,
+  categoryVisible = true,
+) {
   const ledger = page.getByRole("grid", { name: "Transactions", exact: true });
   await expect(ledger).toBeVisible();
   await expect(ledger.locator("table, tbody, tr, td")).toHaveCount(0);
@@ -551,6 +515,16 @@ async function expectCompactTransactionList(page: Page) {
   await expect(rows.locator("button[data-list-open]")).toHaveCount(
     await rows.count(),
   );
+  await expect(
+    ledger.locator('[data-inline-metadata="account-icon"]'),
+  ).toHaveCount(0);
+  if (!categoryVisible) {
+    await expect(ledger.locator('[data-metadata-slot="category"]')).toHaveCount(
+      0,
+    );
+    await expect(ledger.locator("[data-category-dot]")).toHaveCount(0);
+    await expect(ledger.getByRole("combobox")).toHaveCount(0);
+  }
   await expect(
     ledger.locator(
       '[data-list-open] [role="combobox"], [data-list-open] button',
@@ -575,16 +549,40 @@ async function expectCompactTransactionList(page: Page) {
       const metadataStyle = metadataGrid
         ? getComputedStyle(metadataGrid)
         : null;
+      const transactionField = row.querySelector(
+        '[data-column="transaction"]',
+      )!;
+      const descriptionRange = document.createRange();
+      if (description) descriptionRange.selectNodeContents(description);
       const tracks = Array.from(
         row.querySelectorAll(
           '[data-metadata-slot], [data-column="date"], [data-column="value"]',
         ),
       ).map((field) => {
         const fieldBounds = field.getBoundingClientRect();
+        const name =
+          field.getAttribute("data-metadata-slot") ??
+          field.getAttribute("data-column");
+        const categoryTrigger = field.querySelector('[role="combobox"]');
+        const content =
+          name === "card"
+            ? field.querySelector(
+                '[data-testid="transaction-card"] > span > :last-child',
+              )
+            : name === "category"
+              ? categoryTrigger?.querySelector("[data-category-chip]")
+              : name === "value"
+                ? field.querySelector("[data-field-value]")
+                : field.firstElementChild;
+        let contentRight = content?.getBoundingClientRect().right;
+        if (name === "installment" && content) {
+          const range = document.createRange();
+          range.selectNodeContents(content);
+          contentRight = range.getBoundingClientRect().right;
+        }
+        const categoryDot = content?.querySelector("[data-category-dot]");
         return {
-          name:
-            field.getAttribute("data-metadata-slot") ??
-            field.getAttribute("data-column"),
+          name,
           x: fieldBounds.left - bounds.left,
           width: fieldBounds.width,
           visible:
@@ -594,11 +592,54 @@ async function expectCompactTransactionList(page: Page) {
           controls: field.querySelectorAll(
             "button, a[href], input, select, textarea, [tabindex]",
           ).length,
+          categoryBlank:
+            name === "category" && categoryTrigger !== null && !content,
+          categoryLabel: categoryTrigger?.getAttribute("aria-label"),
+          categoryText: categoryTrigger?.textContent,
+          contentEndGap:
+            contentRight === undefined
+              ? null
+              : fieldBounds.right - contentRight,
+          expectedContentEndGap: 0,
+          categoryChip:
+            name === "category" && content
+              ? {
+                  height: content.getBoundingClientRect().height,
+                  radius: getComputedStyle(content).borderRadius,
+                  border: getComputedStyle(content).borderRightWidth,
+                  placeholder: content.hasAttribute(
+                    "data-category-placeholder",
+                  ),
+                  muted: content.classList.contains("text-foreground/35"),
+                  truncated:
+                    (content.querySelector(".truncate")?.scrollWidth ?? 0) >
+                    (content.querySelector(".truncate")?.clientWidth ?? 0),
+                  dotWidth: categoryDot?.getBoundingClientRect().width,
+                  dotHeight: categoryDot?.getBoundingClientRect().height,
+                  dotRadius: categoryDot
+                    ? getComputedStyle(categoryDot).borderRadius
+                    : null,
+                  svgCount: content.querySelectorAll("svg").length,
+                }
+              : null,
+          accountChip:
+            name === "account" && content
+              ? {
+                  height: content.getBoundingClientRect().height,
+                  border: getComputedStyle(content).borderRightWidth,
+                  radius: getComputedStyle(content).borderRadius,
+                  logoWidth:
+                    content.firstElementChild?.getBoundingClientRect().width,
+                  role: content.getAttribute("role"),
+                  text: content.textContent,
+                }
+              : null,
         };
       });
       return {
         rowIndex: Number(row.getAttribute("aria-rowindex")),
         gridcellDisplay: gridcell ? getComputedStyle(gridcell).display : null,
+        columnGap: gridcell ? getComputedStyle(gridcell).columnGap : null,
         top: bounds.top,
         height: bounds.height,
         borderRadius: style.borderRadius,
@@ -631,11 +672,41 @@ async function expectCompactTransactionList(page: Page) {
             Number.parseFloat(descriptionStyle?.lineHeight ?? "0")
           : 1,
         descriptionWidth: description?.getBoundingClientRect().width ?? 0,
+        descriptionTextWidth: descriptionRange.getBoundingClientRect().width,
         descriptionWhitespace: descriptionStyle?.whiteSpace ?? "nowrap",
+        descriptionTextAlign: descriptionStyle?.textAlign,
+        descriptionTextStart:
+          description && descriptionStyle
+            ? descriptionRange.getBoundingClientRect().left -
+              description.getBoundingClientRect().left -
+              Number.parseFloat(descriptionStyle.paddingLeft) -
+              Number.parseFloat(descriptionStyle.borderLeftWidth)
+            : null,
+        transactionRight:
+          transactionField.getBoundingClientRect().right - bounds.left,
         metadataGridCount: row.querySelectorAll(".transaction-metadata-grid")
           .length,
         metadataDisplay: metadataStyle?.display ?? null,
+        metadataGap: metadataStyle?.columnGap ?? null,
         metadataColumns: metadataStyle?.gridTemplateColumns ?? null,
+        metadataCursors: Array.from(
+          row.querySelectorAll('[data-transaction-metadata="true"]'),
+        ).map((element) => getComputedStyle(element).cursor),
+        inlineIcons: Array.from(
+          row.querySelectorAll("[data-inline-metadata]"),
+        ).map((element, index, icons) => {
+          const iconBounds = element.getBoundingClientRect();
+          const previous = index > 0 ? icons[index - 1] : description!;
+          return {
+            name: element.getAttribute("data-inline-metadata"),
+            width: iconBounds.width,
+            gap: iconBounds.left - previous.getBoundingClientRect().right,
+            endSpace:
+              element
+                .closest('[data-metadata-slot="description"]')!
+                .getBoundingClientRect().right - iconBounds.right,
+          };
+        }),
         tracks,
       };
     }),
@@ -648,6 +719,7 @@ async function expectCompactTransactionList(page: Page) {
       expect(measurement.top - measurements[index - 1].top).toBeCloseTo(40);
     }
     expect(measurement.gridcellDisplay).toBe("grid");
+    expect(measurement.columnGap).toBe("8px");
     expect(measurement.height).toBe(40);
     expect(measurement.borderRadius).toBe("8px");
     expect(measurement.marginLeft).toBe("8px");
@@ -661,12 +733,34 @@ async function expectCompactTransactionList(page: Page) {
       measurement.fieldBorders.flat().every((width) => width === "0px"),
     ).toBe(true);
     expect(measurement.descriptionWhitespace).toBe("nowrap");
-    expect(measurement.descriptionWidth).toBeGreaterThanOrEqual(48);
+    expect(measurement.descriptionWidth).toBeGreaterThanOrEqual(
+      Math.min(48, measurement.descriptionTextWidth),
+    );
     expect(measurement.descriptionLines).toBeLessThanOrEqual(1.05);
+    expect(measurement.descriptionTextAlign).toBe("left");
+    expect(measurement.descriptionTextStart).toBeCloseTo(0, 1);
     expect(measurement.metadataGridCount).toBe(1);
     expect(measurement.metadataDisplay).toBe("grid");
+    expect(measurement.metadataGap).toBe("8px");
     expect(measurement.metadataColumns).not.toBe("none");
     expect(measurement.metadataColumns).toBe(measurements[0].metadataColumns);
+    expect(
+      measurement.metadataCursors.every((cursor) => cursor === "default"),
+    ).toBe(true);
+    const inlineOrder = ["import", "card-icon"];
+    expect(measurement.inlineIcons.map((icon) => icon.name)).toEqual(
+      inlineOrder.filter((name) =>
+        measurement.inlineIcons.some((icon) => icon.name === name),
+      ),
+    );
+    for (const icon of measurement.inlineIcons) {
+      expect(icon.width).toBe(14);
+      expect(
+        icon.gap,
+        `${icon.name} follows description or previous icon`,
+      ).toBeCloseTo(6, 1);
+      expect(icon.endSpace).toBeGreaterThanOrEqual(-0.1);
+    }
     const visibleTracks = measurement.tracks.filter((track) => track.visible);
     const referenceTracks = measurements[0].tracks.filter(
       (track) => track.visible,
@@ -688,12 +782,75 @@ async function expectCompactTransactionList(page: Page) {
       }
       if (track.name === "description")
         expect(track.width).toBeGreaterThanOrEqual(120);
-      if (track.name === "account") expect(track.width).toBe(96);
-      if (track.name === "card") expect(track.width).toBe(176);
-      if (track.name === "category") expect(track.width).toBe(128);
+      if (track.name === "account") expect(track.width).toBe(128);
+      if (track.accountChip) {
+        expect(track.accountChip.height).toBe(24);
+        expect(track.accountChip.border).toBe("1px");
+        expect(
+          Number.parseFloat(track.accountChip.radius),
+        ).toBeGreaterThanOrEqual(12);
+        expect(track.accountChip.logoWidth).toBe(14);
+        expect(track.accountChip.role).toBe("group");
+        expect(track.accountChip.text?.trim().length).toBeGreaterThan(0);
+      }
+      if (track.name === "card") expect(track.width).toBe(144);
+      if (track.name === "card-number") expect(track.width).toBe(56);
+      if (track.name === "date") expect(track.width).toBe(80);
+      if (track.name === "category") expect(track.width).toBe(112);
       if (track.name === "value") expect(track.width).toBe(132);
-      if (track.name === "installment") expect(track.width).toBe(64);
+      if (track.name === "installment") expect(track.width).toBe(40);
+      if (track.categoryChip) {
+        expect(track.categoryChip.height).toBe(24);
+        expect(
+          Number.parseFloat(track.categoryChip.radius),
+        ).toBeGreaterThanOrEqual(12);
+        expect(track.categoryChip.border).toBe("1px");
+        if (track.categoryChip.placeholder) {
+          expect(track.categoryText).toBe("Uncategorized");
+          expect(track.categoryLabel).toMatch(/^Change category for /);
+          expect(track.categoryChip.muted).toBe(true);
+          expect(track.categoryChip.truncated).toBe(false);
+          expect(track.categoryChip.dotWidth).toBeUndefined();
+          expect(track.controls).toBeGreaterThan(0);
+        } else {
+          expect(track.categoryChip.dotWidth).toBe(8);
+          expect(track.categoryChip.dotHeight).toBe(8);
+          expect(
+            Number.parseFloat(track.categoryChip.dotRadius!),
+          ).toBeGreaterThanOrEqual(4);
+        }
+        expect(track.categoryChip.svgCount).toBe(0);
+      }
+      if (
+        track.name !== "description" &&
+        track.name !== "date" &&
+        !track.empty &&
+        !track.categoryBlank
+      ) {
+        expect(
+          track.contentEndGap,
+          `${track.name} rendered end`,
+        ).not.toBeNull();
+        expect(track.contentEndGap, `${track.name} rendered end`).toBeCloseTo(
+          track.expectedContentEndGap,
+          1,
+        );
+      }
+      if (track.categoryBlank) {
+        expect(track.categoryText).toBe("");
+        expect(track.categoryLabel).toMatch(/^Change category for /);
+        expect(track.controls).toBeGreaterThan(0);
+      }
     }
+    const metadataTracks = visibleTracks.filter(
+      (track) => !["description", "date", "value"].includes(track.name!),
+    );
+    const lastMetadataTrack = metadataTracks.at(-1);
+    if (lastMetadataTrack)
+      expect(lastMetadataTrack.x + lastMetadataTrack.width).toBeCloseTo(
+        measurement.transactionRight,
+        2,
+      );
     for (const track of measurement.tracks.filter((track) => track.empty)) {
       expect(track.ariaHidden, `${track.name} empty slot`).toBe("true");
       expect(track.controls, `${track.name} empty slot controls`).toBe(0);
@@ -794,10 +951,16 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(
     page.getByRole("button", { name: `July ${year}`, exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Include in monthly review", exact: true })
-    .click();
-  await page.getByRole("button", { name: `June ${year}`, exact: true }).click();
+  await expect(
+    page.getByRole("button", {
+      name: "Include in monthly review",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/import-bill-due-month-only.png",
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: "Edit Amount mapping. Amount", exact: true })
     .click();
@@ -1093,15 +1256,16 @@ test("inverts charges and refunds on a July card bill in June review while prese
   const displayPropertyNames = [
     "Date",
     "Account",
-    "Card",
+    "Card name",
+    "Card number",
     "Category",
     "Installment",
     "Amount",
-    "Import",
   ];
   for (const name of displayPropertyNames) {
     const property = display.getByRole("button", { name, exact: true });
-    await property.click();
+    if ((await property.getAttribute("aria-pressed")) === "true")
+      await property.click();
     await expect(property).toHaveAttribute("aria-pressed", "false");
     await expect(display).toBeVisible();
   }
@@ -1121,13 +1285,19 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(restoredLedger.locator('[data-column="date"]')).toHaveCount(0);
   await expect(restoredLedger.locator('[data-column="value"]')).toHaveCount(0);
   await expect(restoredLedger.getByRole("combobox")).toHaveCount(0);
+  await expect(
+    restoredLedger.locator('[data-transaction-metadata="true"]'),
+  ).toHaveCount(10);
+  await expect(restoredLedger.getByTestId("transaction-account")).toHaveCount(
+    0,
+  );
+  await expectCompactTransactionList(page, false);
   for (const slot of [
-    "account-icon",
     "account",
     "card",
-    "category",
+    "card-number",
     "installment",
-    "import",
+    "category",
   ])
     await expect(
       restoredLedger.locator(`[data-metadata-slot="${slot}"]:visible`),
@@ -1155,6 +1325,59 @@ test("inverts charges and refunds on a July card bill in June review while prese
       .getByRole("row")
       .first(),
   ).toContainText("Fixture groceries");
+  await expectCompactTransactionList(page);
+
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  const amountProperty = display.getByRole("button", {
+    name: "Amount",
+    exact: true,
+  });
+  await amountProperty.click();
+  await expect(amountProperty).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Escape");
+  await expect(display).toHaveCount(0);
+  await expect(restoredLedger.locator('[data-column="value"]')).toHaveCount(0);
+  const [amountHiddenLayout] = await expectCompactTransactionList(page);
+  await expectFiniteAnimationsSettled(page);
+  await page.screenshot({
+    path: "test-results/transactions-end-aligned-amount-hidden.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 720 });
+  await expectFiniteAnimationsSettled(page);
+  const [widerLayout] = await expectCompactTransactionList(page);
+  const descriptionTrack = amountHiddenLayout.tracks.find(
+    (track) => track.name === "description",
+  )!;
+  const widerDescriptionTrack = widerLayout.tracks.find(
+    (track) => track.name === "description",
+  )!;
+  expect(widerDescriptionTrack.x).toBeCloseTo(descriptionTrack.x, 2);
+  expect(widerDescriptionTrack.width).toBeGreaterThan(descriptionTrack.width);
+  for (const track of amountHiddenLayout.tracks.filter(
+    (track) =>
+      track.visible && !["description", "date", "value"].includes(track.name!),
+  )) {
+    const widerTrack = widerLayout.tracks.find(
+      (candidate) => candidate.name === track.name,
+    )!;
+    expect(
+      widerLayout.transactionRight - widerTrack.x - widerTrack.width,
+    ).toBeCloseTo(
+      amountHiddenLayout.transactionRight - track.x - track.width,
+      2,
+    );
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  await amountProperty.click();
+  await expect(amountProperty).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(display).toHaveCount(0);
   await expectCompactTransactionList(page);
 
   await page.keyboard.press("ControlOrMeta+f");
@@ -1322,7 +1545,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(blankInstallment).toHaveAttribute("data-empty", "true");
   await expect(blankInstallment).toHaveAttribute("aria-hidden", "true");
   await expect(blankInstallment).toHaveText("");
-  await expect(blankInstallment).toHaveCSS("width", "64px");
+  await expect(blankInstallment).toHaveCSS("width", "40px");
   await expect(
     blankInstallment.locator(
       "button, a[href], input, select, textarea, [tabindex]",
@@ -1435,7 +1658,7 @@ test("reviews selected nonadjacent months across years with the same inline and 
       name: `browser-multiple-months-card-${month}.csv`,
       accountName: cardName,
       accountType: "credit",
-      month: `${year}-${month}`,
+      month: `${year}-${String(Number(month) + 1).padStart(2, "0")}`,
       rows: [...rows],
     });
   }
@@ -1683,7 +1906,7 @@ test("combines account, import, amount, and date filters with matching totals an
     name: "browser-filter-card.csv",
     accountName: cardName,
     accountType: "credit",
-    month: `${year}-06`,
+    month: `${year}-07`,
     rows: [
       `12/06/${year};Filter fixture card expense;-35,00`,
       `13/06/${year};Filter fixture excluded card expense;-5,00`,
@@ -1799,19 +2022,28 @@ test("combines account, import, amount, and date filters with matching totals an
   const manualCheckingRow = ledger
     .getByRole("row")
     .filter({ hasText: "Filter fixture manual expense" });
-  for (const slot of ["import", "card"])
+  for (const slot of ["import", "card-icon"])
     await expect(
-      manualCheckingRow.locator(`[data-metadata-slot="${slot}"]`),
-    ).toHaveAttribute("data-empty", "true");
+      manualCheckingRow.locator(`[data-inline-metadata="${slot}"]`),
+    ).toHaveCount(0);
   const importedCreditRow = ledger
     .getByRole("row")
     .filter({ hasText: "Filter fixture card expense" });
   await expect(
-    importedCreditRow.locator('[data-metadata-slot="import"]'),
-  ).not.toHaveAttribute("data-empty", "true");
+    importedCreditRow.locator('[data-inline-metadata="import"]'),
+  ).toBeVisible();
   await expect(
-    importedCreditRow.locator('[data-metadata-slot="card"]'),
-  ).toContainText("Not identified");
+    importedCreditRow.locator('[data-inline-metadata="card-icon"]'),
+  ).toBeVisible();
+  await expect(
+    importedCreditRow.getByRole("img", {
+      name: "Credit card: Not identified",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(importedCreditRow.getByTestId("transaction-card")).toHaveText(
+    "Not identified",
+  );
   await expectFiniteAnimationsSettled(page);
   await page.screenshot({
     path: "test-results/transactions-aligned-inline.png",
@@ -1900,10 +2132,7 @@ test("combines account, import, amount, and date filters with matching totals an
   ).toHaveText(/^[−-]R\$\s*40,00$/);
   await expect(ledger).toHaveAttribute("aria-rowcount", "3");
   await expectCompactTransactionList(page);
-  await expect(bill.locator('[data-metadata-slot="import"]')).toHaveAttribute(
-    "data-empty",
-    "true",
-  );
+  await expect(bill.locator('[data-inline-metadata="import"]')).toHaveCount(0);
   await expectFiniteAnimationsSettled(page);
   await page.screenshot({
     path: "test-results/transactions-aligned-grouped.png",
@@ -2395,7 +2624,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
     name: "browser-institution-checking.csv",
     accountName: checkingName,
     accountType: "checkout",
-    rows: [`19/06/${year};${paymentDescription};-100,00`],
+    rows: [`30/06/${year};${paymentDescription};-100,00`],
   });
   await expectInstitutionLogo(
     page
@@ -2407,7 +2636,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
     name: "browser-institution-card.csv",
     accountName: cardName,
     accountType: "credit",
-    month: `${year}-06`,
+    month: `${year}-07`,
     rows: [`15/06/${year};${cardDescription};-100,00`],
   });
   await expectInstitutionLogo(
@@ -2447,6 +2676,12 @@ test("persists bank and card issuer logos through creation, import, review, and 
     name: "Inline credit card transactions",
     exact: true,
   });
+  const accountProperty = display.getByRole("button", {
+    name: "Account",
+    exact: true,
+  });
+  await expect(accountProperty).toHaveAttribute("aria-pressed", "false");
+  await accountProperty.click();
   if ((await inline.getAttribute("aria-checked")) === "true")
     await inline.click();
   await page.keyboard.press("Escape");
@@ -2463,7 +2698,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
     .getByRole("button", { name: `${cardName} bill`, exact: true })
     .click();
   await expect(page).toHaveURL(
-    new RegExp(`/credit-card-bills/${card.id}/${year}-06$`),
+    new RegExp(`/credit-card-bills/${card.id}/${year}-07$`),
   );
   await expectInstitutionLogo(page.locator("header"), "nubank");
   await expectInstitutionLogo(page.getByLabel("Bill summary"), "nubank");
@@ -2519,6 +2754,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await billRow.getByTestId("transaction-account").scrollIntoViewIfNeeded();
   await expectInstitutionLogo(billRow, "itau");
   const logoBounds = await billRow
     .locator('[data-institution-id="itau"]')
@@ -2556,8 +2792,67 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await addFixtureAccount(page, cardName, "credit");
   await page.goto("/categories");
   await page.getByRole("textbox", { name: "Category name" }).fill(categoryName);
+  await expect(
+    page.getByRole("radiogroup", { name: "Category icon", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("radio", { name: "Coral", exact: true }).click();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("radio", { name: "Amber", exact: true }),
+  ).toBeChecked();
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("radio", { name: "Coral", exact: true }),
+  ).toBeChecked();
+  const categoryPreview = page.getByLabel("Category preview", { exact: true });
+  await expect(categoryPreview).toHaveText(categoryName);
+  await expect(categoryPreview.locator("[data-category-dot]")).toHaveClass(
+    /bg-red-500/,
+  );
+  await expect(categoryPreview.locator("svg")).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/category-dot-chip-creation.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Add category", exact: true }).click();
-  await expect(page.getByText(categoryName, { exact: true })).toBeVisible();
+  const categoryRegistry = page.getByRole("region", {
+    name: "Existing categories",
+    exact: true,
+  });
+  const savedCategory = categoryRegistry
+    .locator("[data-category-chip]")
+    .filter({ hasText: categoryName });
+  await expect(savedCategory).toBeVisible();
+  await expect(savedCategory.locator("[data-category-dot]")).toHaveClass(
+    /bg-red-500/,
+  );
+  await page
+    .getByRole("button", {
+      name: `Edit ${categoryName} appearance`,
+      exact: true,
+    })
+    .click();
+  const appearanceEditor = page.getByRole("dialog");
+  await expect(
+    appearanceEditor.getByRole("radiogroup", {
+      name: "Category icon",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await appearanceEditor
+    .getByRole("radio", { name: "Amber", exact: true })
+    .click();
+  await appearanceEditor
+    .getByRole("button", { name: "Save appearance", exact: true })
+    .click();
+  await expect(appearanceEditor).toHaveCount(0);
+  await expect(savedCategory.locator("[data-category-dot]")).toHaveClass(
+    /bg-amber-400/,
+  );
+  await page.reload();
+  await expect(savedCategory.locator("[data-category-dot]")).toHaveClass(
+    /bg-amber-400/,
+  );
   await importMonthFixture(page, {
     name: "browser-selection-checking.csv",
     accountName: checkingName,
@@ -2573,7 +2868,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     name: "browser-selection-card.csv",
     accountName: cardName,
     accountType: "credit",
-    month: `${year}-06`,
+    month: `${year}-07`,
     rows: [`14/06/${year};Selection fixture card purchase;-30,00`],
   });
   await page.goto("/transactions");
@@ -2703,6 +2998,36 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await expect(deletion).toHaveCount(0);
   await expect(ledger).toHaveAttribute("aria-rowcount", "5");
 
+  const categoryPlaceholder = row(descriptions[0]).getByRole("combobox");
+  await expect(categoryPlaceholder).toHaveText("Uncategorized");
+  await categoryPlaceholder.click();
+  const categoryAssigned = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      /^\/transactions\/\d+$/.test(new URL(response.url()).pathname) &&
+      response.ok(),
+  );
+  await page.getByRole("option", { name: categoryName, exact: true }).click();
+  await categoryAssigned;
+  await expect(categoryPlaceholder).toHaveText(categoryName);
+  await categoryPlaceholder.click();
+  const categoryCleared = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      /^\/transactions\/\d+$/.test(new URL(response.url()).pathname) &&
+      response.ok(),
+  );
+  await page
+    .getByRole("option", { name: "Uncategorized", exact: true })
+    .click();
+  await categoryCleared;
+  await expect(categoryPlaceholder).toHaveText("Uncategorized");
+  await expect(
+    categoryPlaceholder.locator("[data-category-placeholder]"),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
+
   const categoryUpdates: Array<{ categoryId?: string | null }> = [];
   const onCategoryUpdate = (response: Response) => {
     if (
@@ -2741,6 +3066,39 @@ test("selects transactions with hover and touch checkboxes and manages them from
     categoryName,
   );
   await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
+  await expectCompactTransactionList(page);
+  await page.screenshot({
+    path: "test-results/transaction-category-chips-light.png",
+    fullPage: true,
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expectCompactTransactionList(page);
+  await page.screenshot({
+    path: "test-results/transaction-category-chips-dark.png",
+    fullPage: true,
+  });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  const categoryProperty = display.getByRole("button", {
+    name: "Category",
+    exact: true,
+  });
+  await expect(categoryProperty).toHaveAttribute("aria-pressed", "true");
+  await categoryProperty.click();
+  await page.keyboard.press("Escape");
+  await expectCompactTransactionList(page, false);
+  await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Display options", exact: true })
+    .click();
+  await categoryProperty.click();
+  await page.keyboard.press("Escape");
+  await expectCompactTransactionList(page);
+  await expect(row(descriptions[2]).getByRole("combobox")).toContainText(
+    categoryName,
+  );
 
   await searchByDescription(page, descriptions[2]);
   await closeTransactionFilters(page);
@@ -2849,24 +3207,12 @@ test("selects transactions with hover and touch checkboxes and manages them from
   expect(browserErrors).toEqual([]);
 });
 
-test("keeps two named C6 cards on one shared bill through import, editing, filtering, archiving, and reconciliation", async ({
+test("imports three C6 card labels directly and preserves transaction metadata, display choices, and one shared bill", async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(120_000);
   const year = new Date().getFullYear();
-  const dueMonth = `${year}-07`;
-  const accountName = "Shared cards fixture C6";
-  const checkingName = "Shared cards fixture payment account";
-  const paymentDescription = "Shared cards fixture full payment";
-  const descriptions = {
-    mine: "Shared cards Mine purchase",
-    wife: "Shared cards Wife purchase",
-    mineRefund: "Shared cards Mine refund",
-    wifeRefund: "Shared cards Wife refund",
-    fallback: "Shared cards blank identifier",
-    unknown: "Shared cards initially unidentified",
-    manual: "Shared cards manually created purchase",
-  };
+  const accountName = "Direct metadata fixture C6";
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.name));
   await signInAsFixture(page);
@@ -2876,47 +3222,22 @@ test("keeps two named C6 cards on one shared bill through import, editing, filte
     "credit",
     "C6 Bank",
   );
-  expect(parent.institutionId).toBe("c6");
-  const mine = await addFixturePurchaseCard(
-    page,
-    accountName,
-    parent.id,
-    "Mine",
-    "4242",
-  );
-  const wife = await addFixturePurchaseCard(
-    page,
-    accountName,
-    parent.id,
-    "Wife",
-    "5151",
-  );
-  expect(mine.id).not.toBe(wife.id);
-  expect(mine.accountId).toBe(wife.accountId);
   await expect(
-    page.getByRole("button", { name: `Cards for ${accountName}`, exact: true }),
-  ).toContainText("2");
-  const checking = await addFixtureAccount(
-    page,
-    checkingName,
-    "checkout",
-    "Inter",
-  );
-
+    page.getByRole("button", { name: /Cards for|Add card to/ }),
+  ).toHaveCount(0);
   await page.goto("/imports");
   await page.getByRole("button", { name: "Import file", exact: true }).click();
   await page.getByLabel("Drop a CSV here or choose a file").setInputFiles({
-    name: "browser-shared-cards-combined.csv",
+    name: "browser-direct-card-metadata.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
       [
-        "Date;Description;Installment;Amount;Card",
-        `19/06/${year};${descriptions.mine};Single;60,00;4242`,
-        `20/06/${year};${descriptions.wife};Single;40,00;5151`,
-        `21/06/${year};${descriptions.mineRefund};Single;-10,00;4242`,
-        `22/06/${year};${descriptions.wifeRefund};Single;-5,00;5151`,
-        `23/06/${year};${descriptions.fallback};Single;20,00;`,
-        `24/06/${year};${descriptions.unknown};Single;15,00;Unknown`,
+        "Date;Description;Installment;Amount;Card name;Last4",
+        `19/06/${year};Metadata Personal purchase;Single;-60,00;Personal;0042`,
+        `20/06/${year};Metadata Family purchase;Single;-40,00;Family;**** 5151`,
+        `21/06/${year};Metadata Virtual purchase;Single;-20,00;Virtual;6161`,
+        `22/06/${year};Metadata Personal refund;Single;10,00;Personal;0042`,
+        `23/06/${year};Metadata unknown purchase;Single;-15,00;;`,
       ].join("\n"),
     ),
   });
@@ -2933,55 +3254,30 @@ test("keeps two named C6 cards on one shared bill through import, editing, filte
   await page.getByRole("button", { name: "Bill due in", exact: true }).click();
   await page.getByRole("button", { name: `July ${year}`, exact: true }).click();
   await expect(
+    page.getByText("Identify cards in this statement", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "Card for this file", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /^Edit Card name mapping/ }),
+  ).toHaveAttribute("aria-label", "Edit Card name mapping. Card name");
+  await expect(
+    page.getByRole("button", { name: /^Edit Card number mapping/ }),
+  ).toHaveAttribute("aria-label", "Edit Card number mapping. Last4");
+  await expect(
     page.getByRole("button", { name: `July ${year}`, exact: true }),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Include in monthly review", exact: true })
-    .click();
-  await page.getByRole("button", { name: `June ${year}`, exact: true }).click();
-  await page
-    .getByRole("button", { name: "Edit Amount mapping. Amount", exact: true })
-    .click();
-  await page.getByRole("checkbox", { name: /Invert amount signs/ }).check();
-  await page.keyboard.press("Escape");
-  const validate = page.getByRole("button", {
-    name: "Validate import",
-    exact: true,
+    .getByRole("columnheader", { name: /Card number/ })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "test-results/card-metadata-import.png",
+    fullPage: true,
   });
-  await expect(validate).toBeDisabled();
-  await expect(
-    page.getByRole("combobox", { name: "Card source column", exact: true }),
-  ).toHaveText("5. Card");
-  for (const [source, label] of [
-    ["4242", "Mine · ••4242"],
-    ["5151", "Wife · ••5151"],
-    ["Unknown", "Not identified"],
-  ]) {
-    const mapping = page.getByRole("combobox", {
-      name: `Card for source ${source}`,
-      exact: true,
-    });
-    await expect(mapping).toHaveText("Choose a card...");
-    await mapping.click();
-    await page.getByRole("option", { name: label, exact: true }).click();
-  }
   await page
-    .getByRole("combobox", { name: "Card for this file", exact: true })
+    .getByRole("button", { name: "Validate import", exact: true })
     .click();
-  await page
-    .getByRole("option", { name: "Mine · ••4242", exact: true })
-    .click();
-  await expect(page.getByLabel("Card attribution summary")).toContainText(
-    "Mine · ••4242: 3 transactions",
-  );
-  await expect(page.getByLabel("Card attribution summary")).toContainText(
-    "Wife · ••5151: 2 transactions",
-  );
-  await expect(page.getByLabel("Card attribution summary")).toContainText(
-    "Not identified: 1 transaction",
-  );
-  await expect(validate).toBeEnabled();
-  await validate.click();
   const imported = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -2989,440 +3285,45 @@ test("keeps two named C6 cards on one shared bill through import, editing, filte
       response.ok(),
   );
   await page
-    .getByRole("button", { name: "Import 6 transactions", exact: true })
+    .getByRole("button", { name: "Import 5 transactions", exact: true })
     .click();
-  const importResponse = await imported;
-  expect(await importResponse.request().headerValue("content-type")).toMatch(
-    /^multipart\/form-data;/,
-  );
-  await expect(
-    page.getByRole("button", { name: "Import file", exact: true }),
-  ).toBeVisible();
-
-  let detail = await openFixtureSharedBill(page, parent.id, dueMonth);
+  await imported;
+  let detail = await openFixtureSharedBill(page, parent.id, `${year}-07`);
   expect(detail.bill).toMatchObject({
     accountId: parent.id,
-    billMonth: dueMonth,
-    transactionCount: 6,
-    total: -120,
+    transactionCount: 5,
+    total: -125,
   });
-  expect(
-    detail.cardSummaries.find((summary) => summary.creditCard?.id === mine.id),
-  ).toMatchObject({ transactionCount: 3, total: -70 });
-  expect(
-    detail.cardSummaries.find((summary) => summary.creditCard?.id === wife.id),
-  ).toMatchObject({ transactionCount: 2, total: -35 });
-  expect(
-    detail.cardSummaries.find((summary) => summary.creditCard === null),
-  ).toMatchObject({ transactionCount: 1, total: -15 });
-  const unidentified = page.getByRole("button", {
-    name: "Filter purchases by Not identified",
-    exact: true,
-  });
-  await expect(unidentified).toContainText("1 purchase");
-  await expect(unidentified).toContainText(/[−-]R\$\s*15,00/);
-  await expectCompactTransactionList(page);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
-  const cardDisplay = page.getByRole("dialog", {
-    name: "Display options",
-    exact: true,
-  });
-  const showCard = cardDisplay.getByRole("button", {
-    name: "Card",
-    exact: true,
-  });
-  await expect(showCard).toHaveAttribute("aria-pressed", "true");
-  await showCard.click();
-  await expect(page.getByTestId("transaction-card")).toHaveCount(0);
-  await showCard.click();
-  await expect(page.getByTestId("transaction-card")).toHaveCount(6);
-  await page.keyboard.press("Escape");
-
-  await page.goto("/transactions");
-  await page.getByRole("button", { name: /^New entry/ }).click();
-  const create = page.getByRole("dialog", {
-    name: "Create New Transaction",
-    exact: true,
-  });
-  await create.getByRole("combobox", { name: "Account", exact: true }).click();
-  await page.getByRole("option", { name: accountName, exact: true }).click();
-  await create
-    .getByRole("combobox", { name: "Purchase card", exact: true })
-    .click();
-  await page
-    .getByRole("option", { name: "Wife · ••5151", exact: true })
-    .click();
-  await create.getByLabel("Date", { exact: true }).fill(`${year}-06-25`);
-  await create
-    .getByLabel("Description", { exact: true })
-    .fill(descriptions.manual);
-  await create.getByLabel("Value", { exact: true }).fill("-10");
-  await create
-    .getByRole("button", { name: "Bill due in", exact: true })
-    .click();
-  await page.getByRole("button", { name: `July ${year}`, exact: true }).click();
-  await expect(
-    create.getByRole("button", {
-      name: "Include in monthly review",
-      exact: true,
-    }),
-  ).toContainText(`June ${year}`);
-  const manualCreated = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      new URL(response.url()).pathname === "/transactions" &&
-      response.ok(),
+  expect(detail.cardSummaries).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        cardName: "Personal",
+        cardLast4: "0042",
+        transactionCount: 2,
+        total: -50,
+      }),
+      expect.objectContaining({
+        cardName: "Family",
+        cardLast4: "5151",
+        transactionCount: 1,
+        total: -40,
+      }),
+      expect.objectContaining({
+        cardName: "Virtual",
+        cardLast4: "6161",
+        transactionCount: 1,
+        total: -20,
+      }),
+      expect.objectContaining({
+        cardName: null,
+        cardLast4: null,
+        transactionCount: 1,
+        total: -15,
+      }),
+    ]),
   );
-  await create
-    .getByRole("button", { name: "Create Transaction", exact: true })
-    .click();
-  expect((await (await manualCreated).json()).creditCard.id).toBe(wife.id);
-  await expect(create).toHaveCount(0);
-
-  detail = await openFixtureSharedBill(page, parent.id, dueMonth);
-  expect(detail.bill).toMatchObject({ transactionCount: 7, total: -130 });
-  const ledger = page.getByRole("grid", { name: "Transactions", exact: true });
-  const row = (description: string) =>
-    ledger.getByRole("row").filter({ hasText: description });
-  await row(descriptions.unknown).locator("button[data-list-open]").click();
-  const transactionDetails = page.getByRole("dialog", {
-    name: descriptions.unknown,
-    exact: true,
-  });
-  await transactionDetails
-    .getByRole("combobox", { name: "Change purchase card", exact: true })
-    .click();
-  const identified = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PATCH" &&
-      /^\/transactions\/\d+$/.test(new URL(response.url()).pathname) &&
-      response.ok(),
-  );
-  await page
-    .getByRole("option", { name: "Mine · ••4242", exact: true })
-    .click();
-  expect((await (await identified).json()).creditCard.id).toBe(mine.id);
-  await expect(
-    transactionDetails.getByRole("combobox", {
-      name: "Change purchase card",
-      exact: true,
-    }),
-  ).toContainText("Mine · ••4242");
-  await expect(
-    page.getByRole("dialog", { name: "Change purchase card", exact: true }),
-  ).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(transactionDetails).toHaveCount(0);
-  await expect(
-    row(descriptions.unknown).getByTestId("transaction-card"),
-  ).toHaveText("Mine · ••4242");
-
-  for (const description of [descriptions.fallback, descriptions.unknown]) {
-    await row(description).hover();
-    await row(description)
-      .getByRole("checkbox", { name: "Select transaction", exact: true })
-      .click();
-  }
-  const bar = page.getByRole("toolbar", {
-    name: "Selected transaction actions",
-    exact: true,
-  });
-  await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
-  const bulkRequests: Array<{ creditCardId?: string | null }> = [];
-  const captureCardUpdate = (response: Response) => {
-    if (
-      response.request().method() === "PATCH" &&
-      /^\/transactions\/\d+$/.test(new URL(response.url()).pathname) &&
-      response.ok()
-    )
-      bulkRequests.push(response.request().postDataJSON());
-  };
-  page.on("response", captureCardUpdate);
-  await bar
-    .getByRole("button", { name: "Card for selected purchases", exact: true })
-    .click();
-  await page
-    .getByRole("dialog", { name: "Card for selected purchases", exact: true })
-    .getByRole("option", { name: "Wife · ••5151", exact: true })
-    .click();
-  await expect.poll(() => bulkRequests.length).toBe(2);
-  page.off("response", captureCardUpdate);
-  expect(
-    bulkRequests.every((request) => request.creditCardId === wife.id),
-  ).toBe(true);
-  for (const description of [descriptions.fallback, descriptions.unknown])
-    await expect(row(description).getByTestId("transaction-card")).toHaveText(
-      "Wife · ••5151",
-    );
-  await bar.getByRole("button", { name: "Unselect all", exact: true }).click();
-  await expect(bar).toHaveCount(0);
-
-  await importMonthFixture(page, {
-    name: "browser-shared-cards-payment.csv",
-    accountName: checkingName,
-    accountType: "checkout",
-    rows: [`19/07/${year};${paymentDescription};-130,00`],
-  });
-  detail = await openFixtureSharedBill(page, parent.id, dueMonth);
-  expect(detail.bill.total).toBe(-130);
-  expect(
-    detail.cardSummaries.find((summary) => summary.creditCard?.id === mine.id),
-  ).toMatchObject({ transactionCount: 2, total: -50 });
-  expect(
-    detail.cardSummaries.find((summary) => summary.creditCard?.id === wife.id),
-  ).toMatchObject({ transactionCount: 5, total: -80 });
-  await expect(
-    page.getByText(paymentDescription, { exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Reconcile", exact: true }).click();
-  const reconciliation = page.getByRole("alertdialog", {
-    name: "Reconcile this payment?",
-    exact: true,
-  });
-  const reconciled = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      new URL(response.url()).pathname ===
-        `/credit-card-bills/${parent.id}/${dueMonth}/reconciliation` &&
-      response.ok(),
-  );
-  await reconciliation
-    .getByRole("button", { name: "Reconcile payment", exact: true })
-    .click();
-  const linked = (await (await reconciled).json()) as FixtureSharedBill;
-  expect(linked.bill).toMatchObject({
-    accountId: parent.id,
-    total: -130,
-    status: "reconciled",
-    payment: { accountId: checking.id, value: -130 },
-  });
-  await expect(
-    page.getByText("Linked checking payment", { exact: true }),
-  ).toBeVisible();
-  const fullSummary = page.getByRole("region", {
-    name: "Bill summary",
-    exact: true,
-  });
-  const fullSummaryText = (await fullSummary.textContent()) ?? "";
-  await page
-    .getByRole("button", {
-      name: "Filter purchases by Mine · ••4242",
-      exact: true,
-    })
-    .click();
-  await expect(
-    page.getByText("2 of 7 purchases", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByLabel("Matching purchases total", { exact: true }),
-  ).toContainText(/[−-]R\$\s*50,00/);
-  await expect(fullSummary).toHaveText(fullSummaryText);
-  await expect(
-    page.getByText(paymentDescription, { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", {
-      name: "Filter purchases by Wife · ••5151",
-      exact: true,
-    }),
-  ).toContainText(/[−-]R\$\s*80,00/);
-  await expect(ledger).toHaveAttribute("aria-rowcount", "2");
-  await expectCompactTransactionList(page);
-  await page
-    .getByRole("button", { name: "Clear filters", exact: true })
-    .click();
-  await expect(ledger).toHaveAttribute("aria-rowcount", "7");
-
-  await page.goto("/bank-accounts");
-  await page
-    .getByRole("button", { name: `Cards for ${accountName}`, exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Actions for Wife", exact: true })
-    .click();
-  await page.getByRole("menuitem", { name: "Edit card", exact: true }).click();
-  const edit = page.getByRole("dialog", { name: "Edit card", exact: true });
-  await edit.getByLabel("Card nickname", { exact: true }).fill("Wife renewed");
-  await edit
-    .getByLabel("Last 4 digits (optional)", { exact: true })
-    .fill("6161");
-  const updatedCard = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PATCH" &&
-      new URL(response.url()).pathname === `/credit-cards/${wife.id}` &&
-      response.ok(),
-  );
-  await edit.getByRole("button", { name: "Save card", exact: true }).click();
-  expect(await (await updatedCard).json()).toMatchObject({
-    id: wife.id,
-    accountId: parent.id,
-    name: "Wife renewed",
-    last4: "6161",
-  });
-  await expect(edit).toHaveCount(0);
-  await page.reload();
-  await page
-    .getByRole("button", { name: `Cards for ${accountName}`, exact: true })
-    .click();
-  await expect(
-    page.getByRole("list", { name: `Cards on ${accountName}`, exact: true }),
-  ).toContainText("Wife renewed · ••6161");
-  await page
-    .getByRole("button", { name: "Actions for Wife renewed", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Archive card", exact: true })
-    .click();
-  const archive = page.getByRole("alertdialog", {
-    name: "Archive Wife renewed?",
-    exact: true,
-  });
-  await expect(archive).toContainText(
-    "Existing transaction links and the account's combined bill will be retained",
-  );
-  const archived = page.waitForResponse(
-    (response) =>
-      response.request().method() === "DELETE" &&
-      new URL(response.url()).pathname === `/credit-cards/${wife.id}` &&
-      response.ok(),
-  );
-  await archive
-    .getByRole("button", { name: "Archive card", exact: true })
-    .click();
-  await archived;
-  await expect(archive).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Show archived (1)", exact: true })
-    .click();
-  await expect(
-    page.getByRole("list", { name: `Cards on ${accountName}`, exact: true }),
-  ).toContainText("Wife renewed · ••6161Archived");
-
-  detail = await openFixtureSharedBill(page, parent.id, dueMonth);
-  expect(detail.bill).toMatchObject({
-    total: -130,
-    transactionCount: 7,
-    status: "reconciled",
-    payment: { accountId: checking.id, value: -130 },
-  });
-  expect(
-    detail.transactions.filter(
-      (transaction) => transaction.creditCard?.id === wife.id,
-    ),
-  ).toHaveLength(5);
-  expect(
-    detail.transactions
-      .filter((transaction) => transaction.creditCard?.id === wife.id)
-      .every(
-        (transaction) =>
-          transaction.creditCard?.archived &&
-          transaction.creditCard.name === "Wife renewed" &&
-          transaction.creditCard.last4 === "6161",
-      ),
-  ).toBe(true);
-  await expect(
-    page.getByRole("button", {
-      name: "Filter purchases by Wife renewed · ••6161",
-      exact: true,
-    }),
-  ).toContainText("Archived");
-  await expect(
-    row(descriptions.wife).getByTestId("transaction-card"),
-  ).toContainText("Wife renewed · ••6161");
-  await expect(
-    row(descriptions.wife).getByTestId("transaction-card"),
-  ).toContainText("Archived");
-  await expectCompactTransactionList(page);
-  await page.mouse.move(0, 0);
-  const purchaseDescription = row(descriptions.wife).getByTestId(
-    "transaction-description",
-  );
-  await expect(purchaseDescription).toHaveCSS("color", "rgb(36, 36, 43)");
-  await expectFiniteAnimationsSettled(page);
-  await page.screenshot({
-    path: "test-results/shared-cards-light.png",
-    fullPage: true,
-  });
-  await page.evaluate(() => document.documentElement.classList.add("dark"));
-  await expect(page.locator("body")).toHaveCSS("color", "rgb(236, 236, 241)");
-  await expect(purchaseDescription).toHaveCSS("color", "rgb(236, 236, 241)");
-  await expect(row(descriptions.wife)).toHaveCSS(
-    "background-color",
-    "rgb(18, 18, 18)",
-  );
-  await expectFiniteAnimationsSettled(page);
-  await expect(
-    row(descriptions.wife).getByTestId("transaction-card"),
-  ).toBeVisible();
-  const darkMetadata = await row(descriptions.wife)
-    .getByTestId("transaction-card")
-    .evaluate((element) => {
-      const label = element.querySelector("span span") ?? element;
-      return {
-        fontSize: getComputedStyle(element).fontSize,
-        color: getComputedStyle(element).color,
-        labelWhitespace: getComputedStyle(label).whiteSpace,
-      };
-    });
-  expect(darkMetadata.fontSize).toBe("12px");
-  expect(darkMetadata.color).not.toBe("rgba(0, 0, 0, 0)");
-  expect(darkMetadata.labelWhitespace).toBe("nowrap");
-  await page.screenshot({
-    path: "test-results/shared-cards-dark.png",
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expectCompactTransactionList(page);
-  await expect(
-    row(descriptions.wife).getByTestId("transaction-card"),
-  ).toBeVisible();
-  const mobileWidth = await page.evaluate(() => ({
-    content: document.documentElement.scrollWidth,
-    viewport: window.innerWidth,
-  }));
-  expect(mobileWidth.content).toBeLessThanOrEqual(mobileWidth.viewport);
-  await expect(purchaseDescription).toHaveCSS("color", "rgb(236, 236, 241)");
-  await expectFiniteAnimationsSettled(page);
-  await page.screenshot({
-    path: "test-results/shared-cards-mobile.png",
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.evaluate(() => document.documentElement.classList.remove("dark"));
-
-  await page.goto("/transactions");
-  await page.getByRole("button", { name: /^New entry/ }).click();
-  await create.getByRole("combobox", { name: "Account", exact: true }).click();
-  await page.getByRole("option", { name: accountName, exact: true }).click();
-  await create
-    .getByRole("combobox", { name: "Purchase card", exact: true })
-    .click();
-  const availableOptions = page.getByRole("dialog", {
-    name: "Purchase card",
-    exact: true,
-  });
-  await expect(
-    availableOptions.getByRole("option", {
-      name: "Wife renewed · ••6161",
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await expect(
-    availableOptions.getByRole("option", {
-      name: "Mine · ••4242",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(availableOptions).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(create).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
-  await selectReviewMonth(page, `${year}-07`);
+  await expect(page.getByTestId("transaction-card")).toHaveCount(5);
+  await expect(page.getByTestId("transaction-card-number")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Display options", exact: true })
     .click();
@@ -3430,74 +3331,275 @@ test("keeps two named C6 cards on one shared bill through import, editing, filte
     name: "Display options",
     exact: true,
   });
-  await expectPopupSettled(display);
-  const inline = display.getByRole("switch", {
-    name: "Inline credit card transactions",
-    exact: true,
-  });
-  if ((await inline.getAttribute("aria-checked")) === "true")
-    await inline.click();
-  await expect(inline).toHaveAttribute("aria-checked", "false");
+  await display.getByRole("button", { name: "Card name", exact: true }).click();
+  await expect(page.getByTestId("transaction-card")).toHaveCount(0);
+  await expect(
+    page.locator('[data-inline-metadata="card-icon"] [role="img"]'),
+  ).toHaveCount(5);
+  await display
+    .getByRole("button", { name: "Card number", exact: true })
+    .click();
+  await expect(page.getByTestId("transaction-card-number")).toHaveCount(4);
+  await display.getByRole("button", { name: "Card name", exact: true }).click();
   await page.keyboard.press("Escape");
-  await expect(display).toHaveCount(0);
-  await page.getByRole("button", { name: "Cash flow", exact: true }).click();
-  const accountFilter = await openFilterProperty(page, "Bank account");
-  await accountFilter
-    .getByRole("checkbox", { name: accountName, exact: true })
-    .check();
-  await accountFilter
-    .getByRole("checkbox", { name: checkingName, exact: true })
-    .check();
-  await closeTransactionFilters(page);
-  await expect(ledger).toHaveAttribute("aria-rowcount", "1");
-  await expect(page.getByText(paymentDescription, { exact: true })).toHaveCount(
-    0,
-  );
-  const cardFilter = await openFilterProperty(page, "Card");
-  const filteredBillResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return (
-      response.request().method() === "GET" &&
-      url.pathname === "/credit-card-bills" &&
-      url.searchParams.getAll("creditCardIdList").includes(mine.id) &&
-      response.ok()
-    );
-  });
-  await cardFilter
-    .getByRole("checkbox", {
-      name: `Mine · ••4242 (${accountName})`,
+  await page
+    .getByRole("button", {
+      name: "Filter purchases by Family · ••5151",
       exact: true,
     })
-    .check();
-  await closeTransactionFilters(page);
-  const filteredBills = (await (await filteredBillResponse).json()) as Array<{
-    accountId: string;
-    total: number;
-    matchingTransactionCount: number;
-    matchingTotal: number;
-    payment: { value: number } | null;
-    status: string;
-  }>;
-  expect(filteredBills.filter((bill) => bill.accountId === parent.id)).toEqual([
-    expect.objectContaining({
-      accountId: parent.id,
-      total: -130,
-      matchingTransactionCount: 2,
-      matchingTotal: -50,
-      status: "reconciled",
-      payment: expect.objectContaining({ value: -130 }),
-    }),
-  ]);
-  const billRows = page.getByTestId("credit-card-bill-row");
-  await expect(billRows).toHaveCount(1);
-  await expect(billRows.first()).toContainText(`${accountName} bill`);
+    .click();
   await expect(
-    billRows.first().locator('[data-column="value"] [data-field-value]'),
-  ).toHaveText(/[−-]R\$\s*130,00/);
-  await expect(ledger).toHaveAttribute("aria-rowcount", "1");
-  await expect(page.getByText(paymentDescription, { exact: true })).toHaveCount(
-    0,
+    page.getByRole("button", {
+      name: "Open transaction: Metadata Family purchase",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByTestId("transaction-card")).toHaveCount(1);
+  await page
+    .getByRole("button", {
+      name: "Filter purchases by Family · ••5151",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Open transaction: Metadata Family purchase",
+      exact: true,
+    })
+    .click();
+  const modal = page.getByRole("dialog", {
+    name: "Metadata Family purchase",
+    exact: true,
+  });
+  await expect(modal.getByLabel("Card name", { exact: true })).toHaveValue(
+    "Family",
   );
+  await modal.getByLabel("Card name", { exact: true }).fill("Family virtual");
+  await modal.getByLabel("Last four digits", { exact: true }).fill("0007");
+  const updated = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      new URL(response.url()).pathname.startsWith("/transactions/") &&
+      response.ok(),
+  );
+  await modal
+    .getByRole("button", { name: "Save card details", exact: true })
+    .click();
+  await updated;
+  await page.keyboard.press("Escape");
+  detail = await openFixtureSharedBill(page, parent.id, `${year}-07`);
+  expect(
+    detail.transactions.find(
+      (purchase) => purchase.description === "Metadata Family purchase",
+    ),
+  ).toMatchObject({ cardName: "Family virtual", cardLast4: "0007" });
+  expect(detail.bill.total).toBe(-125);
+  await expect(
+    page.getByTestId("transaction-card-number").filter({ hasText: "••0007" }),
+  ).toHaveCount(1);
   await expectCompactTransactionList(page);
+  await page.screenshot({
+    path: "test-results/card-metadata-light.png",
+    fullPage: true,
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({
+    path: "test-results/card-metadata-dark.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectCompactTransactionList(page);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/card-metadata-mobile.png",
+    fullPage: true,
+  });
+  expect(browserErrors).toEqual([]);
+});
+
+test("saves a C6 column mapping and automatically reuses it across statements and C6 credit accounts", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const year = new Date().getFullYear();
+  const primaryName = "Saved mapping fixture C6 personal";
+  const sharedName = "Saved mapping fixture C6 shared";
+  const browserErrors: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.name));
+  await signInAsFixture(page);
+  const primary = await addFixtureAccount(
+    page,
+    primaryName,
+    "credit",
+    "C6 Bank",
+  );
+  const shared = await addFixtureAccount(page, sharedName, "credit", "C6 Bank");
+
+  const openStatement = async (month: number) => {
+    await page.goto("/imports");
+    await page
+      .getByRole("button", { name: "Import file", exact: true })
+      .click();
+    const profileQuery = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        new URL(response.url()).pathname === "/imports/profiles" &&
+        response.ok(),
+    );
+    const period = month.toString().padStart(2, "0");
+    await page.getByLabel("Drop a CSV here or choose a file").setInputFiles({
+      name: `browser-saved-c6-${period}.csv`,
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        [
+          "Date;Description;Installment;Amount;Plastic label;Suffix",
+          `13/${period}/${year};Saved mapping personal;Single;60,00;Personal;0042`,
+          `14/${period}/${year};Saved mapping family;Single;40,00;Family;5151`,
+          `15/${period}/${year};Saved mapping refund;Single;-5,00;Personal;0042`,
+        ].join("\n"),
+      ),
+    });
+    return (await (await profileQuery).json()) as {
+      accountId: string;
+      config: {
+        cardNameColumn: number;
+        cardLast4Column: number;
+        chargesPositive: boolean;
+      };
+    }[];
+  };
+  const selectAccount = async (name: string) => {
+    const destination = page.getByRole("combobox", {
+      name: "Destination account",
+      exact: true,
+    });
+    await expect(destination).toBeVisible();
+    if (!(await destination.textContent())?.includes(name)) {
+      await destination.click();
+      await page
+        .getByRole("option", { name: `${name} (credit)`, exact: true })
+        .click();
+    }
+  };
+  const confirmStatement = async (monthLabel: string) => {
+    await page
+      .getByRole("button", { name: "Bill due in", exact: true })
+      .click();
+    await page.getByRole("button", { name: monthLabel, exact: true }).click();
+    await page
+      .getByRole("button", { name: "Validate import", exact: true })
+      .click();
+    const imported = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/imports" &&
+        response.ok(),
+    );
+    await page
+      .getByRole("button", { name: "Import 3 transactions", exact: true })
+      .click();
+    await imported;
+    await expect(
+      page.getByRole("dialog", { name: "Review and import" }),
+    ).toHaveCount(0);
+  };
+
+  expect(await openStatement(6)).toEqual([]);
+  await selectAccount(primaryName);
+  for (const [field, source] of [
+    ["Card name", "Plastic label"],
+    ["Card number", "Suffix"],
+  ]) {
+    await page
+      .getByRole("button", { name: new RegExp(`^Edit ${field} mapping`) })
+      .click();
+    await page
+      .getByRole("combobox", { name: `${field} source column`, exact: true })
+      .click();
+    await page.getByRole("option", { name: new RegExp(`${source}$`) }).click();
+    await page.keyboard.press("Escape");
+  }
+  await page
+    .getByRole("button", { name: "Edit Amount mapping. Amount", exact: true })
+    .click();
+  await page.getByRole("checkbox", { name: /^Invert amount signs/ }).check();
+  await page.keyboard.press("Escape");
+  await confirmStatement(`July ${year}`);
+  const originalBill = await openFixtureSharedBill(
+    page,
+    primary.id,
+    `${year}-07`,
+  );
+  expect(originalBill.bill.total).toBe(-95);
+  expect(originalBill.transactions).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ cardName: "Personal", cardLast4: "0042" }),
+      expect.objectContaining({ cardName: "Family", cardLast4: "5151" }),
+    ]),
+  );
+
+  // Navigate afresh: no importer draft or user-supplied row values survive.
+  const profiles = await openStatement(7);
+  expect(profiles).toHaveLength(1);
+  expect(profiles[0]).toMatchObject({
+    accountId: primary.id,
+    config: { cardNameColumn: 4, cardLast4Column: 5, chargesPositive: true },
+  });
+  await expect(page.getByRole("status")).toHaveText(
+    `Saved mapping applied from ${primaryName}.`,
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Destination account", exact: true }),
+  ).toHaveText(`${primaryName} (credit)`);
+  await expect(
+    page.getByRole("button", { name: "Validate import", exact: true }),
+  ).toBeDisabled();
+  for (const [field, source] of [
+    ["Card name", "Plastic label"],
+    ["Card number", "Suffix"],
+  ]) {
+    await expect(
+      page.getByRole("button", {
+        name: `Edit ${field} mapping. ${source}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+  }
+  await page.screenshot({ path: "test-results/saved-c6-mapping.png" });
+  await confirmStatement(`August ${year}`);
+  const nextBill = await openFixtureSharedBill(page, primary.id, `${year}-08`);
+  expect(nextBill.bill).toMatchObject({ transactionCount: 3, total: -95 });
+
+  await openStatement(8);
+  await expect(page.getByRole("status")).toHaveText(
+    `Saved mapping applied from ${primaryName}.`,
+  );
+  await selectAccount(sharedName);
+  await expect(page.getByRole("status")).toHaveText(
+    `Saved mapping applied from ${primaryName}.`,
+  );
+  await confirmStatement(`September ${year}`);
+  const sharedBill = await openFixtureSharedBill(page, shared.id, `${year}-09`);
+  expect(sharedBill.bill).toMatchObject({ transactionCount: 3, total: -95 });
+  expect(sharedBill.transactions).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ cardName: "Personal", cardLast4: "0042" }),
+      expect.objectContaining({ cardName: "Family", cardLast4: "5151" }),
+    ]),
+  );
+
+  const severalProfiles = await openStatement(9);
+  expect(severalProfiles).toHaveLength(2);
+  await expect(
+    page.getByRole("combobox", { name: "Destination account", exact: true }),
+  ).toHaveText("Select the account to confirm");
+  await selectAccount(sharedName);
+  await expect(page.getByRole("status")).toHaveText(
+    `Saved mapping applied from ${sharedName}.`,
+  );
   expect(browserErrors).toEqual([]);
 });

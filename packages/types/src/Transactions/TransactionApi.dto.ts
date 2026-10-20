@@ -6,14 +6,15 @@ import {
 import { BillMonthSchema } from "../BillMonth";
 import { CreditCardDueDaySchema } from "../BankAccount/BankaccountApi.dto";
 import { FinancialInstitutionIdSchema } from "../BankAccount/FinancialInstitution";
-import { CreditCardReferenceSchema } from "../CreditCard/CreditCardApi.dto";
+import { CardNameSchema, CardLast4Schema } from "./CardMetadata";
 
 export const TransactionOutputSchema = z.object({
   id: z.string(),
   createdAt: z.string().datetime(),
   description: z.string().nullable(),
   value: z.number().nullable(),
-  creditCard: CreditCardReferenceSchema.nullable(),
+  cardName: CardNameSchema.nullable(),
+  cardLast4: CardLast4Schema.nullable(),
   date: z.string().datetime().nullable(),
   installmentTotal: z.number().nullable(),
   installmentCurrent: z.string().nullable(),
@@ -21,7 +22,9 @@ export const TransactionOutputSchema = z.object({
   observation: z.string().nullable(),
   toBeConsideredAt: z.string().date().nullable(),
   calculatedDate: z.string().date().nullable(),
-  reviewMonth: BillMonthSchema.nullable(),
+  reviewMonth: BillMonthSchema.nullable().describe(
+    "Calculated from the preceding bill due month or transaction occurrence month; never stored or editable"
+  ),
   cashFlowDate: z.string().date().nullable(),
   cashFlowStatus: z.enum(["scheduled", "confirmed"]).nullable(),
   billPayment: z

@@ -65,6 +65,13 @@ status or icon treatments; large content areas should stay neutral.
 Tooltips are compact rounded labels without arrows, diamonds, or decorative
 pointers. Keep their accessible descriptions and hover/keyboard-focus behavior.
 
+Categories use 24px-high, thin-outlined pill chips with 12px muted text, a solid
+8px colored dot, an 8px internal gap, and 10px horizontal padding. Use the same
+dot colors in selectors, filters, and category summaries, without pictograms
+or colored square tiles. Category creation shows a live name/color chip preview;
+creation and appearance editing offer only the color palette. Existing icon
+metadata stays compatible with the API but does not appear in the UI.
+
 ## Typography and layout
 
 ### Financial institution identity
@@ -90,39 +97,38 @@ retains the chosen logo/name on its trigger, and uses the same compact neutral
 popover surfaces as the rest of the application. No remote logo-service URLs or
 customer fields are stored in asset metadata.
 
-### Individual cards on a shared bill
+### Transaction card details on a shared bill
 
-Under a credit account, use the compact `Cards` disclosure to manage named cards.
-Each card has a nickname and optional last four digits, displayed as
-`Mine · ••4242`; never collect a full card number, CVV, or expiry. Card labels
-identify purchases, not separate accounts or financial responsibility. Archived
-cards retain their historical labels and badge but are unavailable for new
-assignment.
+Card name and final four digits are optional transaction metadata, not managed
+cards. Do not show a Cards disclosure or create/rename/archive/unarchive controls
+under Accounts. Never collect a full number, CVV, or expiry, or infer ownership
+from a label.
 
-Use the searchable `CardPicker` in manual creation and purchase details. Show
-`Not identified` explicitly when no card is known; never infer attribution from
-account names. Card metadata remains optional and follows the existing compact
-13px/12px ledger typography without changing row height. Display can hide the
-card label independently from account identity. The Card filter is a searchable
-multiselect using the existing hover submenu styles; include historical cards
-and `Not identified` credit purchases. Persist only selected card IDs in scoped
-filter preferences.
+CSV import maps Card name and Card number through editable preview headers,
+alongside Date, Description, Amount, and Installment. Each source row supplies its
+own values; either column may be Not mapped. Accept explicitly masked numbers
+but store/show only their final four digits. Reject full numbers instead of
+silently truncating. There is no file-wide fallback or source-value-to-card
+assignment panel. Keep normalized name and masked-number cells visible before
+confirmation.
 
-Bill detail shows `Cards in this bill` with each card's count and signed net
-subtotal, including refunds and unidentified purchases. These always represent
-the complete shared bill, even when clicking a subtotal filters the purchase
-list. Keep the bill, due day, review month and payment controls combined. Show
-unavailable-amount context and any explicit subtotal rounding adjustment rather
-than assigning a remainder to a card.
+Manual creation uses two optional inputs. Details and same-account bulk editing
+use a compact labeled editor with an explicit Save card details button, pending
+protection, and retryable inline errors. Blank fields clear metadata. Editing
+does not change the combined bill or other transactions.
 
-The selection bar offers Card assignment only when all selected purchases belong
-to one credit account. Support assigning or clearing a card, retain successful
-selection, report partial failures, and disable competing editing/navigation
-while saves run. CSV import supports a file-wide fallback and explicit mappings
-from distinct source-column values. Blank values use the fallback; explicit
-`Not identified` mappings override it. Unmapped nonempty values block import.
-Keep attribution visible in preview before confirmation, with one combined bill
-and no automatic guessing or card creation.
+Ledger labels use 12px muted text within the existing aligned columns and row
+height. Display independently toggles Card name and Card number. The permanent
+credit-card indicator remains immediately after the import indicator; its tooltip
+shows the available name and masked digits. Entirely unknown credit purchases
+show Not identified; checking rows never acquire a card label. No Archived badge
+is displayed because card lifecycle no longer exists.
+
+The Card filter remains a searchable multiselect using transaction name/digit
+pairs and Not identified credit purchases. Do not save these values in browser
+storage. Bill detail keeps complete-bill card subtotals with counts, signed net
+values, refunds, unknown amounts, and any explicit rounding adjustment even when
+the purchase list is filtered. Cards never become separate bills or payments.
 
 Routed screens use `FinaPage` and `FinaPageHeader`. Headers are compact so data
 appears high in the viewport. Use sentence case for page and section titles.
@@ -154,16 +160,35 @@ separate category controls. Navigation-only bill items omit selection state.
   clearance remains additional. An outer sizing box keeps the right gutter
   reachable when a narrow viewport requires horizontal scrolling.
   Derive one shared metadata grid from the complete loaded list, not each row
-  or the currently rendered virtual slice. Keep description, account/import
-  icons, account name, card, installment, category, and reconciliation fields
-  aligned regardless of missing values or label length. Missing values retain
+  or the currently rendered virtual slice. Keep description, account chip,
+  card name/number, installment, category, and reconciliation fields
+  aligned regardless of missing values or label length. Keep descriptions
+  left-aligned and give them the flexible space; trailing metadata forms a
+  compact right-anchored block with end-aligned cell contents. Missing values retain
   empty, non-focusable, accessibility-hidden slots; checking purchases never
   receive fake card labels. Checking-only lists do not reserve a card column,
-  and hiding a property removes its track and gap from every row together.
-  Description fields retain at least 120px. Use 14px icon tracks, a 96px desktop
-  account track, 176px card track, and 128px category track. Card labels preserve
+  and hiding properties removes their track and gap from every row together. Import
+  and purchase-card indicators remain visible when applicable, inline directly
+  after the description with 6px gaps, ordered import, then card. Omit
+  inapplicable icons without placeholders; short descriptions do not stretch
+  away from their icons. Card tooltips identify the associated card on hover or focus;
+  unidentified credit purchases show `Not identified` while Card name is enabled;
+  checking purchases retain an empty card slot. Use ordinary cursors for metadata, never
+  a question-mark cursor. Account is an opt-in, 24px outlined pill combining its
+  14px bank/issuer icon and name with a 6px gap and 8px horizontal padding. Its
+  toggle removes or restores the entire chip, never just its text or logo. Expose
+  the full name on hover and keyboard focus; decorative logos do not duplicate
+  the accessible label. Masked card numbers are opt-in; card names and numbers
+  toggle independently. Numbers show only masked
+  final four digits in a 56px track. Uncategorized purchases show a muted, outlined
+  `Uncategorized` placeholder chip without a colored dot, using the same clickable
+  and keyboard-accessible category picker. Hiding Category removes
+  the entire chip, picker, track, and gap; only import/card indicators are permanent.
+  Description fields retain at least 120px including inline icons. Use 14px icons,
+  an 80px date track, 8px column gaps, a 128px
+  optional account-chip track, 144px card-name track, and 112px category-name track. Card labels preserve
   the archived badge and expose their full text in the native title; installment
-  tracks always reserve 64px while enabled, including lists with no installments,
+  tracks always reserve 40px while enabled, including lists with no installments,
   so filtering or changing label length cannot shift neighboring fields. Longer
   values truncate with their full text in the native title. Grouped bills
   have an independent 128px reconciliation track even when Category is hidden;
@@ -223,14 +248,15 @@ separate category controls. Navigation-only bill items omit selection state.
   own remove button. Clear filters keeps the period. Closing the popover preserves
   the latest typed description even before its debounce finishes. Find-in-view
   search appears beside Display.
-- Remember applied Transactions-page text/category/account/card/source/amount
+- Remember applied Transactions-page text/category/account/source/amount
   filters and the selected month or date range across reloads. Use versioned,
   validated browser storage
   scoped to the signed-in user and active workspace, with calendar-day dates
   hydrated before queries render. Clear actions save the cleared preferences;
   unavailable or malformed storage must not break filtering. Store only the
-  text query, category/account/card/import IDs, source choice, numeric amount bounds,
-  and date range, never transaction records or tokens.
+  text query, category/account/import IDs, source choice, numeric amount bounds,
+  and date range, never transaction records or tokens. Transaction card values
+  remain in memory only, and obsolete saved card IDs are ignored.
   Existing ledger view, inline-card, ordering, and property preferences still
   persist; account links stay URL-controlled constraints and bill-detail filters
   independent. Grouped bill amounts remain full; filtered monthly-review totals
@@ -241,7 +267,10 @@ separate category controls. Navigation-only bill items omit selection state.
   ordering select and a separate ascending/descending direction button. Property
   controls use subtle background or border changes for keyboard focus, without
   an outer focus ring. Property
-  chips control Date, Account, Card, Category, Installment, Amount, and Import;
+  chips control Date, Account, Card name, Card number, Category, Installment,
+  and Amount; import/card indicators are not toggles. Account controls its whole
+  icon-and-name chip and retains the earlier saved account-name preference.
+  Category controls the complete colored-dot chip. Account chips and card numbers default off;
   selections update monthly review, cash flow, and bill-detail purchase lists
   immediately. Description remains visible, and bill reconciliation statuses
   remain available as essential context. Persist only sort and boolean property
@@ -256,6 +285,13 @@ separate category controls. Navigation-only bill items omit selection state.
   one month or the selected-month count; its previous/next buttons shift the
   complete selection while preserving gaps. Save only the validated month IDs
   with the user's workspace-scoped filter preferences.
+
+Monthly review always includes bills due in the following calendar month;
+checking entries stay in their occurrence month. Imports and manual card entries
+show only `Bill due in`, never an `Include in monthly review` picker or saved-month
+lookup. Bill details, transaction details, and group settings have no review-month
+editor. The monthly-review toolbar still selects the months being viewed; those
+browser filter preferences are distinct from removed database assignments.
 
 Shortcuts follow Linear's list conventions where the current product supports
 them: `C` creates, `F` filters, `Shift V` opens Display, `Cmd/Ctrl F` searches the

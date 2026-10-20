@@ -48,16 +48,6 @@ const storedTransactionFilterSchema = z
       .max(200)
       .transform((ids) => [...new Set(ids)]),
     accountsId: resourceIdsSchema.optional(),
-    creditCardsId: z
-      .array(
-        z
-          .string()
-          .max(20)
-          .regex(/^(?:\d+|-1)$/)
-      )
-      .max(200)
-      .transform((ids) => [...new Set(ids)])
-      .optional(),
     importSource: z.enum(["imported", "manual"]).optional(),
     importsId: resourceIdsSchema.optional(),
     minValue: z.number().finite().optional(),
@@ -107,9 +97,6 @@ export function readTransactionFilters(key: string): TransactionFilterType {
           ...(parsed.data.accountsId !== undefined
             ? { accountsId: parsed.data.accountsId }
             : {}),
-          ...(parsed.data.creditCardsId !== undefined
-            ? { creditCardsId: parsed.data.creditCardsId }
-            : {}),
           ...(parsed.data.importSource !== undefined
             ? { importSource: parsed.data.importSource }
             : {}),
@@ -145,7 +132,6 @@ export function writeTransactionFilters(
       partialDescription: filter.partialDescription,
       categoriesId: filter.categoriesId,
       accountsId: filter.accountsId,
-      creditCardsId: filter.creditCardsId,
       importSource: filter.importSource,
       importsId: filter.importsId,
       minValue: filter.minValue,

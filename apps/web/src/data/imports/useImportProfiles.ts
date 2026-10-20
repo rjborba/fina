@@ -1,4 +1,5 @@
 import { importsControllerFindProfiles } from "@/api/generated"
+import { ImportProfileListOutputSchema } from "@fina/types"
 import { useQuery } from "@tanstack/react-query"
 
 export const useImportProfiles = ({
@@ -11,9 +12,11 @@ export const useImportProfiles = ({
   useQuery({
     enabled: !!groupId && !!fingerprint,
     queryKey: ["import-profiles", groupId, fingerprint],
-    queryFn: () =>
-      importsControllerFindProfiles({
-        groupId: groupId!,
-        fingerprint: fingerprint!
-      })
+    queryFn: async () =>
+      ImportProfileListOutputSchema.parse(
+        await importsControllerFindProfiles({
+          groupId: groupId!,
+          fingerprint: fingerprint!
+        })
+      )
   })

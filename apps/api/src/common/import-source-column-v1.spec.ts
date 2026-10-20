@@ -1,5 +1,5 @@
 import { ImportMappingConfig } from '@fina/types';
-import { readImportSourceCardIdentifiers } from './import-source-card-identifiers-v1';
+import { readImportSourceColumn } from './import-source-column-v1';
 
 const config: ImportMappingConfig = {
   version: 1,
@@ -16,7 +16,6 @@ const config: ImportMappingConfig = {
   debitColumn: null,
   creditColumn: null,
   chargesPositive: false,
-  creditCardColumn: 3,
 };
 
 describe('retained version-one card identifier parsing', () => {
@@ -24,7 +23,7 @@ describe('retained version-one card identifier parsing', () => {
     const source = Buffer.from(
       '\uFEFFDate;Description;Amount;Card\r\n20/06/2026;"Synthetic; item\nsecond line";10;" Mine "\r\n21/06/2026;Synthetic;5;"Spouse ""virtual"""\r\n22/06/2026;Synthetic;2;\r\n',
     );
-    expect([...readImportSourceCardIdentifiers(source, config)]).toEqual([
+    expect([...readImportSourceColumn(source, config, 3)]).toEqual([
       [1, 'Card'],
       [2, 'Mine'],
       [4, 'Spouse "virtual"'],
@@ -34,15 +33,17 @@ describe('retained version-one card identifier parsing', () => {
 
   it('does not turn absent source cells into a blank fallback and rejects malformed quoting', () => {
     expect(
-      readImportSourceCardIdentifiers(
+      readImportSourceColumn(
         Buffer.from('Date;Description;Amount\n20/06/2026;Synthetic;10'),
         config,
+        3,
       ).size,
     ).toBe(0);
     expect(() =>
-      readImportSourceCardIdentifiers(
+      readImportSourceColumn(
         Buffer.from('20/06/2026;"Synthetic;10;Mine'),
         config,
+        3,
       ),
     ).toThrow();
   });

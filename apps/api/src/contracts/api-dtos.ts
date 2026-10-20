@@ -5,12 +5,9 @@ import {
   CategoryListOutputSchema,
   CategoryOutputSchema,
   CreateBankaccountInputDtoSchema,
-  CreateCreditCardInputSchema,
-  CreditCardListOutputSchema,
-  CreditCardOutputSchema,
-  CreditCardQuerySchema,
-  DeleteCreditCardOutputSchema,
-  UpdateCreditCardInputSchema,
+  TransactionCardValuesQuerySchema,
+  TransactionCardValuesOutputSchema,
+  CardMetadataSchema,
   CreateCategoryInputDtoSchema,
   CreditCardBillDetailSchema,
   CreditCardBillListOutputSchema,
@@ -54,32 +51,17 @@ import {
   UpdateBankaccountInstitutionInputDtoSchema,
   UpdateTransactionInputDtoSchema,
   UnlinkCreditCardBillOutputSchema,
-  UpdateCreditCardBillReviewMonthInputSchema,
-  UpdateGroupReviewSettingsInputSchema,
 } from '@fina/types';
 import { createZodDto } from 'nestjs-zod';
 
 export class GroupOutputDto extends createZodDto(GroupOutputSchema) {}
-export class CreateCreditCardInputDto extends createZodDto(
-  CreateCreditCardInputSchema,
+export class TransactionCardValuesQueryDto extends createZodDto(
+  TransactionCardValuesQuerySchema,
 ) {}
-export class UpdateCreditCardInputDto extends createZodDto(
-  UpdateCreditCardInputSchema,
+export class TransactionCardValuesOutputDto extends createZodDto(
+  TransactionCardValuesOutputSchema,
 ) {}
-export class CreditCardOutputDto extends createZodDto(CreditCardOutputSchema) {}
-export class CreditCardListOutputDto extends createZodDto(
-  CreditCardListOutputSchema,
-) {}
-export class CreditCardQueryDto extends createZodDto(CreditCardQuerySchema) {}
-export class DeleteCreditCardOutputDto extends createZodDto(
-  DeleteCreditCardOutputSchema,
-) {}
-export class UpdateGroupReviewSettingsInputDto extends createZodDto(
-  UpdateGroupReviewSettingsInputSchema,
-) {}
-export class UpdateCreditCardBillReviewMonthInputDto extends createZodDto(
-  UpdateCreditCardBillReviewMonthInputSchema,
-) {}
+export class TransactionCardValueDto extends createZodDto(CardMetadataSchema) {}
 export class GroupListOutputDto extends createZodDto(GroupListOutputSchema) {}
 export class CreateGroupInputDto extends createZodDto(CreateGroupInputSchema) {}
 export class DeleteGroupInputDto extends createZodDto(DeleteGroupInputSchema) {}

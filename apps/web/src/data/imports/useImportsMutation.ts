@@ -12,7 +12,8 @@ export const useImportsMutation = () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["imports"] }),
       queryClient.invalidateQueries({ queryKey: ["import-profiles"] }),
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+      queryClient.invalidateQueries({ queryKey: ["transaction-card-values"] })
     ])
   }
 

@@ -1,5 +1,8 @@
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal"
-import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
+import {
+  TransactionAccountChip,
+  CreditCardIndicator
+} from "./TransactionMetadataIcons"
 import { FinaBadge } from "@/components/ui/fina"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
@@ -341,20 +344,15 @@ export function CreditCardBillsLedger({
   )
 
   const assignSelectedCard = async (
-    creditCard: TransactionOutput["creditCard"]
+    card: Pick<TransactionOutput, "cardName" | "cardLast4">
   ) => {
-    if (
-      isSelectionBusy ||
-      !cardAccountId ||
-      (creditCard && creditCard.accountId !== cardAccountId)
-    )
-      return
+    if (isSelectionBusy || !cardAccountId) return
     setIsUpdatingCard(true)
     try {
       const { updatedCount, failedCount } =
         await assignCardToTransactionSelection(
           [...selectedTransactionIds],
-          creditCard,
+          card,
           onUpdateTransaction
         )
       if (failedCount > 0) {
@@ -553,7 +551,7 @@ export function CreditCardBillsLedger({
               {displayProperties.date ? (
                 <div
                   data-column="date"
-                  className="flex h-full w-28 items-center"
+                  className="flex h-full min-w-0 items-center"
                 >
                   <span className="sr-only">
                     {dateBasis === "monthly-review" ? "Date:" : "Flow date:"}
@@ -574,53 +572,52 @@ export function CreditCardBillsLedger({
                   <TransactionMetadataGrid
                     layout={layout}
                     description={
-                      <>
-                        <button
-                          type="button"
-                          disabled={isSelectionBusy}
-                          tabIndex={-1}
-                          data-list-open
-                          data-testid="transaction-description"
-                          title={`${row.bill.accountName} bill`}
-                          className="min-w-12 flex-1 truncate text-left text-[13px]"
-                        >
-                          {row.bill.accountName} bill
-                        </button>
-                        <span
-                          title={
-                            row.bill.matchingTransactionCount !== undefined &&
-                            row.bill.matchingTransactionCount !==
-                              row.bill.transactionCount
-                              ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
-                              : `${row.bill.transactionCount} transactions`
-                          }
-                          className="hidden min-w-0 max-w-32 shrink truncate text-xs text-foreground/45 lg:block"
-                        >
-                          {row.bill.matchingTransactionCount !== undefined &&
+                      <button
+                        type="button"
+                        disabled={isSelectionBusy}
+                        tabIndex={-1}
+                        data-list-open
+                        data-testid="transaction-description"
+                        title={`${row.bill.accountName} bill`}
+                        className="min-w-12 shrink truncate text-left text-[13px]"
+                      >
+                        {row.bill.accountName} bill
+                      </button>
+                    }
+                    descriptionContext={
+                      <span
+                        title={
+                          row.bill.matchingTransactionCount !== undefined &&
                           row.bill.matchingTransactionCount !==
                             row.bill.transactionCount
                             ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
-                            : `${row.bill.transactionCount} transactions`}
-                        </span>
-                      </>
+                            : `${row.bill.transactionCount} transactions`
+                        }
+                        className="hidden min-w-0 max-w-32 shrink truncate text-xs text-foreground/45 lg:block"
+                      >
+                        {row.bill.matchingTransactionCount !== undefined &&
+                        row.bill.matchingTransactionCount !==
+                          row.bill.transactionCount
+                          ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
+                          : `${row.bill.transactionCount} transactions`}
+                      </span>
                     }
-                    cells={{
-                      "account-icon": (
-                        <FinancialInstitutionLogo
-                          institutionId={row.bill.accountInstitutionId}
-                          accountName={row.bill.accountName}
-                          accountType="credit"
-                          className="size-3.5 shrink-0"
-                          decorative
+                    icons={{
+                      "card-icon": (
+                        <CreditCardIndicator
+                          billAccountName={row.bill.accountName}
                         />
-                      ),
+                      )
+                    }}
+                    cells={{
                       account: (
-                        <span
-                          title={row.bill.accountName}
-                          className="min-w-0 truncate text-xs text-foreground/45"
-                        >
-                          {row.bill.accountName}
-                        </span>
+                        <TransactionAccountChip
+                          account={{
+                            institutionId: row.bill.accountInstitutionId,
+                            name: row.bill.accountName,
+                            type: "credit"
+                          }}
+                        />
                       ),
                       status: status ? (
                         <FinaBadge

@@ -1,11 +1,12 @@
 export const TRANSACTION_DISPLAY_PROPERTIES = [
   { id: "date", label: "Date" },
-  { id: "account", label: "Account" },
-  { id: "card", label: "Card" },
+  // Preserve the stored key while Account now controls the complete chip.
+  { id: "accountName", label: "Account" },
+  { id: "card", label: "Card name" },
+  { id: "cardNumber", label: "Card number" },
   { id: "category", label: "Category" },
   { id: "installment", label: "Installment" },
-  { id: "value", label: "Amount" },
-  { id: "sourceImport", label: "Import" }
+  { id: "value", label: "Amount" }
 ] as const
 
 export type TransactionDisplayProperty =
@@ -19,12 +20,12 @@ export type TransactionDisplayProperties = Record<
 export const DEFAULT_TRANSACTION_DISPLAY_PROPERTIES: TransactionDisplayProperties =
   {
     date: true,
-    account: true,
+    accountName: false,
     card: true,
+    cardNumber: false,
     category: true,
     installment: true,
-    value: true,
-    sourceImport: true
+    value: true
   }
 
 export function normalizeTransactionDisplayProperties(

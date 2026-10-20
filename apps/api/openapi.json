@@ -120,7 +120,7 @@
             }
           },
           {
-            "name": "creditCardIdList",
+            "name": "cardList",
             "required": false,
             "in": "query",
             "schema": {
@@ -211,6 +211,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/QueryTransactionOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/transactions/card-values": {
+      "get": {
+        "operationId": "TransactionsController_cardValues",
+        "parameters": [
+          {
+            "name": "accountId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionCardValuesOutputDto"
                 }
               }
             }
@@ -314,149 +352,6 @@
         },
         "tags": [
           "Transactions"
-        ]
-      }
-    },
-    "/credit-cards": {
-      "post": {
-        "operationId": "CreditCardsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCreditCardInputDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardOutputDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "CreditCards"
-        ]
-      },
-      "get": {
-        "operationId": "CreditCardsController_findAll",
-        "parameters": [
-          {
-            "name": "includeArchived",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "accountId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardListOutputDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "CreditCards"
-        ]
-      }
-    },
-    "/credit-cards/{id}": {
-      "patch": {
-        "operationId": "CreditCardsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCreditCardInputDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardOutputDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "CreditCards"
-        ]
-      },
-      "delete": {
-        "operationId": "CreditCardsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeleteCreditCardOutputDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "CreditCards"
         ]
       }
     },
@@ -725,46 +620,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DeleteGroupOutputDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Groups"
-        ]
-      }
-    },
-    "/groups/{id}/review-settings": {
-      "patch": {
-        "operationId": "GroupsController_updateReviewSettings",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateGroupReviewSettingsInputDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GroupOutputDto"
                 }
               }
             }
@@ -1346,7 +1201,7 @@
             }
           },
           {
-            "name": "creditCardIdList",
+            "name": "cardList",
             "required": false,
             "in": "query",
             "schema": {
@@ -1449,54 +1304,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardBillDetailDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "CreditCardBills"
-        ]
-      }
-    },
-    "/credit-card-bills/{accountId}/{billMonth}/review-month": {
-      "patch": {
-        "operationId": "CreditCardBillsController_updateReviewMonth",
-        "parameters": [
-          {
-            "name": "billMonth",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "accountId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCreditCardBillReviewMonthInputDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "",
@@ -1635,6 +1442,17 @@
       "CreateTransactionInputDto": {
         "type": "object",
         "properties": {
+          "cardName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "nullable": true
+          },
+          "cardLast4": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "nullable": true
+          },
           "description": {
             "type": "string",
             "nullable": true
@@ -1658,18 +1476,9 @@
             "type": "string",
             "nullable": true
           },
-          "reviewMonth": {
-            "type": "string",
-            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
-          },
           "bankaccountId": {
             "type": "string",
             "pattern": "^\\d+$"
-          },
-          "creditCardId": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "nullable": true
           },
           "categoryId": {
             "type": "string",
@@ -1718,38 +1527,15 @@
             "type": "number",
             "nullable": true
           },
-          "creditCard": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^\\d+$"
-              },
-              "accountId": {
-                "type": "string",
-                "pattern": "^\\d+$"
-              },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 80
-              },
-              "last4": {
-                "type": "string",
-                "pattern": "^\\d{4}$",
-                "nullable": true
-              },
-              "archived": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "accountId",
-              "name",
-              "last4",
-              "archived"
-            ],
+          "cardName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "nullable": true
+          },
+          "cardLast4": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
             "nullable": true
           },
           "date": {
@@ -1782,6 +1568,7 @@
             "nullable": true
           },
           "reviewMonth": {
+            "description": "Calculated from the preceding bill due month or transaction occurrence month; never stored or editable",
             "type": "string",
             "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
             "nullable": true
@@ -1973,7 +1760,8 @@
           "createdAt",
           "description",
           "value",
-          "creditCard",
+          "cardName",
+          "cardLast4",
           "date",
           "installmentTotal",
           "installmentCurrent",
@@ -2017,38 +1805,15 @@
                   "type": "number",
                   "nullable": true
                 },
-                "creditCard": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "accountId": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "last4": {
-                      "type": "string",
-                      "pattern": "^\\d{4}$",
-                      "nullable": true
-                    },
-                    "archived": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "accountId",
-                    "name",
-                    "last4",
-                    "archived"
-                  ],
+                "cardName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "nullable": true
+                },
+                "cardLast4": {
+                  "type": "string",
+                  "pattern": "^\\d{4}$",
                   "nullable": true
                 },
                 "date": {
@@ -2081,6 +1846,7 @@
                   "nullable": true
                 },
                 "reviewMonth": {
+                  "description": "Calculated from the preceding bill due month or transaction occurrence month; never stored or editable",
                   "type": "string",
                   "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
                   "nullable": true
@@ -2272,7 +2038,8 @@
                 "createdAt",
                 "description",
                 "value",
-                "creditCard",
+                "cardName",
+                "cardLast4",
                 "date",
                 "installmentTotal",
                 "installmentCurrent",
@@ -2297,9 +2064,43 @@
           "data"
         ]
       },
+      "TransactionCardValuesOutputDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cardName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "nullable": true
+            },
+            "cardLast4": {
+              "type": "string",
+              "pattern": "^\\d{4}$",
+              "nullable": true
+            }
+          },
+          "required": [
+            "cardName",
+            "cardLast4"
+          ]
+        }
+      },
       "UpdateTransactionInputDto": {
         "type": "object",
         "properties": {
+          "cardName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "nullable": true
+          },
+          "cardLast4": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "nullable": true
+          },
           "description": {
             "type": "string",
             "nullable": true
@@ -2332,16 +2133,7 @@
           "calculatedDate": {
             "nullable": true
           },
-          "reviewMonth": {
-            "type": "string",
-            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
-          },
           "bankaccountId": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "nullable": true
-          },
-          "creditCardId": {
             "type": "string",
             "pattern": "^\\d+$",
             "nullable": true
@@ -2358,153 +2150,6 @@
         "properties": {
           "id": {
             "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
-      "CreateCreditCardInputDto": {
-        "type": "object",
-        "properties": {
-          "accountId": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          },
-          "last4": {
-            "type": "string",
-            "pattern": "^\\d{4}$",
-            "nullable": true
-          }
-        },
-        "required": [
-          "accountId",
-          "name"
-        ]
-      },
-      "CreditCardOutputDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "accountId": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          },
-          "last4": {
-            "type": "string",
-            "pattern": "^\\d{4}$",
-            "nullable": true
-          },
-          "archived": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "groupId": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "accountName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "accountId",
-          "name",
-          "last4",
-          "archived",
-          "createdAt",
-          "groupId",
-          "accountName"
-        ]
-      },
-      "CreditCardListOutputDto": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "accountId": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "name": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "last4": {
-              "type": "string",
-              "pattern": "^\\d{4}$",
-              "nullable": true
-            },
-            "archived": {
-              "type": "boolean"
-            },
-            "createdAt": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "groupId": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "accountName": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "accountId",
-            "name",
-            "last4",
-            "archived",
-            "createdAt",
-            "groupId",
-            "accountName"
-          ]
-        }
-      },
-      "UpdateCreditCardInputDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          },
-          "last4": {
-            "type": "string",
-            "pattern": "^\\d{4}$",
-            "nullable": true
-          }
-        }
-      },
-      "DeleteCreditCardOutputDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^\\d+$"
           }
         },
         "required": [
@@ -2819,28 +2464,13 @@
           },
           "isOwner": {
             "type": "boolean"
-          },
-          "creditCardReviewMonthOffset": {
-            "oneOf": [
-              {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 0
-              },
-              {
-                "type": "number",
-                "minimum": -1,
-                "maximum": -1
-              }
-            ]
           }
         },
         "required": [
           "id",
           "createdAt",
           "name",
-          "isOwner",
-          "creditCardReviewMonthOffset"
+          "isOwner"
         ]
       },
       "GroupListOutputDto": {
@@ -2861,52 +2491,15 @@
             },
             "isOwner": {
               "type": "boolean"
-            },
-            "creditCardReviewMonthOffset": {
-              "oneOf": [
-                {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 0
-                },
-                {
-                  "type": "number",
-                  "minimum": -1,
-                  "maximum": -1
-                }
-              ]
             }
           },
           "required": [
             "id",
             "createdAt",
             "name",
-            "isOwner",
-            "creditCardReviewMonthOffset"
+            "isOwner"
           ]
         }
-      },
-      "UpdateGroupReviewSettingsInputDto": {
-        "type": "object",
-        "properties": {
-          "creditCardReviewMonthOffset": {
-            "oneOf": [
-              {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 0
-              },
-              {
-                "type": "number",
-                "minimum": -1,
-                "maximum": -1
-              }
-            ]
-          }
-        },
-        "required": [
-          "creditCardReviewMonthOffset"
-        ]
       },
       "DeleteGroupInputDto": {
         "type": "object",
@@ -3347,19 +2940,10 @@
             "type": "string",
             "pattern": "^\\d+$"
           },
-          "creditCardId": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "nullable": true
-          },
           "billMonth": {
             "type": "string",
             "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
             "nullable": true
-          },
-          "reviewMonth": {
-            "type": "string",
-            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
           },
           "fileName": {
             "type": "string",
@@ -3457,7 +3041,7 @@
                 "exclusiveMaximum": false,
                 "nullable": true
               },
-              "creditCardColumn": {
+              "cardNameColumn": {
                 "type": "integer",
                 "minimum": 0,
                 "exclusiveMinimum": false,
@@ -3465,28 +3049,13 @@
                 "exclusiveMaximum": false,
                 "nullable": true
               },
-              "creditCardMappings": {
-                "type": "array",
-                "maxItems": 500,
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "value": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "creditCardId": {
-                      "type": "string",
-                      "pattern": "^\\d+$",
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "value",
-                    "creditCardId"
-                  ]
-                }
+              "cardLast4Column": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
               },
               "amountMode": {
                 "type": "string",
@@ -3554,15 +3123,15 @@
                   "maximum": 1000000,
                   "exclusiveMaximum": false
                 },
-                "creditCardId": {
-                  "type": "string",
-                  "pattern": "^\\d+$",
-                  "nullable": true
-                },
-                "creditCardIdentifier": {
+                "cardName": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 80,
+                  "nullable": true
+                },
+                "cardLast4": {
+                  "type": "string",
+                  "pattern": "^\\d{4}$",
                   "nullable": true
                 },
                 "date": {
@@ -3633,19 +3202,10 @@
             "type": "string",
             "pattern": "^\\d+$"
           },
-          "creditCardId": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "nullable": true
-          },
           "billMonth": {
             "type": "string",
             "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
             "nullable": true
-          },
-          "reviewMonth": {
-            "type": "string",
-            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
           },
           "fileName": {
             "type": "string",
@@ -3743,7 +3303,7 @@
                 "exclusiveMaximum": false,
                 "nullable": true
               },
-              "creditCardColumn": {
+              "cardNameColumn": {
                 "type": "integer",
                 "minimum": 0,
                 "exclusiveMinimum": false,
@@ -3751,28 +3311,13 @@
                 "exclusiveMaximum": false,
                 "nullable": true
               },
-              "creditCardMappings": {
-                "type": "array",
-                "maxItems": 500,
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "value": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "creditCardId": {
-                      "type": "string",
-                      "pattern": "^\\d+$",
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "value",
-                    "creditCardId"
-                  ]
-                }
+              "cardLast4Column": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false,
+                "maximum": 500,
+                "exclusiveMaximum": false,
+                "nullable": true
               },
               "amountMode": {
                 "type": "string",
@@ -3840,15 +3385,15 @@
                   "maximum": 1000000,
                   "exclusiveMaximum": false
                 },
-                "creditCardId": {
-                  "type": "string",
-                  "pattern": "^\\d+$",
-                  "nullable": true
-                },
-                "creditCardIdentifier": {
+                "cardName": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 80,
+                  "nullable": true
+                },
+                "cardLast4": {
+                  "type": "string",
+                  "pattern": "^\\d{4}$",
                   "nullable": true
                 },
                 "date": {
@@ -3992,7 +3537,8 @@
                     "description",
                     "amount",
                     "installment",
-                    "creditCard"
+                    "cardName",
+                    "cardLast4"
                   ]
                 },
                 "code": {
@@ -4339,7 +3885,7 @@
                   "exclusiveMaximum": false,
                   "nullable": true
                 },
-                "creditCardColumn": {
+                "cardNameColumn": {
                   "type": "integer",
                   "minimum": 0,
                   "exclusiveMinimum": false,
@@ -4347,28 +3893,13 @@
                   "exclusiveMaximum": false,
                   "nullable": true
                 },
-                "creditCardMappings": {
-                  "type": "array",
-                  "maxItems": 500,
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "value": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "creditCardId": {
-                        "type": "string",
-                        "pattern": "^\\d+$",
-                        "nullable": true
-                      }
-                    },
-                    "required": [
-                      "value",
-                      "creditCardId"
-                    ]
-                  }
+                "cardLast4Column": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false,
+                  "maximum": 500,
+                  "exclusiveMaximum": false,
+                  "nullable": true
                 },
                 "amountMode": {
                   "type": "string",
@@ -4496,6 +4027,7 @@
               "type": "string"
             },
             "reviewMonth": {
+              "description": "Calculated as the calendar month before billMonth; never stored or editable",
               "type": "string",
               "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
             },
@@ -4651,6 +4183,7 @@
                 "type": "string"
               },
               "reviewMonth": {
+                "description": "Calculated as the calendar month before billMonth; never stored or editable",
                 "type": "string",
                 "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
               },
@@ -4778,38 +4311,15 @@
                   "type": "number",
                   "nullable": true
                 },
-                "creditCard": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "accountId": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "last4": {
-                      "type": "string",
-                      "pattern": "^\\d{4}$",
-                      "nullable": true
-                    },
-                    "archived": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "accountId",
-                    "name",
-                    "last4",
-                    "archived"
-                  ],
+                "cardName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "nullable": true
+                },
+                "cardLast4": {
+                  "type": "string",
+                  "pattern": "^\\d{4}$",
                   "nullable": true
                 },
                 "date": {
@@ -4842,6 +4352,7 @@
                   "nullable": true
                 },
                 "reviewMonth": {
+                  "description": "Calculated from the preceding bill due month or transaction occurrence month; never stored or editable",
                   "type": "string",
                   "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$",
                   "nullable": true
@@ -5033,7 +4544,8 @@
                 "createdAt",
                 "description",
                 "value",
-                "creditCard",
+                "cardName",
+                "cardLast4",
                 "date",
                 "installmentTotal",
                 "installmentCurrent",
@@ -5123,38 +4635,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "creditCard": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "accountId": {
-                      "type": "string",
-                      "pattern": "^\\d+$"
-                    },
-                    "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "last4": {
-                      "type": "string",
-                      "pattern": "^\\d{4}$",
-                      "nullable": true
-                    },
-                    "archived": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "accountId",
-                    "name",
-                    "last4",
-                    "archived"
-                  ],
+                "cardName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "nullable": true
+                },
+                "cardLast4": {
+                  "type": "string",
+                  "pattern": "^\\d{4}$",
                   "nullable": true
                 },
                 "transactionCount": {
@@ -5172,7 +4661,8 @@
                 }
               },
               "required": [
-                "creditCard",
+                "cardName",
+                "cardLast4",
                 "transactionCount",
                 "total",
                 "unavailableValueCount"
@@ -5186,23 +4676,6 @@
           "candidates",
           "cardRoundingAdjustment",
           "cardSummaries"
-        ]
-      },
-      "UpdateCreditCardBillReviewMonthInputDto": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "reviewMonth": {
-            "type": "string",
-            "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
-          }
-        },
-        "required": [
-          "groupId",
-          "reviewMonth"
         ]
       },
       "ReconcileCreditCardBillInputDto": {

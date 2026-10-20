@@ -1,10 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  CATEGORY_COLOR_VALUES,
-  CATEGORY_ICON_VALUES,
-  type CategoryColor,
-  type CategoryIcon
-} from "@fina/types"
+import { CATEGORY_COLOR_VALUES, type CategoryColor } from "@fina/types"
 import { Plus, Tag, Trash2 } from "lucide-react"
 import { type FC } from "react"
 import { useForm } from "react-hook-form"
@@ -15,7 +10,7 @@ import {
   FinaPageHeader,
   FinaSectionLabel
 } from "@/components/FinaPage"
-import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { CategoryChip } from "@/components/categories/CategoryChip"
 import { CategoryAppearancePicker } from "@/components/categories/CategoryAppearancePicker"
 import { EditCategoryAppearanceDialog } from "@/components/categories/EditCategoryAppearanceDialog"
 import { Button } from "@/components/ui/button"
@@ -35,13 +30,11 @@ import { useCategoriesMutation } from "@/data/categories/useCategoriesMutation"
 
 const formSchema = z.object({
   categoryName: z.string().trim().min(1, "Category name is required").max(120),
-  icon: z.enum(CATEGORY_ICON_VALUES),
   color: z.enum(CATEGORY_COLOR_VALUES)
 })
 
 type CategoryFormData = {
   categoryName: string
-  icon: CategoryIcon
   color: CategoryColor
 }
 
@@ -56,11 +49,10 @@ export const Categories: FC = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       categoryName: "",
-      icon: "tag",
       color: "yellow"
     }
   })
-  const selectedIcon = form.watch("icon")
+  const categoryName = form.watch("categoryName")
   const selectedColor = form.watch("color")
 
   const onSubmit = async (values: CategoryFormData) => {
@@ -70,7 +62,7 @@ export const Categories: FC = () => {
 
     await addCategory({
       name: values.categoryName,
-      icon: values.icon,
+      icon: "tag",
       color: values.color,
       groupId: selectedGroup.id.toString()
     })
@@ -126,10 +118,17 @@ export const Categories: FC = () => {
                 )}
               />
 
+              <div
+                aria-label="Category preview"
+                className="flex min-h-8 items-center"
+              >
+                <CategoryChip
+                  name={categoryName.trim() || "Category"}
+                  color={selectedColor}
+                />
+              </div>
               <CategoryAppearancePicker
-                icon={selectedIcon}
                 color={selectedColor}
-                onIconChange={(icon) => form.setValue("icon", icon)}
                 onColorChange={(color) => form.setValue("color", color)}
               />
 
@@ -167,19 +166,15 @@ export const Categories: FC = () => {
                     className="flex min-h-24 items-center justify-between gap-3 border-b border-fina-grid p-4 odd:sm:border-r"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <CategoryAppearance
-                        icon={category.icon}
-                        color={category.color}
-                        label={`${category.name} category appearance`}
-                        className="size-10"
-                      />
                       <div className="min-w-0">
                         <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
                           / {String(index + 1).padStart(2, "0")}
                         </div>
-                        <div className="truncate font-semibold">
-                          {category.name}
-                        </div>
+                        <CategoryChip
+                          name={category.name}
+                          color={category.color}
+                          className="mt-1"
+                        />
                       </div>
                     </div>
                     <div className="flex items-center">

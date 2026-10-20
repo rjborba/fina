@@ -4,7 +4,8 @@ import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { useImports } from "@/data/imports/useImports"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
+import { useTransactionCardValues } from "@/data/transactions/useTransactionCardValues"
+import { cardMetadataKey } from "@fina/types"
 import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { Button } from "@/components/ui/button"
@@ -159,13 +160,7 @@ function CategoryEditor({ value, onChange, autoFocus }: EditorProps) {
                 }))
               }
             >
-              {item.icon && item.color ? (
-                <CategoryAppearance
-                  icon={item.icon}
-                  color={item.color}
-                  className="size-3.5 shrink-0 border-0 bg-transparent text-inherit [&_svg]:size-3.5 [&_svg]:stroke-[1.75]"
-                />
-              ) : null}
+              {item.color ? <CategoryAppearance color={item.color} /> : null}
             </Choice>
           ))
         )}
@@ -242,18 +237,19 @@ function CardEditor({
   cardAccountId
 }: EditorProps) {
   const { selectedGroup } = useActiveGroup()
-  const { data, isLoading, isError } = useCreditCards({
+  const { data, isLoading, isError } = useTransactionCardValues({
     groupId: selectedGroup?.id,
-    accountId: cardAccountId,
-    includeArchived: true
+    accountId: cardAccountId
   })
   const [search, setSearch] = useState("")
   const options = [
     { id: "-1", name: "Not identified" },
-    ...(data ?? []).map((card) => ({
-      id: card.id,
-      name: `${formatCardLabel(card)}${cardAccountId ? "" : ` (${card.accountName})`}${card.archived ? " · Archived" : ""}`
-    }))
+    ...(data ?? [])
+      .filter((card) => card.cardName !== null || card.cardLast4 !== null)
+      .map((card) => ({
+        id: cardMetadataKey(card),
+        name: formatCardLabel(card)
+      }))
   ].filter((card) => card.name.toLowerCase().includes(search.toLowerCase()))
   return (
     <div>
@@ -274,15 +270,11 @@ function CardEditor({
             <Choice
               key={card.id}
               name={card.name}
-              checked={!!value.creditCardsId?.includes(card.id)}
+              checked={!!value.cards?.includes(card.id)}
               onChange={(checked) =>
                 onChange((current) => ({
                   ...current,
-                  creditCardsId: toggleId(
-                    current.creditCardsId ?? [],
-                    card.id,
-                    checked
-                  )
+                  cards: toggleId(current.cards ?? [], card.id, checked)
                 }))
               }
             >

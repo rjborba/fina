@@ -116,18 +116,49 @@ without overwriting manually changed amounts. Original files, categories, dates,
 bill assignments, and deletion history are preserved; import totals reflect the
 corrected original source rows.
 
+## Card details in statements
+
+Import mappings are saved automatically after a successful import. The next
+statement with the same columns/headers restores your account's mapping,
+including card columns, date/number formats, and **Invert amount signs**.
+When several accounts use the format, select the destination to apply its saved
+mapping. Another account at the same institution and of the same type can reuse
+an unambiguous mapping in your group, so C6 credit accounts can share a format.
+Conflicting mappings ask you to choose; the preview remains editable and the
+bill month must still be selected each time. Headerless formats stay
+account-specific. No card identities or transaction values are saved in the
+mapping.
+
+Map **Card name** and **Card number** directly in the import preview. Each row
+can describe a different card; no saved-card setup or file-wide assignment is
+needed. Only final four digits are stored as text, preserving leading zeros.
+Explicitly masked source numbers are accepted; full numbers are rejected.
+
+**Display** independently shows/hides card names and masked digits. The card
+indicator remains visible, and unknown purchases show **Not identified**. Card
+filters and bill subtotals use transaction values, not managed card identities.
+There is no card inventory, archive, or unarchive. Card filter values stay in
+memory and are not saved in browser preferences.
+
+The forward-only `1792459849364-TransactionCardMetadata` migration preserves
+existing transaction attribution before removing the card table. Deploy its
+matching API and web together. Existing amounts, dates, bills, payments, and
+original CSVs remain unchanged; standalone card inventory requires a backup
+to recover.
+
 ## Monthly review and cash flow
 
-Use **Monthly review** to classify expenses by their household reference month.
-When importing a card statement, **Bill due in** identifies the actual bill;
-**Include in monthly review** assigns all its purchases to your chosen month.
-For example, a bill due in July can belong to June's review, including any July
-purchases or older installments on that bill.
+**Monthly review** automatically includes credit-card bills due in the following
+calendar month. January includes February bills; December includes January bills
+of the next year, including all purchases, older installments, and refunds on
+those bills. Checking transactions use their occurrence month.
 
-In group details, owners can set **Credit-card bills belong to → Previous
-month** for future bills. Existing assignments stay unchanged. Open a bill and
-use **Move whole bill** to correct its reference month. Checking transactions
-normally use their purchase month and can have a separate review-month override.
+When importing a card statement or adding a purchase, choose only **Bill due in**.
+There are no review-month settings or overrides. Review attribution is calculated
+when reading data, not stored in the database. The forward-only
+`1792034936757-DeriveMonthlyReview` migration removes obsolete group defaults,
+bill assignments, and transaction overrides while retaining financial records,
+original CSV files, reconciliation links, and timestamp interpretation.
 
 **Cash flow** shows each card bill once: an unpaid bill is scheduled on its due
 date; a confirmed checking payment uses its actual date and amount. Bill details

@@ -1,8 +1,7 @@
 import {
   CreateGroupInputDto,
   groupsControllerCreate,
-  groupsControllerRemove,
-  groupsControllerUpdateReviewSettings
+  groupsControllerRemove
 } from "@/api/generated"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -21,26 +20,5 @@ export const useGroupsMutation = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] })
   })
 
-  const updateReviewSettings = useMutation({
-    retry: 0,
-    mutationFn: ({
-      id,
-      creditCardReviewMonthOffset
-    }: {
-      id: string
-      creditCardReviewMonthOffset: 0 | -1
-    }) =>
-      groupsControllerUpdateReviewSettings({
-        id,
-        requestBody: { creditCardReviewMonthOffset }
-      }),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["groups"] }),
-        queryClient.invalidateQueries({ queryKey: ["group"] }),
-        queryClient.invalidateQueries({ queryKey: ["credit-card-bills"] })
-      ])
-  })
-
-  return { addGroup, removeGroup, updateReviewSettings }
+  return { addGroup, removeGroup }
 }

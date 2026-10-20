@@ -1,19 +1,17 @@
 import { FinaBadge } from "@/components/ui/fina"
-import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import { CardLabel } from "@/components/creditCards/CardLabel"
 import { EditableSelect } from "@/data/transactions/EditableSelectCell"
 import type { CategoryOutput, TransactionOutput } from "@fina/types"
 import { useAtom } from "jotai"
-import { FileUp } from "lucide-react"
-import type { FC, ReactNode } from "react"
+import type { FC } from "react"
 import { openSelectIdAtom } from "./OpenSelectAtom"
 import { TransactionMetadataGrid } from "./TransactionMetadataGrid"
 import type { TransactionRowLayout } from "./transactionRowLayout"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@/components/ui/tooltip"
+  TransactionAccountChip,
+  CreditCardIndicator,
+  ImportSourceIndicator
+} from "./TransactionMetadataIcons"
 
 export type TransactionCategoryOption = Pick<
   CategoryOutput,
@@ -33,86 +31,6 @@ interface TransactionLedgerTransactionProps {
   disabled?: boolean
 }
 
-const TransactionIconTooltip: FC<{
-  ariaLabel: string
-  tooltip: string
-  children: ReactNode
-}> = ({ ariaLabel, tooltip, children }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span
-        role="img"
-        data-transaction-metadata="true"
-        aria-label={ariaLabel}
-        tabIndex={0}
-        className="inline-flex shrink-0 cursor-help items-center text-foreground/45 outline-none focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-fina-violet"
-      >
-        {children}
-      </span>
-    </TooltipTrigger>
-    <TooltipContent
-      side="top"
-      sideOffset={6}
-      className="rounded-md border border-fina-grid bg-fina-ink font-mono text-[10px] font-semibold text-white shadow-fina-sm"
-    >
-      {tooltip}
-    </TooltipContent>
-  </Tooltip>
-)
-
-const AccountTypeIndicator: FC<{
-  account: TransactionOutput["bankaccount"]
-}> = ({ account }) => {
-  if (!account) return null
-
-  if (account.type === "credit") {
-    return (
-      <TransactionIconTooltip
-        ariaLabel={`Credit card account: ${account.name}`}
-        tooltip={account.name}
-      >
-        <FinancialInstitutionLogo
-          institutionId={account.institutionId}
-          accountName={account.name}
-          accountType={account.type}
-          className="size-3.5 shrink-0"
-          decorative
-        />
-      </TransactionIconTooltip>
-    )
-  }
-
-  if (account.type === "checkout") {
-    return (
-      <TransactionIconTooltip
-        ariaLabel={`Checking account: ${account.name}`}
-        tooltip={account.name}
-      >
-        <FinancialInstitutionLogo
-          institutionId={account.institutionId}
-          accountName={account.name}
-          accountType={account.type}
-          className="size-3.5 shrink-0"
-          decorative
-        />
-      </TransactionIconTooltip>
-    )
-  }
-
-  return null
-}
-
-const ImportSourceIndicator: FC<{
-  sourceImport: NonNullable<TransactionOutput["import"]>
-}> = ({ sourceImport }) => (
-  <TransactionIconTooltip
-    ariaLabel={`Imported from ${sourceImport.fileName}`}
-    tooltip={`Imported from ${sourceImport.fileName}`}
-  >
-    <FileUp className="size-3.5 shrink-0" aria-hidden="true" />
-  </TransactionIconTooltip>
-)
-
 const TransactionCategoryChip: FC<
   Pick<
     TransactionLedgerTransactionProps,
@@ -123,7 +41,7 @@ const TransactionCategoryChip: FC<
 
   return (
     <div
-      className="w-32 min-w-0 shrink-0"
+      className="flex w-full min-w-0 shrink-0 justify-end"
       onClick={(event) => event.stopPropagation()}
     >
       <EditableSelect
@@ -178,18 +96,21 @@ export const TransactionLedgerTransaction: FC<
           aria-label={`Open transaction: ${transaction.description || "Untitled transaction"}`}
           data-testid="transaction-description"
           title={transaction.description || "Untitled transaction"}
-          className="min-w-0 flex-1 cursor-pointer truncate border-0 bg-transparent p-0 text-left text-[13px] font-normal outline-none focus-visible:underline"
+          className="min-w-0 shrink cursor-pointer truncate border-0 bg-transparent p-0 text-left text-[13px] font-normal outline-none focus-visible:underline"
         >
           {transaction.description || "Untitled transaction"}
         </button>
       }
-      cells={{
-        "account-icon": transaction.bankaccount ? (
-          <AccountTypeIndicator account={transaction.bankaccount} />
-        ) : null,
+      icons={{
         import: transaction.import ? (
           <ImportSourceIndicator sourceImport={transaction.import} />
         ) : null,
+        "card-icon":
+          transaction.bankaccount?.type === "credit" ? (
+            <CreditCardIndicator card={transaction} />
+          ) : null
+      }}
+      cells={{
         status: transaction.billPayment ? (
           <FinaBadge
             tone="lime"
@@ -199,12 +120,7 @@ export const TransactionLedgerTransaction: FC<
           </FinaBadge>
         ) : null,
         account: transaction.bankaccount ? (
-          <span
-            title={transaction.bankaccount.name}
-            className="min-w-0 truncate text-xs text-foreground/45"
-          >
-            {transaction.bankaccount.name}
-          </span>
+          <TransactionAccountChip account={transaction.bankaccount} />
         ) : null,
         card:
           transaction.bankaccount?.type === "credit" ? (
@@ -213,16 +129,27 @@ export const TransactionLedgerTransaction: FC<
               data-testid="transaction-card"
             >
               <CardLabel
-                card={transaction.creditCard}
-                className="w-full"
-                showArchived
+                card={transaction}
+                className="w-full justify-end"
+                showLast4={false}
               />
+            </span>
+          ) : null,
+        "card-number":
+          transaction.bankaccount?.type === "credit" &&
+          transaction.cardLast4 ? (
+            <span
+              data-testid="transaction-card-number"
+              className="truncate text-xs tabular-nums text-foreground/45"
+              title={`Card ending ${transaction.cardLast4}`}
+            >
+              {`••${transaction.cardLast4}`}
             </span>
           ) : null,
         installment: installment ? (
           <span
             title={installment}
-            className="w-full truncate text-xs tabular-nums text-foreground/45"
+            className="w-full truncate text-right text-xs tabular-nums text-foreground/45"
           >
             {installment}
           </span>

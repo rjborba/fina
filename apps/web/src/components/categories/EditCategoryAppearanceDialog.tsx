@@ -1,5 +1,5 @@
 import type { CategoryOutputDto } from "@/api/generated"
-import type { CategoryColor, CategoryIcon } from "@fina/types"
+import type { CategoryColor } from "@fina/types"
 import { Palette } from "lucide-react"
 import { useState } from "react"
 
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog"
-import { CategoryAppearance } from "./CategoryAppearance"
+import { CategoryChip } from "./CategoryChip"
 import { CategoryAppearancePicker } from "./CategoryAppearancePicker"
 
 export function EditCategoryAppearanceDialog({
@@ -24,14 +24,12 @@ export function EditCategoryAppearanceDialog({
 }) {
   const { updateCategoryAppearance } = useCategoriesMutation()
   const [open, setOpen] = useState(false)
-  const [icon, setIcon] = useState<CategoryIcon>(category.icon)
   const [color, setColor] = useState<CategoryColor>(category.color)
   const [isSaving, setIsSaving] = useState(false)
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (nextOpen) {
-      setIcon(category.icon)
       setColor(category.color)
     }
   }
@@ -39,7 +37,10 @@ export function EditCategoryAppearanceDialog({
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await updateCategoryAppearance(category.id, { icon, color })
+      await updateCategoryAppearance(category.id, {
+        icon: category.icon,
+        color
+      })
       setOpen(false)
     } finally {
       setIsSaving(false)
@@ -60,20 +61,14 @@ export function EditCategoryAppearanceDialog({
       <DialogContent className="rounded-md border border-fina-grid bg-fina-surface shadow-fina-lg sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl font-semibold">
-            <CategoryAppearance icon={icon} color={color} />
-            {category.name}
+            <CategoryChip name={category.name} color={color} />
           </DialogTitle>
           <DialogDescription>
-            Choose how this category appears throughout your workspace.
+            Choose the dot color for this category throughout your workspace.
           </DialogDescription>
         </DialogHeader>
 
-        <CategoryAppearancePicker
-          icon={icon}
-          color={color}
-          onIconChange={setIcon}
-          onColorChange={setColor}
-        />
+        <CategoryAppearancePicker color={color} onColorChange={setColor} />
 
         <DialogFooter>
           <Button

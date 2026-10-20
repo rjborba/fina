@@ -17,10 +17,6 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn()
 }))
 
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: () => ({ data: [], isLoading: false, isError: false })
-}))
-
 const categories = [
   {
     id: "10",
@@ -62,7 +58,8 @@ vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }))
 
 const transaction: TransactionOutput = {
   id: "7",
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
   description: "Historical transaction",
   value: -10,
@@ -92,7 +89,7 @@ describe("TransactionDetailsModal", () => {
 
   afterEach(cleanup)
 
-  it("changes a checking transaction’s review month without changing its dates or value", async () => {
+  it("shows checking details without reference-month controls", () => {
     render(
       <TransactionDetailsModal
         transaction={{
@@ -116,24 +113,14 @@ describe("TransactionDetailsModal", () => {
     expect(
       document.querySelector('[data-institution-id="inter"] img')
     ).not.toBeNull()
-    fireEvent.change(screen.getByLabelText("Reference month"), {
-      target: { value: "2026-08" }
-    })
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save reference month" })
-    )
-    await waitFor(() =>
-      expect(mocks.mutateAsync).toHaveBeenCalledWith({
-        id: "7",
-        transaction: { reviewMonth: "2026-08" }
-      })
-    )
+    expect(screen.queryByLabelText("Reference month")).not.toBeInTheDocument()
     expect(
-      screen.getByText(/transaction date and cash flow stay unchanged/)
-    ).toBeVisible()
+      screen.queryByText("Review month", { exact: true })
+    ).not.toBeInTheDocument()
+    expect(mocks.mutateAsync).not.toHaveBeenCalled()
   })
 
-  it("links card purchases to the whole-bill editor without an individual month override", () => {
+  it("shows credit due dates without whole-bill or individual month overrides", () => {
     render(
       <TransactionDetailsModal
         transaction={{
@@ -159,8 +146,8 @@ describe("TransactionDetailsModal", () => {
       document.querySelector('[data-institution-id="nubank"] img')
     ).not.toBeNull()
     expect(
-      screen.getByRole("link", { name: "Change month for the whole bill" })
-    ).toHaveAttribute("href", "/credit-card-bills/21/2026-07")
+      screen.queryByRole("link", { name: "Change month for the whole bill" })
+    ).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Reference month")).not.toBeInTheDocument()
   })
 

@@ -1,10 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  CreateGroupInputDto,
-  GroupOutput,
-  UpdateGroupReviewSettingsInput,
-} from '@fina/types';
+import { CreateGroupInputDto, GroupOutput } from '@fina/types';
 import { DataSource, Repository } from 'typeorm';
 import { Groups } from './entities/group.entity';
 import { UserGroup } from '../user-groups/entities/user-group.entity';
@@ -49,7 +45,6 @@ export class GroupsService {
         createdAt: toDateTimeOutput(group.createdAt),
         name: group.name,
         isOwner: true,
-        creditCardReviewMonthOffset: group.creditCardReviewMonthOffset,
       };
     });
   }
@@ -66,10 +61,6 @@ export class GroupsService {
       .select('group_record.id', 'id')
       .addSelect('group_record.created_at', 'createdAt')
       .addSelect('group_record.name', 'name')
-      .addSelect(
-        'group_record.credit_card_review_month_offset',
-        'creditCardReviewMonthOffset',
-      )
       .addSelect("membership.role = 'owner'", 'isOwner')
       .orderBy('group_record.created_at', 'ASC')
       .getRawMany<GroupOutput>();
@@ -92,10 +83,6 @@ export class GroupsService {
       .select('group_record.id', 'id')
       .addSelect('group_record.created_at', 'createdAt')
       .addSelect('group_record.name', 'name')
-      .addSelect(
-        'group_record.credit_card_review_month_offset',
-        'creditCardReviewMonthOffset',
-      )
       .addSelect("membership.role = 'owner'", 'isOwner')
       .where('group_record.id = :id', { id })
       .getRawOne<GroupOutput>();
@@ -105,19 +92,6 @@ export class GroupsService {
       createdAt: toDateTimeOutput(row.createdAt),
       isOwner: Boolean(row.isOwner),
     };
-  }
-
-  async updateReviewSettings(
-    userId: string,
-    id: string,
-    input: UpdateGroupReviewSettingsInput,
-  ): Promise<GroupOutput> {
-    await this.authorization.assertOwner(userId, id);
-    await this.groups.update(
-      { id },
-      { creditCardReviewMonthOffset: input.creditCardReviewMonthOffset },
-    );
-    return this.findOne(userId, id);
   }
 
   async remove(

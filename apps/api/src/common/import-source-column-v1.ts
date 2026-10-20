@@ -2,12 +2,11 @@ import { ImportMappingConfig } from '@fina/types';
 
 // Keep physical source-line indexing compatible with the retained v1 parser.
 // Only the selected identifier cell is read; no customer values are logged.
-export function readImportSourceCardIdentifiers(
+export function readImportSourceColumn(
   content: Uint8Array,
   config: ImportMappingConfig,
+  column: number,
 ): Map<number, string> {
-  if (config.creditCardColumn == null)
-    throw new Error('A card column is required');
   const text = new TextDecoder(config.encoding)
     .decode(content)
     .replace(/^\uFEFF/, '');
@@ -19,7 +18,7 @@ export function readImportSourceCardIdentifiers(
   let currentLine = 1;
   const finishRecord = () => {
     cells.push(field);
-    const identifier = cells[config.creditCardColumn!];
+    const identifier = cells[column];
     if (identifier !== undefined)
       identifiers.set(sourceLine, identifier.trim());
     cells = [];

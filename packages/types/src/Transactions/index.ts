@@ -3,3 +3,4 @@ export * from "./QueryTransaction.output.dto";
 export * from "./CreateTransaction.input.dto";
 export * from "./UpdateTransaction.input.dto";
 export * from "./TransactionApi.dto";
+export * from "./CardMetadata";

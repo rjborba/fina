@@ -170,6 +170,9 @@ export function TransactionsSort({
                 aria-label="Display properties"
               >
                 <p className="text-muted-foreground">Display properties</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Import and card indicators always stay visible.
+                </p>
                 <div className="flex flex-wrap gap-1">
                   {TRANSACTION_DISPLAY_PROPERTIES.map((property) => (
                     <button

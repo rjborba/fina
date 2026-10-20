@@ -63,7 +63,7 @@ describe("Categories", () => {
 
   afterEach(cleanup)
 
-  it("creates a category with selected icon and color", async () => {
+  it("creates a colored-dot label with a live chip preview and no icon picker", async () => {
     const user = userEvent.setup()
     render(<Categories />)
 
@@ -71,28 +71,38 @@ describe("Categories", () => {
       screen.getByRole("textbox", { name: "Category name" }),
       "Restaurants"
     )
-    await user.click(screen.getByRole("radio", { name: "Icon 11" }))
+    expect(
+      screen.queryByRole("radiogroup", { name: "Category icon" })
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole("radio", { name: "Rose" }))
+    const preview = screen.getByLabelText("Category preview")
+    expect(preview).toHaveTextContent("Restaurants")
+    expect(preview.querySelector("[data-category-dot]")).toHaveClass(
+      "bg-rose-400",
+      "rounded-full"
+    )
+    expect(preview.querySelector("svg")).toBeNull()
     await user.click(screen.getByRole("button", { name: "Add category" }))
 
     await waitFor(() =>
       expect(mocks.addCategory).toHaveBeenCalledWith({
         name: "Restaurants",
-        icon: "coffee",
+        icon: "tag",
         color: "rose",
         groupId: "1"
       })
     )
   })
 
-  it("renders saved category appearance accessibly", () => {
+  it("renders saved categories as dot-and-name chips without legacy icons", () => {
     render(<Categories />)
 
-    expect(
-      screen.getByRole("img", {
-        name: "Food category appearance"
-      })
-    ).toBeInTheDocument()
+    const chip = screen.getByText("Food").closest("[data-category-chip]")!
+    expect(chip).toHaveClass("rounded-full", "border")
+    expect(chip.querySelector("[data-category-dot]")).toHaveClass(
+      "bg-violet-500"
+    )
+    expect(chip.querySelector("svg")).toBeNull()
   })
 
   it("updates the appearance of an existing category", async () => {
@@ -103,7 +113,9 @@ describe("Categories", () => {
       screen.getByRole("button", { name: "Edit Food appearance" })
     )
     const dialog = screen.getByRole("dialog")
-    await user.click(within(dialog).getByRole("radio", { name: "Icon 24" }))
+    expect(
+      within(dialog).queryByRole("radiogroup", { name: "Category icon" })
+    ).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole("radio", { name: "Amber" }))
     await user.click(
       within(dialog).getByRole("button", { name: "Save appearance" })
@@ -111,7 +123,7 @@ describe("Categories", () => {
 
     await waitFor(() =>
       expect(mocks.updateCategoryAppearance).toHaveBeenCalledWith("10", {
-        icon: "sparkles",
+        icon: "utensils",
         color: "amber"
       })
     )

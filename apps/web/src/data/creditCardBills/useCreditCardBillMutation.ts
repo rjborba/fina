@@ -1,7 +1,6 @@
 import {
   creditCardBillsControllerReconcile,
-  creditCardBillsControllerUnlink,
-  creditCardBillsControllerUpdateReviewMonth
+  creditCardBillsControllerUnlink
 } from "@/api/generated"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { creditCardBillKeys } from "./useCreditCardBills"
@@ -43,21 +42,5 @@ export function useCreditCardBillMutation() {
     onSettled: invalidate
   })
 
-  const reviewMonthMutation = useMutation({
-    retry: 0,
-    mutationFn: ({
-      groupId,
-      accountId,
-      billMonth,
-      reviewMonth
-    }: BillIdentity & { reviewMonth: string }) =>
-      creditCardBillsControllerUpdateReviewMonth({
-        accountId,
-        billMonth,
-        requestBody: { groupId, reviewMonth }
-      }),
-    onSettled: invalidate
-  })
-
-  return { reconcileMutation, unlinkMutation, reviewMonthMutation }
+  return { reconcileMutation, unlinkMutation }
 }

@@ -1,11 +1,10 @@
 import type {
-  CreditCardReference,
   ImportIssue,
   ImportMappingConfig,
   ImportPreviewSummary,
   NormalizedImportRow
 } from "@fina/types"
-import { CreditCardSafeLabelSchema } from "@fina/types"
+import { CardNameSchema, ImportCardLast4CellSchema } from "@fina/types"
 
 export type ImportEncoding = "utf-8" | "windows-1252"
 export type ImportDelimiter = "," | ";" | "\t" | "|"
@@ -46,7 +45,8 @@ export type MappingSuggestion = {
   debitColumn: number | null
   creditColumn: number | null
   installmentColumn: number | null
-  creditCardColumn: number | null
+  cardNameColumn: number | null
+  cardLast4Column: number | null
   dateFormat: ImportDateFormat | null
   numberFormat: ImportNumberFormat | null
   accountType: "credit" | "checkout" | null
@@ -60,8 +60,8 @@ export type RowPreview = {
   description: string | null
   amount: number | null
   installment: string | null
-  creditCardId: string | null
-  creditCardIdentifier: string | null
+  cardName: string | null
+  cardLast4: string | null
   excluded: boolean
   exclusionReason?: "empty" | "repeated-header" | "footer" | "user"
   issues: ImportIssue[]
@@ -105,7 +105,7 @@ const descriptionAliases = [
 ]
 const installmentAliases = ["installment", "parcela", "parcelas"]
 const balanceAliases = ["balance", "saldo"]
-const creditCardAliases = [
+const cardLast4Aliases = [
   "card",
   "credit card",
   "card number",
@@ -116,6 +116,15 @@ const creditCardAliases = [
   "numero do cartao",
   "final do cartao",
   "ultimos 4 digitos"
+]
+const cardNameAliases = [
+  "card name",
+  "cardholder",
+  "cardholder name",
+  "nome do cartao",
+  "nome no cartao",
+  "portador",
+  "nome do portador"
 ]
 
 export function decodeCsv(
@@ -370,10 +379,16 @@ export function inferFieldMapping(
     )
   const dateAlias = aliasIndexes(dateAliases)[0] ?? null
   const cardColumns = header.flatMap((cell, index) =>
-    creditCardAliases.includes(normalizeHeader(cell)) ? [index] : []
+    [...cardLast4Aliases, ...cardNameAliases].includes(normalizeHeader(cell))
+      ? [index]
+      : []
   )
-  const creditCardColumn =
-    cardColumns.length === 1 ? (cardColumns[0] ?? null) : null
+  const nameColumns = aliasIndexes(cardNameAliases)
+  const numberColumns = header.flatMap((cell, index) =>
+    cardLast4Aliases.includes(normalizeHeader(cell)) ? [index] : []
+  )
+  const cardNameColumn = nameColumns.length === 1 ? nameColumns[0] : null
+  const cardLast4Column = numberColumns.length === 1 ? numberColumns[0] : null
   const amountAlias =
     aliasIndexes(amountAliases).find(
       (index) =>
@@ -446,11 +461,14 @@ export function inferFieldMapping(
     debitColumn,
     creditColumn,
     installmentColumn,
-    creditCardColumn,
+    cardNameColumn,
+    cardLast4Column,
     dateFormat: dateInference.format,
     numberFormat: numberInference.format,
     accountType:
-      installmentColumn !== null || creditCardColumn !== null
+      installmentColumn !== null ||
+      cardNameColumn !== null ||
+      cardLast4Column !== null
         ? "credit"
         : header.some((cell) => matchesAlias(cell, balanceAliases))
           ? "checkout"
@@ -470,21 +488,12 @@ export function normalizeImportRows({
   matrix,
   structure,
   config,
-  excludedRows = new Set<number>(),
-  creditCardId,
-  creditCards,
-  accountId
+  excludedRows = new Set<number>()
 }: {
   matrix: CsvMatrix
   structure: CsvStructure
   config: ImportMappingConfig
   excludedRows?: ReadonlySet<number>
-  creditCardId?: string | null
-  creditCards?: readonly Pick<
-    CreditCardReference,
-    "id" | "accountId" | "archived"
-  >[]
-  accountId?: string
 }): NormalizationResult {
   const header =
     structure.headerRecordIndex === null
@@ -493,24 +502,6 @@ export function normalizeImportRows({
   const previews: RowPreview[] = []
   const issues: ImportIssue[] = []
   let hasSeenTransaction = false
-  const cardColumn = config.creditCardColumn ?? null
-  const cardMappings = new Map<string, string | null>()
-  const duplicateCardValues = new Set<string>()
-  for (const mapping of config.creditCardMappings ?? []) {
-    const value = mapping.value.trim()
-    if (cardMappings.has(value)) duplicateCardValues.add(value)
-    cardMappings.set(value, mapping.creditCardId)
-  }
-  const activeCardIds = creditCards
-    ? new Set(
-        creditCards
-          .filter(
-            (card) =>
-              !card.archived && (!accountId || card.accountId === accountId)
-          )
-          .map((card) => card.id)
-      )
-    : null
 
   for (const row of matrix.rows.slice(
     structure.dataStartRecordIndex,
@@ -530,8 +521,8 @@ export function normalizeImportRows({
         description: null,
         amount: null,
         installment: null,
-        creditCardId: null,
-        creditCardIdentifier: null,
+        cardName: null,
+        cardLast4: null,
         excluded: true,
         exclusionReason: userExcluded ? "user" : (automaticReason ?? undefined),
         issues: [],
@@ -542,62 +533,54 @@ export function normalizeImportRows({
 
     hasSeenTransaction = true
     const rowIssues: ImportIssue[] = []
-    const rawCardIdentifier =
-      cardColumn === null ? "" : (row.cells[cardColumn] ?? "").trim()
-    let cardIdentifier: string | null = null
-    let resolvedCardId = creditCardId ?? null
-    if (rawCardIdentifier) {
-      const safeIdentifier =
-        CreditCardSafeLabelSchema.safeParse(rawCardIdentifier)
-      if (!safeIdentifier.success) {
+    for (const [column, field] of [
+      [config.cardNameColumn, "cardName"],
+      [config.cardLast4Column, "cardLast4"]
+    ] as const) {
+      if (column != null && row.cells[column] === undefined) {
         rowIssues.push(
           issue(
             row.sourceLine,
-            "creditCard",
-            "UNSAFE_CARD_IDENTIFIER",
-            "Use a card nickname or last four digits, never a full card number",
+            field,
+            "MISSING_CARD_SOURCE_CELL",
+            "This row is missing the mapped card column. Correct the mapping or exclude the row.",
             "error"
           )
         )
-      } else {
-        cardIdentifier = safeIdentifier.data
-        if (duplicateCardValues.has(cardIdentifier)) {
-          rowIssues.push(
-            issue(
-              row.sourceLine,
-              "creditCard",
-              "AMBIGUOUS_CARD_MAPPING",
-              "This source value has more than one card mapping",
-              "error"
-            )
-          )
-        } else if (!cardMappings.has(cardIdentifier)) {
-          resolvedCardId = null
-          rowIssues.push(
-            issue(
-              row.sourceLine,
-              "creditCard",
-              "UNMAPPED_CARD_IDENTIFIER",
-              "Choose a card or explicitly mark this source value as not identified",
-              "error"
-            )
-          )
-        } else {
-          resolvedCardId = cardMappings.get(cardIdentifier) ?? null
-        }
       }
     }
-    if (resolvedCardId && activeCardIds && !activeCardIds.has(resolvedCardId)) {
+    const rawName =
+      config.cardNameColumn == null
+        ? ""
+        : (row.cells[config.cardNameColumn] ?? "").trim()
+    const rawLast4 =
+      config.cardLast4Column == null
+        ? ""
+        : (row.cells[config.cardLast4Column] ?? "")
+    const name = CardNameSchema.nullable().safeParse(rawName || null)
+    const last4 = ImportCardLast4CellSchema.safeParse(rawLast4)
+    if (!name.success)
       rowIssues.push(
         issue(
           row.sourceLine,
-          "creditCard",
-          "UNAVAILABLE_CREDIT_CARD",
-          "This card is no longer available for the selected account. Choose another card or not identified",
+          "cardName",
+          "INVALID_CARD_NAME",
+          "Use a card name, never a full card number",
           "error"
         )
       )
-    }
+    if (!last4.success)
+      rowIssues.push(
+        issue(
+          row.sourceLine,
+          "cardLast4",
+          "INVALID_CARD_LAST4",
+          "Map only the last four digits or a masked card number",
+          "error"
+        )
+      )
+    const cardName = name.success ? name.data : null
+    const cardLast4 = last4.success ? last4.data : null
     const date = parseImportDate(
       row.cells[config.dateColumn] ?? "",
       config.dateFormat
@@ -676,12 +659,8 @@ export function normalizeImportRows({
             description,
             installmentCurrent: installment.current,
             installmentTotal: installment.total,
-            ...(creditCardId !== undefined || cardColumn !== null
-              ? {
-                  creditCardId: resolvedCardId,
-                  creditCardIdentifier: cardIdentifier
-                }
-              : {})
+            cardName,
+            cardLast4
           }
         : null
     issues.push(...rowIssues)
@@ -694,8 +673,8 @@ export function normalizeImportRows({
         installment.current === null
           ? null
           : `${installment.current}/${installment.total}`,
-      creditCardId: resolvedCardId,
-      creditCardIdentifier: cardIdentifier,
+      cardName,
+      cardLast4,
       excluded: false,
       issues: rowIssues,
       normalized
@@ -1082,7 +1061,8 @@ function knownHeaderKind(value: string): string | null {
     creditAliases,
     descriptionAliases,
     installmentAliases,
-    creditCardAliases,
+    cardLast4Aliases,
+    cardNameAliases,
     balanceAliases
   ]
   return lists.find((aliases) => matchesAlias(value, aliases))?.[0] ?? null

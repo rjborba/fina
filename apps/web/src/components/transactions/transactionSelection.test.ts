@@ -50,13 +50,7 @@ describe("transaction selection", () => {
   })
 
   it("assigns or clears card metadata with observable partial failures", async () => {
-    const creditCard = {
-      id: "20",
-      accountId: "10",
-      name: "Family",
-      last4: "4242",
-      archived: false
-    }
+    const creditCard = { cardName: "Family", cardLast4: "4242" }
     const update = vi.fn((id: string) =>
       id === "2"
         ? Promise.reject(new Error("Update failed"))
@@ -65,14 +59,21 @@ describe("transaction selection", () => {
     await expect(
       assignCardToTransactionSelection(["1", "2", "3"], creditCard, update)
     ).resolves.toEqual({ updatedCount: 2, failedCount: 1 })
-    expect(update).toHaveBeenCalledWith("1", { creditCard })
-    expect(update).toHaveBeenCalledWith("2", { creditCard })
-    expect(update).toHaveBeenCalledWith("3", { creditCard })
+    expect(update).toHaveBeenCalledWith("1", creditCard)
+    expect(update).toHaveBeenCalledWith("2", creditCard)
+    expect(update).toHaveBeenCalledWith("3", creditCard)
     update.mockResolvedValue(undefined)
     await expect(
-      assignCardToTransactionSelection(["1", "3"], null, update)
+      assignCardToTransactionSelection(
+        ["1", "3"],
+        { cardName: null, cardLast4: null },
+        update
+      )
     ).resolves.toEqual({ updatedCount: 2, failedCount: 0 })
-    expect(update).toHaveBeenCalledWith("1", { creditCard: null })
+    expect(update).toHaveBeenCalledWith("1", {
+      cardName: null,
+      cardLast4: null
+    })
     await expect(
       assignCardToTransactionSelection([], creditCard, update)
     ).resolves.toEqual({ updatedCount: 0, failedCount: 0 })

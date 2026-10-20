@@ -17,6 +17,9 @@ import {
   UpdateTransactionInputDto,
   TransactionOutputDto,
   IdParamDto,
+  TransactionCardValuesQueryDto,
+  TransactionCardValuesOutputDto,
+  TransactionCardValueDto,
 } from '../contracts/api-dtos';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user';
@@ -52,7 +55,7 @@ export class TransactionsController {
   @ApiQuery({ name: 'reviewMonths', type: [String], required: false })
   @ApiQuery({ name: 'categoryIdList', type: [String], required: false })
   @ApiQuery({ name: 'accountIdList', type: [String], required: false })
-  @ApiQuery({ name: 'creditCardIdList', type: [String], required: false })
+  @ApiQuery({ name: 'cardList', type: [String], required: false })
   @ApiQuery({ name: 'importIdList', type: [String], required: false })
   @ApiQuery({
     name: 'importSource',
@@ -85,7 +88,7 @@ export class TransactionsController {
       endDate,
       categoryIdList,
       accountIdList,
-      creditCardIdList,
+      cardList,
       accountType,
       search,
       dateBasis,
@@ -106,7 +109,7 @@ export class TransactionsController {
         endDate: endDate ? new Date(endDate) : undefined,
         categoryIdList,
         accountIdList,
-        creditCardIdList,
+        cardList,
         accountType,
         search,
         dateBasis,
@@ -122,6 +125,22 @@ export class TransactionsController {
       data,
       totalCount,
     };
+  }
+
+  @Get('card-values')
+  @ApiQuery({ name: 'groupId', type: String, required: true })
+  @ApiQuery({ name: 'accountId', type: String, required: false })
+  @ApiOkResponse({ type: TransactionCardValuesOutputDto })
+  @ZodSerializerDto(TransactionCardValueDto)
+  cardValues(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: TransactionCardValuesQueryDto,
+  ) {
+    return this.transactionsService.cardValues(
+      user.id,
+      query.groupId,
+      query.accountId,
+    );
   }
 
   @Get(':id')

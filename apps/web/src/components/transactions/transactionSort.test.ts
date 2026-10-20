@@ -9,7 +9,8 @@ const transaction = (
 ): Transaction =>
   ({
     id,
-    creditCard: null,
+    cardName: null,
+    cardLast4: null,
     description: id,
     calculatedDate: "2026-01-01",
     value: 0,

@@ -8,8 +8,7 @@ import {
   type FinancialInstitutionId
 } from "@fina/types"
 import { Landmark, Pencil, Plus, Trash2 } from "lucide-react"
-import { type FC, useMemo, useState } from "react"
-import type { CreditCardOutput } from "@fina/types"
+import { type FC, useState } from "react"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 
@@ -52,8 +51,6 @@ import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { useToast } from "@/hooks/use-toast"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import { FinancialInstitutionPicker } from "@/components/accounts/FinancialInstitutionPicker"
-import { AccountCards } from "@/components/creditCards/AccountCards"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
 import {
   Dialog,
   DialogContent,
@@ -265,23 +262,6 @@ export const Accounts: FC = () => {
   const { data: bankAccountsData } = useBankAccounts({
     groupId: selectedGroup?.id?.toString()
   })
-  const {
-    data: creditCards,
-    isLoading: cardsLoading,
-    isError: cardsError
-  } = useCreditCards({
-    groupId: selectedGroup?.id,
-    includeArchived: true
-  })
-  const cardsByAccount = useMemo(() => {
-    const grouped = new Map<string, CreditCardOutput[]>()
-    for (const card of creditCards ?? []) {
-      const cards = grouped.get(card.accountId) ?? []
-      cards.push(card)
-      grouped.set(card.accountId, cards)
-    }
-    return grouped
-  }, [creditCards])
   const { addAccount } = useAccountsMutation()
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -396,17 +376,6 @@ export const Accounts: FC = () => {
                           />
                         </div>
                       </div>
-                      {isCredit && selectedGroup?.id ? (
-                        <AccountCards
-                          key={`${selectedGroup.id}:${account.id}`}
-                          groupId={selectedGroup.id}
-                          accountId={account.id}
-                          accountName={account.name}
-                          cards={cardsByAccount.get(account.id) ?? []}
-                          isLoading={cardsLoading}
-                          isError={cardsError}
-                        />
-                      ) : null}
                     </li>
                   )
                 })}

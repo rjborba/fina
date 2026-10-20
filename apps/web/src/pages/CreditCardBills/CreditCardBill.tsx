@@ -22,6 +22,7 @@ import { useCreditCardBill } from "@/data/creditCardBills/useCreditCardBills"
 import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
 import { toast } from "@/hooks/use-toast"
 import type { CreditCardBillStatus } from "@fina/types"
+import { cardMetadataKey } from "@fina/types"
 import dayjs from "dayjs"
 import {
   ArrowLeft,
@@ -35,7 +36,6 @@ import {
 } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Link, useParams } from "react-router"
-import { BillReviewMonth } from "./BillReviewMonth"
 import { BillCardsBreakdown } from "./BillCardsBreakdown"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -117,7 +117,7 @@ function CreditCardBillDetails({
   const hasFilters =
     filters.partialDescription.trim().length > 0 ||
     filters.categoriesId.length > 0 ||
-    !!filters.creditCardsId?.length ||
+    !!filters.cards?.length ||
     !!filters.importSource ||
     !!filters.importsId?.length ||
     filters.minValue !== undefined ||
@@ -125,7 +125,7 @@ function CreditCardBillDetails({
   const filteredTransactions = useMemo(() => {
     const search = filters.partialDescription.trim().toLowerCase()
     const categoryIds = new Set(filters.categoriesId)
-    const cardIds = new Set(filters.creditCardsId)
+    const cardIds = new Set(filters.cards)
     const importIds = new Set(filters.importsId)
     return (data?.transactions ?? []).filter(
       (transaction) =>
@@ -133,7 +133,7 @@ function CreditCardBillDetails({
           (transaction.description ?? "").toLowerCase().includes(search)) &&
         (!categoryIds.size ||
           categoryIds.has(transaction.category?.id ?? "-1")) &&
-        (!cardIds.size || cardIds.has(transaction.creditCard?.id ?? "-1")) &&
+        (!cardIds.size || cardIds.has(cardMetadataKey(transaction))) &&
         (!filters.importSource ||
           (filters.importSource === "imported"
             ? !!transaction.import
@@ -320,12 +320,6 @@ function CreditCardBillDetails({
               </div>
             </section>
 
-            <BillReviewMonth
-              key={`${bill.accountId}:${bill.billMonth}:${bill.reviewMonth}`}
-              bill={bill}
-              groupId={groupId}
-            />
-
             <section aria-labelledby="reconciliation-title">
               <div className="mb-4">
                 <FinaSectionLabel>Payment / Reconciliation</FinaSectionLabel>
@@ -484,15 +478,13 @@ function CreditCardBillDetails({
               <BillCardsBreakdown
                 summaries={data.cardSummaries ?? []}
                 roundingAdjustment={data.cardRoundingAdjustment ?? 0}
-                selectedIds={filters.creditCardsId ?? []}
+                selectedIds={filters.cards ?? []}
                 onToggleCard={(id) =>
                   setFilters((current) => ({
                     ...current,
-                    creditCardsId: current.creditCardsId?.includes(id)
-                      ? current.creditCardsId.filter(
-                          (selected) => selected !== id
-                        )
-                      : [...(current.creditCardsId ?? []), id]
+                    cards: current.cards?.includes(id)
+                      ? current.cards.filter((selected) => selected !== id)
+                      : [...(current.cards ?? []), id]
                   }))
                 }
               />

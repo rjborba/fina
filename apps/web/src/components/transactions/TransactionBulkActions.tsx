@@ -28,7 +28,7 @@ import {
 import { ChevronDown, ListChecks, Tag, Trash } from "lucide-react"
 import type { TransactionCategoryOption } from "./TransactionLedgerTransaction"
 import { BulkCardAssignment } from "./BulkCardAssignment"
-import type { CreditCardReference } from "@fina/types"
+import type { CardMetadata } from "@fina/types"
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -53,7 +53,7 @@ interface TransactionBulkActionsProps {
   onAssignCategory: (categoryId: string | null) => Promise<void>
   cardAccountId?: string | null
   isUpdatingCard?: boolean
-  onAssignCard?: (card: CreditCardReference | null) => Promise<void>
+  onAssignCard?: (card: CardMetadata) => Promise<void>
 }
 
 export function TransactionBulkActions({
@@ -219,11 +219,7 @@ export function TransactionBulkActions({
                     onSelect={() => void assignCategory(category.id)}
                     className="h-8 text-[13px] data-[selected=true]:bg-black/[0.05] dark:data-[selected=true]:bg-white/[0.05]"
                   >
-                    <CategoryAppearance
-                      icon={category.icon}
-                      color={category.color}
-                      className="size-4 border-0 bg-transparent"
-                    />
+                    <CategoryAppearance color={category.color} />
                     <span className="truncate">{category.name}</span>
                   </CommandItem>
                 ))}

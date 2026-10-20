@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from "react"
 import type { CategoryOutput } from "@fina/types"
 
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { CategoryChip } from "@/components/categories/CategoryChip"
 import {
   Select,
   SelectContent,
@@ -71,30 +72,17 @@ export const EditableSelect: FC<EditableSelectProps> = ({
       <SelectTrigger
         aria-label={ariaLabel}
         title={displayText}
-        className="h-6 w-full max-w-full min-w-0 cursor-pointer rounded-md border-0 bg-transparent px-1 py-0 text-xs font-normal text-muted-foreground shadow-none hover:bg-fina-canvas focus:ring-1 focus:ring-fina-violet [&>svg]:hidden"
+        className="h-6 w-auto max-w-full min-w-0 cursor-pointer justify-end rounded-full border-0 bg-transparent p-0 text-right text-xs font-normal text-muted-foreground shadow-none hover:bg-fina-canvas focus:ring-1 focus:ring-fina-violet [&>svg]:hidden"
       >
-        <SelectValue>
-          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
-            {selectedOption ? (
-              <CategoryAppearance
-                icon={selectedOption.icon}
-                color={selectedOption.color}
-                className="size-4 shrink-0 border-0 bg-transparent"
-              />
-            ) : null}
-            <span className="truncate">{displayText}</span>
-          </span>
+        <SelectValue className="min-w-0 max-w-full">
+          <CategoryChip name={displayText} color={selectedOption?.color} />
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="rounded-md border border-fina-grid shadow-fina-sm">
         {options.map((option) => (
           <SelectItem key={option.id} value={String(option.id)}>
             <span className="flex items-center gap-2">
-              <CategoryAppearance
-                icon={option.icon}
-                color={option.color}
-                className="size-6 border"
-              />
+              <CategoryAppearance color={option.color} />
               {option.name || "-"}
             </span>
           </SelectItem>

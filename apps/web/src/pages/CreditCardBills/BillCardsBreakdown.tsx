@@ -1,4 +1,5 @@
 import type { CreditCardBillDetail } from "@fina/types"
+import { cardMetadataKey } from "@fina/types"
 import { CreditCard } from "lucide-react"
 import { CardLabel } from "@/components/creditCards/CardLabel"
 import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
@@ -32,12 +33,12 @@ export function BillCardsBreakdown({
       </p>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {summaries.map((summary) => {
-          const id = summary.creditCard?.id ?? "-1"
+          const id = cardMetadataKey(summary)
           return (
             <li key={id}>
               <button
                 type="button"
-                aria-label={`Filter purchases by ${formatCardLabel(summary.creditCard)}`}
+                aria-label={`Filter purchases by ${formatCardLabel(summary)}`}
                 aria-pressed={selectedIds.includes(id)}
                 onClick={() => onToggleCard(id)}
                 className={cn(
@@ -52,11 +53,7 @@ export function BillCardsBreakdown({
                       aria-hidden="true"
                       className="size-3.5 shrink-0 text-muted-foreground"
                     />
-                    <CardLabel
-                      card={summary.creditCard}
-                      className="truncate"
-                      showArchived
-                    />
+                    <CardLabel card={summary} className="truncate" />
                   </span>
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {summary.transactionCount} purchase

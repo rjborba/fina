@@ -12,7 +12,7 @@ import {
   CreditCardBillSummary,
   FinancialInstitutionId,
   ReconcileCreditCardBillInput,
-  UpdateCreditCardBillReviewMonthInput,
+  parseCardMetadataKey,
 } from '@fina/types';
 import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
 import { AuthorizationService } from '../auth/authorization.service';
@@ -30,7 +30,6 @@ type BillRow = {
   account_institution_id: FinancialInstitutionId | null;
   bill_month: string;
   due_date: string;
-  review_month: string;
   transaction_count: number | string;
   total: string;
   matching_transaction_count?: number | string;
@@ -62,7 +61,6 @@ type CreditAccountScheduleRow = {
   account_institution_id: FinancialInstitutionId | null;
   created_date: string;
   due_day: number | string;
-  review_month_offset: number;
 };
 
 type BillFilter = Omit<CreditCardBillListQuery, 'groupId'> & {
@@ -71,11 +69,8 @@ type BillFilter = Omit<CreditCardBillListQuery, 'groupId'> & {
 };
 
 type CardTotalRow = {
-  credit_card_id: string | null;
-  account_id: string | null;
-  name: string | null;
-  last4: string | null;
-  archived: boolean | null;
+  card_name: string | null;
+  card_last4: string | null;
   transaction_count: number;
   unavailable_value_count: number;
   total: string;
@@ -147,38 +142,27 @@ export class CreditCardBillsService {
     const rows = await manager.query<CardTotalRow[]>(
       `
       WITH card_totals AS (
-        SELECT transaction_record.credit_card_id,
-          card.account_id, card.name, card.last4, card.archived, card.created_at,
+        SELECT transaction_record.card_name, transaction_record.card_last4,
           count(*)::integer AS transaction_count,
           count(*) FILTER (WHERE transaction_record.value IS NULL)::integer AS unavailable_value_count,
           round(coalesce(sum(transaction_record.value), 0)::numeric, 2) AS total
         FROM public.transactions transaction_record
-        LEFT JOIN public.credit_cards card ON card.id = transaction_record.credit_card_id
-          AND card.group_id = transaction_record.group_id AND card.account_id = transaction_record.bankaccount_id
         WHERE transaction_record.group_id = $1 AND transaction_record.bankaccount_id = $2
           AND transaction_record.removed IS NOT TRUE
           AND date_trunc('month', transaction_record.credit_due_date)::date = $3::date
-        GROUP BY transaction_record.credit_card_id, card.id
+        GROUP BY transaction_record.card_name, transaction_record.card_last4
       )
-      SELECT credit_card_id, account_id, name, last4, archived,
+      SELECT card_name, card_last4,
         transaction_count, unavailable_value_count, total::text,
         ($4::numeric - sum(total) OVER ())::text AS rounding_adjustment
-      FROM card_totals ORDER BY created_at ASC NULLS LAST, credit_card_id ASC NULLS LAST
+      FROM card_totals ORDER BY card_name ASC NULLS LAST, card_last4 ASC NULLS LAST
     `,
       [groupId, bill.accountId, `${bill.billMonth}-01`, String(bill.total)],
     );
     return {
       cardSummaries: rows.map((row) => ({
-        creditCard:
-          row.credit_card_id === null
-            ? null
-            : {
-                id: row.credit_card_id,
-                accountId: row.account_id!,
-                name: row.name!,
-                last4: row.last4,
-                archived: row.archived!,
-              },
+        cardName: row.card_name,
+        cardLast4: row.card_last4,
         transactionCount: row.transaction_count,
         total: Number(row.total),
         unavailableValueCount: row.unavailable_value_count,
@@ -187,26 +171,6 @@ export class CreditCardBillsService {
         rows[0]?.rounding_adjustment ?? bill.total,
       ),
     };
-  }
-
-  async updateReviewMonth(
-    userId: string,
-    accountId: string,
-    billMonth: string,
-    input: UpdateCreditCardBillReviewMonthInput,
-  ): Promise<CreditCardBillDetail> {
-    await this.authorization.assertMember(userId, input.groupId);
-    await this.findBill(input.groupId, accountId, billMonth);
-    await this.dataSource.query(
-      `
-      INSERT INTO public.credit_card_bill_reviews (group_id, credit_account_id, bill_month, review_month)
-      VALUES ($1, $2, $3::date, $4::date)
-      ON CONFLICT (group_id, credit_account_id, bill_month)
-      DO UPDATE SET review_month = EXCLUDED.review_month
-    `,
-      [input.groupId, accountId, `${billMonth}-01`, `${input.reviewMonth}-01`],
-    );
-    return this.findOne(userId, input.groupId, accountId, billMonth);
   }
 
   async reconcile(
@@ -342,7 +306,7 @@ export class CreditCardBillsService {
     ))`;
     const attributionDate =
       filter.dateBasis === 'monthly-review'
-        ? 'coalesce(bill_review.review_month, bill_keys.bill_month)'
+        ? "(bill_keys.bill_month - interval '1 month')::date"
         : `coalesce(${paymentDate}, payment.calculated_date, payment.to_be_considered_at, ${dueDate})`;
 
     if (filter.dateBasis === 'monthly-review' && filter.reviewMonths) {
@@ -401,7 +365,6 @@ export class CreditCardBillsService {
             'YYYY-MM'
           ) AS bill_month,
           ${dueDate}::text AS due_date,
-          to_char(coalesce(bill_review.review_month, bill_keys.bill_month), 'YYYY-MM') AS review_month,
           count(transaction_record.id)::integer AS transaction_count,
           round(
             coalesce(sum(transaction_record.value), 0)::numeric,
@@ -440,10 +403,6 @@ export class CreditCardBillsService {
             AND history.bankaccount_id = bill_keys.credit_account_id
             AND date_trunc('month', history.credit_due_date)::date = bill_keys.bill_month
         ) historical_due ON true
-        LEFT JOIN public.credit_card_bill_reviews bill_review
-          ON bill_review.group_id = bill_keys.group_id
-         AND bill_review.credit_account_id = account.id
-         AND bill_review.bill_month = bill_keys.bill_month
         LEFT JOIN public.credit_card_bill_reconciliations reconciliation
           ON reconciliation.group_id = bill_keys.group_id
          AND reconciliation.credit_account_id = account.id
@@ -467,7 +426,6 @@ export class CreditCardBillsService {
           account.institution_id,
           bill_keys.bill_month,
           historical_due.due_date,
-          bill_review.review_month,
           reconciliation.id,
           payment.id,
           payment_account.id,
@@ -527,28 +485,11 @@ export class CreditCardBillsService {
           account.name AS account_name,
           account.institution_id AS account_institution_id,
           account.created_at::date::text AS created_date,
-          account.due_date AS due_day,
-          group_record.credit_card_review_month_offset AS review_month_offset
+          account.due_date AS due_day
         FROM public.bankaccounts account
-        INNER JOIN public.groups group_record ON group_record.id = account.group_id
         WHERE ${conditions.join('\n          AND ')}
       `,
       values,
-    );
-    const assignments = await manager.query<
-      { credit_account_id: string; bill_month: string; review_month: string }[]
-    >(
-      `
-      SELECT credit_account_id, to_char(bill_month, 'YYYY-MM') AS bill_month, to_char(review_month, 'YYYY-MM') AS review_month
-      FROM public.credit_card_bill_reviews WHERE group_id = $1
-    `,
-      [groupId],
-    );
-    const assignedMonths = new Map(
-      assignments.map((row) => [
-        `${row.credit_account_id}:${row.bill_month}`,
-        row.review_month,
-      ]),
     );
     const existingBillKeys = new Set(
       transactionRows.map((row) => `${row.account_id}:${row.bill_month}`),
@@ -578,17 +519,10 @@ export class CreditCardBillsService {
     const scheduledRows: BillRow[] = [];
 
     for (const account of accounts) {
-      const accountBillMonths = new Set(billMonths);
-      if (filter.dateBasis === 'monthly-review' && !filter.billMonth) {
-        for (const month of billMonths)
-          accountBillMonths.add(
-            shiftReviewMonth(month, -account.review_month_offset),
-          );
-        for (const assignment of assignments) {
-          if (assignment.credit_account_id === account.account_id)
-            accountBillMonths.add(assignment.bill_month);
-        }
-      }
+      const accountBillMonths =
+        filter.dateBasis === 'monthly-review' && !filter.billMonth
+          ? billMonths.map((month) => shiftReviewMonth(month, 1))
+          : billMonths;
       for (const billMonth of accountBillMonths) {
         // Shifting an endpoint can leave the four-digit calendar contract.
         if (!/^(?!0000)\d{4}-(?:0[1-9]|1[0-2])$/.test(billMonth)) continue;
@@ -596,9 +530,7 @@ export class CreditCardBillsService {
         if (existingBillKeys.has(key)) continue;
 
         const dueDate = deriveBillDueDate(Number(account.due_day), billMonth);
-        const reviewMonth =
-          assignedMonths.get(key) ??
-          shiftReviewMonth(billMonth, account.review_month_offset);
+        const reviewMonth = shiftReviewMonth(billMonth, -1);
         if (!/^(?!0000)\d{4}-(?:0[1-9]|1[0-2])$/.test(reviewMonth)) continue;
         const attributedDate =
           filter.dateBasis === 'monthly-review' ? `${reviewMonth}-01` : dueDate;
@@ -616,7 +548,6 @@ export class CreditCardBillsService {
           account_institution_id: account.account_institution_id,
           bill_month: billMonth,
           due_date: dueDate,
-          review_month: reviewMonth,
           transaction_count: 0,
           total: '0.00',
           reconciliation_id: null,
@@ -640,17 +571,12 @@ export class CreditCardBillsService {
     values: unknown[],
   ): string[] {
     const conditions: string[] = [];
-    if (filter.creditCardIdList?.length) {
-      const cardIds = filter.creditCardIdList.filter((id) => id !== '-1');
-      const cardConditions: string[] = [];
-      if (cardIds.length) {
-        values.push(cardIds);
-        cardConditions.push(
-          `transaction_record.credit_card_id = ANY($${values.length}::bigint[])`,
-        );
-      }
-      if (filter.creditCardIdList.includes('-1'))
-        cardConditions.push('transaction_record.credit_card_id IS NULL');
+    if (filter.cardList?.length) {
+      const cardConditions = filter.cardList.map((key) => {
+        const card = parseCardMetadataKey(key)!;
+        values.push(card.cardName, card.cardLast4);
+        return `(transaction_record.card_name IS NOT DISTINCT FROM $${values.length - 1}::text AND transaction_record.card_last4 IS NOT DISTINCT FROM $${values.length}::text)`;
+      });
       conditions.push(`(${cardConditions.join(' OR ')})`);
     }
     if (filter.categoryIdList?.length) {
@@ -794,7 +720,7 @@ export class CreditCardBillsService {
       accountInstitutionId: row.account_institution_id,
       billMonth: row.bill_month,
       dueDate: row.due_date,
-      reviewMonth: row.review_month,
+      reviewMonth: shiftReviewMonth(row.bill_month, -1),
       cashFlowDate: payment?.date ?? row.due_date,
       transactionCount: Number(row.transaction_count),
       total,

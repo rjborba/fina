@@ -17,7 +17,7 @@ import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { useImports } from "@/data/imports/useImports"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
+import { parseCardMetadataKey } from "@fina/types"
 import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
 import {
   Popover,
@@ -53,11 +53,9 @@ export function TransactionFilterChips({
   const { data: categories } = useCategories({ groupId })
   const { data: accounts } = useBankAccounts({ groupId })
   const { data: imports } = useImports({ groupId })
-  const { data: cards } = useCreditCards({ groupId, includeArchived: true })
-  const cardNames = (value.creditCardsId ?? []).map((id) => {
+  const cardNames = (value.cards ?? []).map((id) => {
     if (id === "-1") return "Not identified"
-    const card = cards?.find((item) => item.id === id)
-    return card ? `${formatCardLabel(card)} (${card.accountName})` : `#${id}`
+    return formatCardLabel(parseCardMetadataKey(id))
   })
   const categoryNames = value.categoriesId.map((id) =>
     id === "-1"
@@ -129,7 +127,7 @@ export function TransactionFilterChips({
           clearLabel="Clear card filters"
           icon={CreditCard}
           onClear={() =>
-            onChange((current) => ({ ...current, creditCardsId: undefined }))
+            onChange((current) => ({ ...current, cards: undefined }))
           }
         />
       ) : null}

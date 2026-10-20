@@ -29,10 +29,6 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn()
 }))
 
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: () => ({ data: [], isLoading: false, isError: false })
-}))
-
 vi.mock("react-router", () => ({
   useNavigate: () => mocks.navigate
 }))
@@ -136,7 +132,8 @@ vi.mock("./TransactionDetailsModal", () => ({
 }))
 
 const checkingTransaction = {
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   id: "checking-1",
   createdAt: "2026-06-09T00:00:00.000Z",
   description: "Checking purchase",
@@ -266,21 +263,22 @@ describe("CreditCardBillsLedger selection", () => {
     const missingRow = screen
       .getByText("Missing account purchase")
       .closest<HTMLElement>('[role="row"]')!
-    const slots = [
-      "description",
-      "account-icon",
-      "import",
-      "status",
-      "account",
-      "installment",
-      "category"
-    ]
+    const slots = ["description", "status", "installment", "category"]
     for (const row of [billRow, richRow, missingRow]) {
       expect(metadataSlots(row)).toEqual(slots)
+      for (const slot of row.querySelectorAll(
+        '[data-metadata-slot]:not([data-metadata-slot="description"])'
+      )) {
+        expect(slot).toHaveClass("justify-end", "text-right")
+      }
+      expect(within(row).getByTestId("transaction-description")).toHaveClass(
+        "text-left"
+      )
       expect(within(row).getAllByRole("gridcell")).toHaveLength(1)
       expect(row).toHaveStyle({ height: "40px" })
     }
-    for (const id of ["import", "installment", "category"])
+    expect(billRow.querySelector('[data-inline-metadata="import"]')).toBeNull()
+    for (const id of ["installment", "category"])
       expectEmptyMetadataSlot(billRow, id)
     expect(within(billRow).queryByRole("combobox")).not.toBeInTheDocument()
     expect(within(billRow).queryByRole("checkbox")).not.toBeInTheDocument()
@@ -289,24 +287,21 @@ describe("CreditCardBillsLedger selection", () => {
     ).toBeInTheDocument()
     expectEmptyMetadataSlot(richRow, "status")
     expect(within(richRow).getByText("1/12")).toBeInTheDocument()
+    expect(within(richRow).getByText("1/12")).toHaveClass("text-right")
     expect(
       within(richRow).getByRole("img", {
         name: "Imported from alignment-fixture.csv"
       })
     ).toBeInTheDocument()
-    for (const id of [
-      "account-icon",
-      "account",
-      "import",
-      "installment",
-      "status"
-    ])
+    for (const id of ["installment", "status"])
       expectEmptyMetadataSlot(missingRow, id)
+    expect(missingRow.querySelector("[data-inline-metadata]")).toBeNull()
     expect(
       within(missingRow).getByRole("combobox", {
         name: "Change category for Missing account purchase"
       })
     ).toHaveTextContent("Uncategorized")
+    expect(within(missingRow).getByText("Uncategorized")).toBeInTheDocument()
     fireEvent.click(within(richRow).getByRole("checkbox"))
     expect(richRow).toHaveAttribute("aria-selected", "true")
 
@@ -315,8 +310,7 @@ describe("CreditCardBillsLedger selection", () => {
         {...props}
         displayProperties={{
           ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
-          account: false,
-          sourceImport: false,
+          accountName: false,
           installment: false,
           category: false
         }}
@@ -325,6 +319,8 @@ describe("CreditCardBillsLedger selection", () => {
     for (const row of screen.getAllByRole("row"))
       expect(metadataSlots(row)).toEqual(["description", "status"])
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+    expect(document.querySelector("[data-category-dot]")).toBeNull()
+    expect(screen.queryByText("Groceries")).not.toBeInTheDocument()
     expect(screen.queryByText("1/12")).not.toBeInTheDocument()
     expect(
       within(billRow).getByText("Needs reconciliation")
@@ -340,6 +336,65 @@ describe("CreditCardBillsLedger selection", () => {
       expect(metadataSlots(row)).toEqual(slots)
     expectEmptyMetadataSlot(billRow, "category")
     expect(richRow).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("toggles account logos and names as one chip for checking rows and grouped bills without hiding import or card indicators", () => {
+    const props = {
+      transactions: [
+        {
+          ...checkingTransaction,
+          import: { id: "31", fileName: "account-chip.csv" }
+        }
+      ],
+      bills: [bill],
+      sort: "date-desc" as const,
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction: vi.fn(),
+      onDeleteTransactions: vi.fn()
+    }
+    const view = render(
+      <CreditCardBillsLedger
+        {...props}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true
+        }}
+      />
+    )
+    const chips = screen.getAllByTestId("transaction-account")
+    expect(chips).toHaveLength(2)
+    for (const chip of chips) {
+      expect(chip).toHaveClass("rounded-full", "border")
+      expect(chip.querySelector('[aria-hidden="true"]')).not.toBeNull()
+    }
+    expect(
+      screen.getByRole("group", { name: "Checking account: Checking" })
+    ).toHaveTextContent("Checking")
+    expect(
+      screen.getByRole("group", { name: "Credit card account: Main card" })
+    ).toHaveTextContent("Main card")
+    view.rerender(<CreditCardBillsLedger {...props} />)
+    expect(screen.queryByTestId("transaction-account")).not.toBeInTheDocument()
+    expect(document.querySelector('[data-metadata-slot="account"]')).toBeNull()
+    expect(
+      screen.getByRole("img", { name: "Imported from account-chip.csv" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("img", {
+        name: "Credit card: Combined bill for Main card"
+      })
+    ).toBeInTheDocument()
+    view.rerender(
+      <CreditCardBillsLedger
+        {...props}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true
+        }}
+      />
+    )
+    expect(screen.getAllByTestId("transaction-account")).toHaveLength(2)
   })
 
   it("retains an inert fixed installment slot in bill-only results and releases it only when hidden", () => {
@@ -358,7 +413,7 @@ describe("CreditCardBillsLedger selection", () => {
     const layout = screen.getByRole("grid").parentElement!
     expect(
       layout.style.getPropertyValue("--transaction-metadata-base-columns")
-    ).toContain("64px")
+    ).toContain("40px")
     expect(within(row).queryByRole("combobox")).not.toBeInTheDocument()
     expect(within(row).queryByRole("checkbox")).not.toBeInTheDocument()
     view.rerender(
@@ -373,7 +428,7 @@ describe("CreditCardBillsLedger selection", () => {
     expect(row.querySelector('[data-metadata-slot="installment"]')).toBeNull()
     expect(
       layout.style.getPropertyValue("--transaction-metadata-base-columns")
-    ).not.toContain("64px")
+    ).not.toContain("40px")
     expect(within(row).getByText("Needs reconciliation")).toBeInTheDocument()
     fireEvent.click(row)
     expect(mocks.navigate).toHaveBeenCalledWith(
@@ -391,6 +446,10 @@ describe("CreditCardBillsLedger selection", () => {
         isError={false}
         onUpdateTransaction={vi.fn()}
         onDeleteTransactions={vi.fn()}
+        displayProperties={{
+          ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
+          accountName: true
+        }}
       />
     )
     const grid = screen.getByRole("grid", { name: "Transactions" })
@@ -497,11 +556,11 @@ describe("CreditCardBillsLedger selection", () => {
         {...props}
         displayProperties={{
           date: false,
-          account: false,
+          accountName: false,
           category: false,
           installment: false,
           value: false,
-          sourceImport: false,
+          cardNumber: false,
           card: false
         }}
       />
@@ -517,15 +576,14 @@ describe("CreditCardBillsLedger selection", () => {
     ).toBeInTheDocument()
     expect(document.querySelector('[data-column="date"]')).toBeNull()
     expect(document.querySelector('[data-column="value"]')).toBeNull()
+    expect(screen.queryByTestId("transaction-account")).not.toBeInTheDocument()
     expect(
-      screen.queryByRole("img", { name: "Checking account: Checking" })
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("img", { name: "Imported from fixture.csv" })
-    ).not.toBeInTheDocument()
+      screen.getByRole("img", { name: "Imported from fixture.csv" })
+    ).toBeInTheDocument()
     expect(screen.queryByText("Checking")).not.toBeInTheDocument()
     expect(screen.queryByText("1/3")).not.toBeInTheDocument()
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+    expect(screen.queryByText("Groceries")).not.toBeInTheDocument()
     fireEvent.click(checkingRow, { metaKey: true })
     expect(checkingRow).toHaveAttribute("aria-selected", "true")
     expect(billRow).not.toHaveAttribute("aria-selected")

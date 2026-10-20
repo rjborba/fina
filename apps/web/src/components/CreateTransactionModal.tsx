@@ -25,11 +25,7 @@ import { toast } from "@/hooks/use-toast"
 import { CreateTransactionInputDtoType } from "@fina/types"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
-import { CardPicker } from "@/components/creditCards/CardPicker"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
-import { useBillReviewMonth } from "@/data/creditCardBills/useBillReviewMonth"
-import { ApiError } from "@/api/generated"
 
 interface CreateTransactionModalProps {
   onOpenChange?: (open: boolean) => void
@@ -43,7 +39,8 @@ type FormData = {
   category_id: string
   observation: string
   bankaccount_id: string
-  credit_card_id: string | null
+  card_name: string
+  card_last4: string
   installment_current: string
   installment_total: string
   bill_month: string
@@ -71,7 +68,8 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       category_id: "",
       observation: "",
       bankaccount_id: "",
-      credit_card_id: null,
+      card_name: "",
+      card_last4: "",
       installment_current: "",
       installment_total: "",
       bill_month: "",
@@ -83,19 +81,6 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     (account) => account.id.toString() === selectedAccountId
   )
   const creditCardSelected = selectedAccount?.type === "credit"
-  const cardQuery = useCreditCards({
-    groupId: open && creditCardSelected ? selectedGroup?.id : undefined,
-    accountId: creditCardSelected ? selectedAccountId : undefined
-  })
-  const {
-    reviewMonth,
-    setReviewMonth,
-    resetReviewMonth,
-    isLoading: reviewMonthLoading
-  } = useBillReviewMonth(
-    creditCardSelected ? selectedAccountId : undefined,
-    form.watch("bill_month")
-  )
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -113,15 +98,19 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
       const transactionData: CreateTransactionInputDtoType = {
         date: data.date ? new Date(data.date) : null,
         billMonth: selectedAccount?.type === "credit" ? data.bill_month : null,
-        reviewMonth:
-          selectedAccount?.type === "credit" ? reviewMonth : undefined,
         description: data.description,
         value: data.value ? parseFloat(data.value) : null,
         categoryId: data.category_id ? data.category_id : null,
         observation: data.observation || null,
         bankaccountId: data.bankaccount_id,
-        creditCardId:
-          selectedAccount?.type === "credit" ? data.credit_card_id : null,
+        cardName:
+          selectedAccount?.type === "credit"
+            ? data.card_name.trim() || null
+            : null,
+        cardLast4:
+          selectedAccount?.type === "credit"
+            ? data.card_last4.trim() || null
+            : null,
         installmentCurrent: data.installment_current
           ? data.installment_current
           : null,
@@ -136,17 +125,11 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         title: "Transaction created successfully"
       })
       form.reset()
-      resetReviewMonth()
       onOpenChange?.(false)
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to create transaction",
-        description:
-          error instanceof ApiError &&
-          (error.body as { code?: unknown } | null)?.code ===
-            "BILL_REVIEW_MONTH_CONFLICT"
-            ? "This bill already has a different review month. Change the month for the whole bill from its details, then try again."
-            : "Check the required fields and try again.",
+        description: "Check the required fields and try again.",
         variant: "destructive"
       })
     }
@@ -172,9 +155,9 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             <Select
               onValueChange={(value) => {
                 form.setValue("bankaccount_id", value)
-                form.setValue("credit_card_id", null)
+                form.setValue("card_name", "")
+                form.setValue("card_last4", "")
                 form.setValue("bill_month", "")
-                resetReviewMonth()
               }}
               value={selectedAccountId}
             >
@@ -201,24 +184,27 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
           </div>
 
           {creditCardSelected ? (
-            <div className="space-y-2">
-              <Label>Card</Label>
-              <CardPicker
-                cards={cardQuery.data ?? []}
-                value={form.watch("credit_card_id")}
-                onChange={(id) => form.setValue("credit_card_id", id)}
-                isLoading={cardQuery.isLoading}
-                disabled={cardQuery.isError}
-                ariaLabel="Purchase card"
-              />
-              <p className="text-xs text-muted-foreground">
-                Identifies the card used. All cards share this account's bill.
-              </p>
-              {cardQuery.isError ? (
-                <p role="alert" className="text-xs text-destructive">
-                  Could not load cards. Try again before assigning one.
-                </p>
-              ) : null}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="card_name">Card name</Label>
+                <Input
+                  id="card_name"
+                  maxLength={80}
+                  placeholder="Optional"
+                  {...form.register("card_name")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="card_last4">Last four digits</Label>
+                <Input
+                  id="card_last4"
+                  inputMode="numeric"
+                  maxLength={4}
+                  pattern="[0-9]{4}"
+                  placeholder="Optional"
+                  {...form.register("card_last4")}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -258,11 +244,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
                 {categories?.map((category) => (
                   <SelectItem key={category.id} value={category.id.toString()}>
                     <span className="flex items-center gap-2">
-                      <CategoryAppearance
-                        icon={category.icon}
-                        color={category.color}
-                        className="size-6 border"
-                      />
+                      <CategoryAppearance color={category.color} />
                       {category.name}
                     </span>
                   </SelectItem>
@@ -283,20 +265,11 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
                 value={form.watch("bill_month")}
                 dueDate={selectedAccount?.dueDate}
                 onValueChange={(value) => {
-                  resetReviewMonth()
                   form.setValue("bill_month", value, {
                     shouldDirty: true,
                     shouldValidate: true
                   })
                 }}
-              />
-              <BillMonthPicker
-                id="transaction-review-month"
-                label="Include in monthly review"
-                description="All purchases in the same bill share this month. Existing bills keep their saved month."
-                value={reviewMonth}
-                disabled={!form.watch("bill_month") || reviewMonthLoading}
-                onValueChange={setReviewMonth}
               />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -326,10 +299,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             className="w-full"
             disabled={
               addMutation.isPending ||
-              (creditCardSelected &&
-                (!form.watch("bill_month") ||
-                  !reviewMonth ||
-                  reviewMonthLoading))
+              (creditCardSelected && !form.watch("bill_month"))
             }
           >
             Create Transaction

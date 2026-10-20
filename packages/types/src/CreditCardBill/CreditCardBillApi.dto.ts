@@ -2,7 +2,7 @@ import { z } from "zod";
 import { BillMonthSchema, ReviewMonthsQuerySchema } from "../BillMonth";
 import { TransactionOutputSchema } from "../Transactions/TransactionApi.dto";
 import { FinancialInstitutionIdSchema } from "../BankAccount/FinancialInstitution";
-import { CreditCardReferenceSchema } from "../CreditCard/CreditCardApi.dto";
+import { CardNameSchema, CardLast4Schema } from "../Transactions/CardMetadata";
 import {
   hasValidTransactionValueRange,
   TransactionFilterQueryShape
@@ -31,7 +31,9 @@ export const CreditCardBillSummarySchema = z.object({
   accountInstitutionId: FinancialInstitutionIdSchema.nullable(),
   billMonth: BillMonthSchema,
   dueDate: z.string().date(),
-  reviewMonth: BillMonthSchema,
+  reviewMonth: BillMonthSchema.describe(
+    "Calculated as the calendar month before billMonth; never stored or editable"
+  ),
   cashFlowDate: z.string().date(),
   transactionCount: z.number().int().nonnegative(),
   total: z.number(),
@@ -85,7 +87,8 @@ export const CreditCardBillDetailSchema = z.object({
   cardRoundingAdjustment: z.number().finite(),
   cardSummaries: z.array(
     z.object({
-      creditCard: CreditCardReferenceSchema.nullable(),
+      cardName: CardNameSchema.nullable(),
+      cardLast4: CardLast4Schema.nullable(),
       transactionCount: z.number().int().nonnegative(),
       total: z.number().finite(),
       unavailableValueCount: z.number().int().nonnegative()
@@ -97,16 +100,6 @@ export const ReconcileCreditCardBillInputSchema = z.object({
   groupId: z.string().regex(/^\d+$/),
   paymentTransactionId: z.string().regex(/^\d+$/)
 });
-
-export const UpdateCreditCardBillReviewMonthInputSchema = z
-  .object({
-    groupId: z.string().regex(/^\d+$/),
-    reviewMonth: BillMonthSchema
-  })
-  .strict();
-export type UpdateCreditCardBillReviewMonthInput = z.infer<
-  typeof UpdateCreditCardBillReviewMonthInputSchema
->;
 
 export const UnlinkCreditCardBillOutputSchema = z.object({
   accountId: z.string(),

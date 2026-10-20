@@ -6,7 +6,14 @@ export const ImportIssueSchema = z
   .object({
     sourceRow: z.number().int().min(1),
     field: z
-      .enum(["date", "description", "amount", "installment", "creditCard"])
+      .enum([
+        "date",
+        "description",
+        "amount",
+        "installment",
+        "cardName",
+        "cardLast4"
+      ])
       .optional(),
     code: z.string(),
     message: z.string(),

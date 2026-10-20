@@ -44,7 +44,7 @@ export interface TransactionFilterValue {
   partialDescription: string
   categoriesId: string[]
   accountsId?: string[]
-  creditCardsId?: string[]
+  cards?: string[]
   importSource?: "imported" | "manual"
   importsId?: string[]
   minValue?: number
@@ -95,7 +95,7 @@ function activeFilterCount(value: TransactionFilterValue) {
   return (
     Number(value.categoriesId.length > 0) +
     Number(!!value.accountsId?.length) +
-    Number(!!value.creditCardsId?.length) +
+    Number(!!value.cards?.length) +
     Number(!!value.importSource || !!value.importsId?.length) +
     Number(value.minValue !== undefined || value.maxValue !== undefined) +
     Number(!!value.partialDescription.trim())
@@ -596,9 +596,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
                   ...(current.accountsId !== undefined
                     ? { accountsId: undefined }
                     : {}),
-                  ...(current.creditCardsId !== undefined
-                    ? { creditCardsId: undefined }
-                    : {}),
+                  ...(current.cards !== undefined ? { cards: undefined } : {}),
                   ...(current.importsId !== undefined
                     ? { importsId: undefined }
                     : {}),

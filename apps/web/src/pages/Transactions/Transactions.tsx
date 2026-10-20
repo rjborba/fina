@@ -170,9 +170,7 @@ const TransactionsView: FC = () => {
     () => ({
       search: filterProps.partialDescription || undefined,
       categoryIdList: filterProps.categoriesId,
-      creditCardIdList: filterProps.creditCardsId?.length
-        ? filterProps.creditCardsId
-        : undefined,
+      cardList: filterProps.cards?.length ? filterProps.cards : undefined,
       accountIdList: linkedAccountId
         ? [linkedAccountId]
         : selectedAccountIds?.length
@@ -188,7 +186,7 @@ const TransactionsView: FC = () => {
     [
       filterProps.partialDescription,
       filterProps.categoriesId,
-      filterProps.creditCardsId,
+      filterProps.cards,
       selectedAccountIds,
       filterProps.importSource,
       filterProps.importsId,
@@ -698,11 +696,7 @@ const TransactionsView: FC = () => {
                 className="border-b border-r border-fina-grid p-4"
               >
                 <div className="flex items-center gap-2">
-                  <CategoryAppearance
-                    icon={category.icon}
-                    color={category.color}
-                    className="size-7 border"
-                  />
+                  <CategoryAppearance color={category.color} />
                   <p className="truncate text-xs font-medium">
                     {category.name}
                   </p>

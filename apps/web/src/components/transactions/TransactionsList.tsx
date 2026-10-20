@@ -465,19 +465,16 @@ const TransactionsList: FC<TransactionsListProps> = ({
     ]
   )
 
-  const assignSelectedCard = async (creditCard: Transaction["creditCard"]) => {
-    if (
-      isSelectionBusy ||
-      !cardAccountId ||
-      (creditCard && creditCard.accountId !== cardAccountId)
-    )
-      return
+  const assignSelectedCard = async (
+    card: Pick<Transaction, "cardName" | "cardLast4">
+  ) => {
+    if (isSelectionBusy || !cardAccountId) return
     setIsUpdatingCard(true)
     try {
       const { updatedCount, failedCount } =
         await assignCardToTransactionSelection(
           [...selectedTransactionIds],
-          creditCard,
+          card,
           onUpdateTransaction
         )
       if (failedCount > 0) {

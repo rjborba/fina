@@ -11,7 +11,7 @@ import {
 import userEvent from "@testing-library/user-event"
 import type {
   CategoryOutput,
-  CreditCardOutput,
+  CardMetadata,
   CreditCardBillDetail,
   TransactionOutput
 } from "@fina/types"
@@ -29,12 +29,11 @@ const mocks = vi.hoisted(() => ({
   billMonth: "2026-07",
   data: undefined as CreditCardBillDetail | undefined,
   categories: [] as CategoryOutput[],
-  cards: [] as CreditCardOutput[],
+  cards: [] as CardMetadata[],
   updateTransaction: vi.fn(),
   removeTransactions: vi.fn(),
   reconcile: vi.fn(),
-  unlink: vi.fn(),
-  reviewMonth: vi.fn()
+  unlink: vi.fn()
 }))
 
 const food = {
@@ -52,7 +51,8 @@ const transport = {
 
 const transaction = {
   id: "coffee-purchase",
-  creditCard: null,
+  cardName: null,
+  cardLast4: null,
   createdAt: "2026-06-18T00:00:00.000Z",
   description: "Coffee purchase",
   value: -100,
@@ -163,8 +163,8 @@ vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
   useBankAccounts: () => ({ data: [], isLoading: false })
 }))
 
-vi.mock("@/data/creditCards/useCreditCards", () => ({
-  useCreditCards: () => ({
+vi.mock("@/data/transactions/useTransactionCardValues", () => ({
+  useTransactionCardValues: () => ({
     data: mocks.cards,
     isLoading: false,
     isError: false
@@ -206,8 +206,7 @@ vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
 vi.mock("@/data/creditCardBills/useCreditCardBillMutation", () => ({
   useCreditCardBillMutation: () => ({
     reconcileMutation: { mutateAsync: mocks.reconcile, isPending: false },
-    unlinkMutation: { mutateAsync: mocks.unlink, isPending: false },
-    reviewMonthMutation: { mutateAsync: mocks.reviewMonth, isPending: false }
+    unlinkMutation: { mutateAsync: mocks.unlink, isPending: false }
   })
 }))
 
@@ -294,21 +293,14 @@ describe("credit-card bill purchase filters", () => {
   })
 
   it("filters purchases by named cards plus unidentified without changing the shared bill total, subtotals or linked payment", async () => {
-    const physical: CreditCardOutput = {
-      id: "70",
-      accountId: "card-1",
-      accountName: "Fixture card",
-      groupId: "group-1",
-      createdAt: "2026-06-01T00:00:00.000Z",
-      name: "Main physical",
-      last4: "0042",
-      archived: false
+    const physical: CardMetadata = {
+      cardName: "Main physical",
+      cardLast4: "0042"
     }
-    const virtual: CreditCardOutput = {
+    const virtual: CardMetadata = {
       ...physical,
-      id: "71",
-      name: "Online virtual",
-      last4: null
+      cardName: "Online virtual",
+      cardLast4: null
     }
     mocks.cards = [physical, virtual]
     const current = mocks.data!
@@ -322,27 +314,28 @@ describe("credit-card bill purchase filters", () => {
       },
       transactions: current.transactions.map((purchase) => ({
         ...purchase,
-        creditCard: purchase.id.startsWith("coffee")
+        ...(purchase.id.startsWith("coffee")
           ? physical
           : purchase.id === "taxi"
             ? virtual
-            : null
+            : { cardName: null, cardLast4: null })
       })),
       cardSummaries: [
         {
-          creditCard: physical,
+          ...physical,
           total: -75,
           transactionCount: 2,
           unavailableValueCount: 0
         },
         {
-          creditCard: virtual,
+          ...virtual,
           total: -50,
           transactionCount: 1,
           unavailableValueCount: 0
         },
         {
-          creditCard: null,
+          cardName: null,
+          cardLast4: null,
           total: -75,
           transactionCount: 2,
           unavailableValueCount: 1
@@ -391,8 +384,8 @@ describe("credit-card bill purchase filters", () => {
     expect(screen.getByRole("button", { name: "Unlink payment" })).toBeEnabled()
     expect(mocks.reconcile).not.toHaveBeenCalled()
     expect(mocks.unlink).not.toHaveBeenCalled()
-    expect(mocks.data.bill.payment).toBe(payment)
-    expect(mocks.data.bill.total).toBe(-200)
+    expect(mocks.data!.bill.payment).toBe(payment)
+    expect(mocks.data!.bill.total).toBe(-200)
   })
 
   it("searches descriptions case-insensitively without inheriting ledger dates or filters", async () => {

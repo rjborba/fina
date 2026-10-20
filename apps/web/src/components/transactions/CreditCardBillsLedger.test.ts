@@ -10,7 +10,8 @@ const transaction = (
 ): TransactionOutput =>
   ({
     id,
-    creditCard: null,
+    cardName: null,
+    cardLast4: null,
     description: id,
     value,
     calculatedDate: date,

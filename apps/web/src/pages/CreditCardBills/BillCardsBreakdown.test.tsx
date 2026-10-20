@@ -4,34 +4,31 @@ import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { CreditCardBillDetail } from "@fina/types"
+import { cardMetadataKey } from "@fina/types"
 import { BillCardsBreakdown } from "./BillCardsBreakdown"
 
 const summaries: CreditCardBillDetail["cardSummaries"] = [
   {
-    creditCard: {
-      id: "20",
-      accountId: "10",
-      name: "Mine",
-      last4: "4242",
-      archived: false
-    },
+    cardName: "Mine",
+    cardLast4: "4242",
     transactionCount: 2,
     total: -50,
     unavailableValueCount: 0
   },
   {
-    creditCard: {
-      id: "21",
-      accountId: "10",
-      name: "Family",
-      last4: null,
-      archived: true
-    },
+    cardName: "Family",
+    cardLast4: null,
     transactionCount: 3,
     total: -80,
     unavailableValueCount: 0
   },
-  { creditCard: null, transactionCount: 1, total: 0, unavailableValueCount: 1 }
+  {
+    cardName: null,
+    cardLast4: null,
+    transactionCount: 1,
+    total: 0,
+    unavailableValueCount: 1
+  }
 ]
 
 afterEach(cleanup)
@@ -43,14 +40,14 @@ describe("bill card breakdown", () => {
       <BillCardsBreakdown
         summaries={summaries}
         roundingAdjustment={0}
-        selectedIds={["20"]}
+        selectedIds={[cardMetadataKey(summaries[0])]}
         onToggleCard={onToggleCard}
       />
     )
     const section = screen.getByRole("region", { name: "Cards in this bill" })
     expect(section).toHaveTextContent("One shared bill")
     expect(section).toHaveTextContent("every purchase and refund")
-    expect(section).toHaveTextContent("Archived")
+    expect(section).not.toHaveTextContent("Archived")
     const mine = within(section).getByRole("button", {
       name: "Filter purchases by Mine · ••4242"
     })

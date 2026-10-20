@@ -11,19 +11,19 @@ Existing code is evidence, not an implicit specification.
 
 ## Product status
 
-| Area                | Current                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Target                                                                                                                                                                 | Gap                                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Identity            | Nest globally verifies Supabase HS256 or signing-key JWTs, validates issuer/audience/role, and attaches typed identity. Stable errors include a request ID.                                                                                                                                                                                                                                                                                                                                     | A typed authenticated identity is derived from every verified token.                                                                                                   | Add production observability around failures without logging tokens.                                                |
-| Tenant isolation    | Every application route uses shared membership policy and group-scoped queries. Cross-tenant resource lookups return the same not-found response.                                                                                                                                                                                                                                                                                                                                               | Every query and mutation is membership-checked and group-scoped without resource-existence disclosure.                                                                 | Keep PostgreSQL-backed denial tests with every new resource.                                                        |
-| Roles               | Memberships have owner/member roles. Owners manage invitations and group deletion; both roles manage financial data.                                                                                                                                                                                                                                                                                                                                                                            | Owners administer groups and members; both roles manage financial data.                                                                                                | Member removal, ownership transfer, and final-owner rules still need routes.                                        |
-| First-run setup     | Every Supabase Auth signup atomically creates an application profile, a `My finances` group, and an owner membership; existing profiles without any membership are backfilled by migration.                                                                                                                                                                                                                                                                                                     | A newly authenticated user can immediately use every group-scoped product flow.                                                                                        | Add first-run guidance and group renaming to the browser experience.                                                |
-| Accounts/categories | Nest provides group-scoped create/list/read/delete behavior; ordinary deletion archives records without changing transaction history. Credit-card accounts accept and persist a constrained due day from 1 through 31, rather than an artificial calendar date. Categories carry a validated icon and color from the product palette, with safe defaults for existing rows and older clients, and members can change existing category appearance.                                              | Members manage group-scoped accounts and visually distinct categories; referenced records archive without owning transaction lifecycle.                                | Add account/category name editing and recovery UX.                                                                  |
-| CSV import          | The CSV workflow validates mapping, preserves source files, rejects active duplicates, and atomically imports group-scoped transactions. Card imports choose the bill due month separately from a persisted monthly-review month. Existing bills retain their saved reference month; conflicting import assignments fail atomically.                                                                                                                                                            | Preview validated generic mapping, detect same-file duplicates, atomically persist normalized rows and the original CSV, and retain the source for audit/reprocessing. | Extend bank-format detection and original file recovery UX as needed.                                               |
-| Transactions        | Monthly review filters purchases by a saved reference month and supports inline or grouped card bills. Cash flow shows unpaid bills on their due date as forecasts and confirmed card payments once on their actual payment date and amount. Group preferences apply to new bills, while bill-level reassignment moves every purchase together without changing original dates. Checking expenses can override their review month. All data remains group-scoped and ordinary deletion is soft. | Group-scoped review/editing, exact minor-unit money, explicit account currencies, explicit posting/accounting/occurrence dates, and soft deletion.                     | Add responsibility splits and settlement tracking; migrate money and currency with explicit data handling.          |
-| Invitations         | Owners create/list/revoke invites; an authenticated matching email can accept once and become a member.                                                                                                                                                                                                                                                                                                                                                                                         | Email-bound, single-use, revocable, seven-day invitations create member memberships.                                                                                   | Add expiry and email delivery.                                                                                      |
-| Group deletion      | Owner-only deletion requires typed exact-name confirmation and relies on tested aggregate cascades inside one transaction.                                                                                                                                                                                                                                                                                                                                                                      | Owner types the group name; one database transaction hard-deletes the tenant aggregate with tested cascades.                                                           | Add ownership-transfer/member administration before broader rollout.                                                |
-| API contracts       | Zod request/safe-response DTOs generate committed OpenAPI and fetch client output; web data hooks use only that client.                                                                                                                                                                                                                                                                                                                                                                         | Transport-neutral Zod schemas drive validation, OpenAPI, the generated client, and TanStack Query hooks.                                                               | Extend response serialization checks as new endpoints are added.                                                    |
-| Hosting             | Vercel hosts the web app. Render runs the verified Nest API with production Supabase Auth/PostgreSQL configuration and controlled TypeORM migrations. The API custom domain serves directly over TLS with explicit CORS; Render's instance tier is still free.                                                                                                                                                                                                                                  | Vercel serves the web app and an always-on Render web service runs Nest near PostgreSQL with explicit health and migration procedures.                                 | Verify the authenticated web journey; add an always-on instance, health checks, and an approved migration workflow. |
+| Area                | Current                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Target                                                                                                                                                                 | Gap                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Identity            | Nest globally verifies Supabase HS256 or signing-key JWTs, validates issuer/audience/role, and attaches typed identity. Stable errors include a request ID.                                                                                                                                                                                                                                                                                                           | A typed authenticated identity is derived from every verified token.                                                                                                   | Add production observability around failures without logging tokens.                                                |
+| Tenant isolation    | Every application route uses shared membership policy and group-scoped queries. Cross-tenant resource lookups return the same not-found response.                                                                                                                                                                                                                                                                                                                     | Every query and mutation is membership-checked and group-scoped without resource-existence disclosure.                                                                 | Keep PostgreSQL-backed denial tests with every new resource.                                                        |
+| Roles               | Memberships have owner/member roles. Owners manage invitations and group deletion; both roles manage financial data.                                                                                                                                                                                                                                                                                                                                                  | Owners administer groups and members; both roles manage financial data.                                                                                                | Member removal, ownership transfer, and final-owner rules still need routes.                                        |
+| First-run setup     | Every Supabase Auth signup atomically creates an application profile, a `My finances` group, and an owner membership; existing profiles without any membership are backfilled by migration.                                                                                                                                                                                                                                                                           | A newly authenticated user can immediately use every group-scoped product flow.                                                                                        | Add first-run guidance and group renaming to the browser experience.                                                |
+| Accounts/categories | Nest provides group-scoped create/list/read/delete behavior; ordinary deletion archives records without changing transaction history. Credit-card accounts accept and persist a constrained due day from 1 through 31, rather than an artificial calendar date. Categories carry a validated icon and color from the product palette, with safe defaults for existing rows and older clients, and members can change existing category appearance.                    | Members manage group-scoped accounts and visually distinct categories; referenced records archive without owning transaction lifecycle.                                | Add account/category name editing and recovery UX.                                                                  |
+| CSV import          | The CSV workflow validates mapping, preserves source files, rejects active duplicates, and atomically imports group-scoped transactions. Card imports choose only the bill due month. Monthly review automatically includes bills due in the following month; no review assignments are stored.                                                                                                                                                                       | Preview validated generic mapping, detect same-file duplicates, atomically persist normalized rows and the original CSV, and retain the source for audit/reprocessing. | Extend bank-format detection and original file recovery UX as needed.                                               |
+| Transactions        | Monthly review calculates card attribution as the month before each bill's due month and supports inline or grouped card bills. Cash flow shows unpaid bills on their due date as forecasts and confirmed card payments once on their actual payment date and amount. Checking transactions use their occurrence month. No group defaults, bill assignments, or transaction review overrides are stored. All data remains group-scoped and ordinary deletion is soft. | Group-scoped review/editing, exact minor-unit money, explicit account currencies, explicit posting/accounting/occurrence dates, and soft deletion.                     | Add responsibility splits and settlement tracking; migrate money and currency with explicit data handling.          |
+| Invitations         | Owners create/list/revoke invites; an authenticated matching email can accept once and become a member.                                                                                                                                                                                                                                                                                                                                                               | Email-bound, single-use, revocable, seven-day invitations create member memberships.                                                                                   | Add expiry and email delivery.                                                                                      |
+| Group deletion      | Owner-only deletion requires typed exact-name confirmation and relies on tested aggregate cascades inside one transaction.                                                                                                                                                                                                                                                                                                                                            | Owner types the group name; one database transaction hard-deletes the tenant aggregate with tested cascades.                                                           | Add ownership-transfer/member administration before broader rollout.                                                |
+| API contracts       | Zod request/safe-response DTOs generate committed OpenAPI and fetch client output; web data hooks use only that client.                                                                                                                                                                                                                                                                                                                                               | Transport-neutral Zod schemas drive validation, OpenAPI, the generated client, and TanStack Query hooks.                                                               | Extend response serialization checks as new endpoints are added.                                                    |
+| Hosting             | Vercel hosts the web app. Render runs the verified Nest API with production Supabase Auth/PostgreSQL configuration and controlled TypeORM migrations. The API custom domain serves directly over TLS with explicit CORS; Render's instance tier is still free.                                                                                                                                                                                                        | Vercel serves the web app and an always-on Render web service runs Nest near PostgreSQL with explicit health and migration procedures.                                 | Verify the authenticated web journey; add an always-on instance, health checks, and an approved migration workflow. |
 
 ## Domain glossary
 
@@ -40,14 +40,14 @@ Existing code is evidence, not an implicit specification.
 - **Credit-card bill**: a derived aggregate for one credit account and bill
   month, whose concrete due date is derived from that account's configured due
   day.
-- **Individual card**: a named physical, additional, or virtual card beneath a
-  credit account. It identifies a purchase's source, not a separate account,
-  bill, payment, permission boundary, or reimbursement obligation.
+- **Card metadata**: an optional statement label and final four digits stored
+  directly on a credit transaction, not a separate identity, account, bill,
+  payment, permission boundary, or reimbursement obligation.
 - **Bill reconciliation**: the tenant-scoped link between one derived
   credit-card bill and one checking-account payment transaction.
-- **Review month**: an explicit calendar month used for household expense
-  review, independent of purchase, due, and payment dates. Card purchases inherit
-  one persisted assignment for the whole bill.
+- **Review month**: a calculated calendar month used for household expense
+  review: the month before a credit bill's due month, or a checking transaction's
+  occurrence month. It is never stored or assigned independently.
 - **Invitation**: a time-limited, revocable offer for one verified email address
   to join one group as a member.
 
@@ -153,10 +153,9 @@ Production observability around authentication and import failures remains.
    normalize against a strict schema; one invalid row rejects the atomic import;
    require members to enter the bill month for credit-card imports, combine it
    with the account due day instead of trusting file metadata, and use the
-   resulting due date for cash-flow forecasts. A separate review month is saved
-   once for the bill, using an explicit choice or the group's default. Imports
-   into an existing bill reuse its saved month; a conflicting explicit choice
-   fails atomically and directs the member to change the whole bill;
+   resulting due date for cash-flow forecasts. Monthly review automatically
+   includes the bill in the preceding calendar month, without an import choice,
+   stored assignment, or group default;
    in signed-amount mode, `chargesPositive` means invert every sign: positive
    charges become negative and negative credits/refunds become positive. With
    inversion disabled, source signs are preserved; separate debit/credit columns
@@ -168,80 +167,102 @@ Production observability around authentication and import failures remains.
    verify size and SHA-256 from the uploaded bytes in Nest; identical hash is
    blocked per group/account; retain the immutable original CSV in PostgreSQL
    with the import while never exposing it in ordinary response contracts.
+   Successful confirmation also saves the mapping in the existing group/account/
+   column-layout profile, including optional card columns, date/number formats,
+   and sign inversion. A later matching statement applies the destination
+   account's profile automatically. With several matching accounts, choosing the
+   destination applies its own profile; no account is guessed. An account without
+   its own profile can reuse an unambiguous mapping from the same institution and
+   account type within the active group (including C6 credit accounts). Different
+   mappings require an explicit choice. Institution reuse requires matching
+   normalized headers and column count; headerless formats are account-specific,
+   and generic institutions never imply a shared bank format. Current-file
+   delimiter, encoding, and detected boundaries are retained. A visible status
+   identifies the applied mapping, edits remain possible, and late/refetched
+   profiles never overwrite manual choices. Bill months, row exclusions, and
+   transaction/card values are not saved in profiles. No browser-local mapping
+   storage, new card entity, or database migration is needed.
 4. **Acceptance criteria:** preview shows field failures; confirmation is all or
    nothing; duplicates conflict; imported transactions appear only to members;
-   a browser journey and PostgreSQL integration tests prove the flow.
+   a browser journey and PostgreSQL integration tests prove the flow. Saved
+   mapping tests cover account precedence, institution/type/layout restrictions,
+   conflicts, current-file parsing, and late responses; the browser imports a
+   manually mapped C6 format and reuses its persisted mapping on later statements
+   and another C6 credit account.
 5. **Non-goals:** bank-specific formats, overlapping-range warnings, original
    file download UX, currency conversion, and cross-currency totals.
 6. **Discrepancy:** the product and API flow are implemented. Browser automation
    uses a uniquely named disposable local PostgreSQL database and a loopback-only
    identity fixture, never development or production Auth records.
 
-### Individual cards on a shared credit bill
+### Transaction card metadata on a shared credit bill
 
-1. **User outcome:** a credit account can contain multiple named cards, such as
-   a member's and their spouse's cards, while retaining one combined bill and
-   payment. Purchases show their card; members can filter by card and inspect
-   per-card subtotals in the complete bill.
-2. **Authorization boundary:** each card belongs to exactly one group and one
-   credit account. Creation derives its group from a membership-scoped parent;
-   card edits cannot change the parent or group. Transaction and import card
-   assignments must match both the transaction's group and credit account.
-   Inaccessible and nonexistent identifiers produce the same not-found result.
-3. **Business rules:** cards store a nickname and optional exactly four final
-   digits, never a full card number, CVV, or expiry. No ownership inference is
-   made from a nickname. Existing purchases remain explicitly unidentified.
-   Card archival hides new-assignment choices but retains historical attribution;
-   changing card metadata never changes financial records. Clearing/changing an
-   account cannot leave an incompatible card reference. Group deletion cascades
-   the complete aggregate; ordinary card or account archival never deletes
-   purchases. Bills, due dates, review months, payment matching, and cash-flow
-   amounts remain keyed by account and bill month, never by an individual card.
-   Per-card summaries include unidentified purchases, credits/refunds, counts,
-   and unavailable amounts, and reconcile to the full bill independently of
-   purchase filters. An explicit rounding adjustment accounts for legacy/manual
-   values stored with more than two decimals; no rounding remainder is assigned
-   to a card or written back to a purchase. Bill detail reads use one read-only
-   repeatable-read snapshot so concurrent edits cannot be mislabeled as rounding.
-   The unidentified card filter applies only to credit-account
-   purchases, not to checking transactions.
-   CSV imports can choose one fallback card for the file or explicitly map a
-   source column's distinct values to cards. Nonempty unmapped values block
-   import; blank values use the fallback, and an explicit unidentified mapping
-   overrides it. Card identities are never guessed. Confirmation derives mapped
-   attribution from verified source rows and checks every selected card within
-   the import transaction. Optional version-1 mapping fields preserve older
-   profiles; stale, archived, or foreign-account selections require correction.
-4. **Acceptance criteria:** shared schemas reject unsafe metadata and malformed
-   mappings. Disposable PostgreSQL tests cover group/parent denial, structural
-   constraints, migration preservation, archival, hard-delete/cascade behavior,
-   verified CSV attribution, and unchanged combined-bill reconciliation. UI and
-   browser journeys cover two cards on one bill, manual creation/editing,
-   combined CSV import, unidentified history, filters/subtotals, and persistence.
-5. **Non-goals:** responsibility splits, multiple payments, separate per-card
-   bills/balances/limits, bank connections, automatic card creation, and storage
-   of payment credentials.
-6. **Reference model:** [C6](https://www.c6bank.com.br/blog/cartao-adicional-c6-bank-tem-fatura-separada)
-   combines all additional-card purchases in the titular bill while exposing
-   individual-card spending views. [Itaú](https://www.itau.com.br/cartoes/servicos/cartao-adicional)
-   differentiates card purchases inside one principal/additional-card statement.
-   Fina follows that account/card distinction without connecting to bank APIs.
-7. **Status:** implemented and verified with shared-contract and UI tests,
-   disposable PostgreSQL coverage, and an isolated browser journey through two
-   cards, one combined bill/payment, manual and CSV attribution, filtering,
-   editing, archival, reload persistence, and light/dark/mobile layouts.
-8. **Deployment:** the forward-only
-   `1791300000000-IndividualCreditCards` TypeORM migration must run before the new
-   API starts. It has been committed, PostgreSQL-tested, and applied to the
-   verified local Supabase development database. Production is unchanged and
-   uses the controlled TypeORM migration workflow.
+1. **User outcome:** one credit-account CSV can contain purchases from any number
+   of cards without first creating cards or mapping their identities. Optional
+   card name and final-four-digit columns describe each transaction. The account
+   retains one combined bill and payment.
+2. **Authorization boundary:** metadata belongs to its transaction, with the same
+   active-membership and group-scoped authorization. The distinct-values endpoint
+   is scoped to the requested group and optional account; it never exposes another
+   tenant's labels. There is no individual-card entity or CRUD API.
+3. **Business rules:** transactions store nullable `cardName` and `cardLast4`
+   text fields. Names are trimmed, bounded, and reject control characters and
+   PAN-like digit sequences. Digits must contain exactly four ASCII digits;
+   leading zeros are preserved. Never collect payment credentials or infer
+   ownership from a name. Card details are allowed only on credit-account purchases.
+   Ordinary account archival and import/transaction soft deletion retain metadata.
+   Hard account deletion clears optional account/card attribution without deleting
+   group-owned transactions.
+   CSV maps `cardNameColumn` and `cardLast4Column` just like date, description,
+   amount, and installment. Either column is optional. Empty cells remain null;
+   explicitly masked numbers normalize to final-four text, but full numbers are
+   rejected, never silently truncated. Confirmation derives these values from the
+   verified file and physical source rows, not client-selected card IDs or forged
+   preview values. Profiles save column choices only, with no identity mapping or
+   file-wide card fallback. Historical import mappings and original files remain
+   retained for audit; old profiles lose obsolete identity assignments and require
+   an explicit choice of which column contains a name versus digits.
+   Manual creation, details, and same-account bulk editing use ordinary optional
+   fields, with retryable errors and no separate card management.
+   Display controls card name and masked digits independently. The permanent card
+   indicator follows the import indicator and reveals available metadata. Entirely
+   unidentified credit purchases retain `Not identified`; checking rows stay blank.
+   Filters and complete-bill subtotals group exact name/digit pairs, not stable card
+   identities. Equal final digits with different labels remain separate, but no
+   global uniqueness or cross-import identity is promised. Card filters are in
+   memory only: labels/digits are never persisted in browser filter preferences,
+   and obsolete saved card IDs are ignored without losing other preferences.
+   Bill identity, due dates, review months, reconciliation, and cash-flow amounts
+   remain keyed by account/month. Subtotals include refunds, unidentified entries,
+   unavailable values, and an explicit rounding adjustment; read-only repeatable
+   snapshots prevent concurrent edits being mistaken for rounding.
+4. **Acceptance criteria:** shared schemas and parser/UI tests cover independent
+   columns, mixed cards, empty values, leading zeros, masked digits, unsafe inputs,
+   stale ID rejection, display toggles, editing, filtering, and privacy-safe
+   preferences. Disposable PostgreSQL tests prove source verification, tenant
+   isolation, migration preservation, constraints, combined-bill reconciliation,
+   and rounding. The browser journey imports three card labels and verifies
+   display, filtering, editing, reload persistence, and compact light/dark/mobile
+   rendering through the real API.
+5. **Non-goals:** saved-card inventory, card-wide rename/archive/unarchive,
+   automatic identity matching, separate per-card bills/balances/limits,
+   responsibility splits, bank connections, or payment-credential storage.
+6. **Deployment:** `1792459849364-TransactionCardMetadata` copies existing names
+   and last four digits from active/archived cards onto every attributed
+   transaction, including soft-deleted history, before dropping the card table and
+   reference column. Financial records and immutable original files are preserved.
+   Independent card records not attached to transactions require a backup to
+   recover. Deploy the matching API and web together; stale clients submitting
+   card IDs are rejected. The migration is PostgreSQL-tested, committed, and applied to the
+   verified local Supabase development database. Production is unchanged by local
+   implementation.
 
 ### Credit-card bill grouping and reconciliation
 
 1. **User outcome:** Cash flow shows one bill/payment row per credit account and bill month.
    Unpaid bills are forecasts on their due date; confirmed payments appear on
    their actual date and amount. Monthly review shows individual purchases or
-   one grouped bill using the bill's independently assigned reference month.
+   one grouped bill in the calendar month preceding the bill's due month.
 2. **Authorization boundary:** bill aggregates, detail, candidates, and payment
    links are group-scoped and require active membership; cross-tenant requests
    return the standard non-disclosing not-found response.
@@ -272,7 +293,7 @@ Production observability around authentication and import failures remains.
    category, import-source, specific-import, and amount filters (including
    uncategorized purchases) search the complete bill
    independently of the Transactions page's filters. Filtered purchase counts
-   and net totals are labeled separately; the full bill total, review month,
+   and net totals are labeled separately; the full bill total,
    payment link, and reconciliation candidates are never narrowed by filters.
    Filters reset when changing the active group or bill. PostgreSQL tests
    prove tenant isolation, suggestion, reconciliation, review, unlinking,
@@ -285,17 +306,20 @@ Production observability around authentication and import failures remains.
 
 ### Household monthly review
 
-1. **User outcome:** a July credit-card bill can belong to June's household
-   review while its due date and actual payment remain in their real months.
-2. **Authorization boundary:** active members may reassign bill or checking
-   reference months; only group owners may change the shared default.
-3. **Business rules:** group defaults are the bill's due month or the preceding
-   month. Existing bills are backfilled to their original due month, and changing
-   the default never rewrites persisted history. One assignment applies to all
-   imports and manual purchases in a bill, including installments and credits.
-   Checking transactions use their occurrence month unless explicitly overridden.
-   Month assignment is independent of transaction/category edits and confirmed
-   payments. Transaction sorting uses an immutable ID to break equal-value ties.
+1. **User outcome:** Monthly review automatically includes bills due in the next
+   month: February bills appear in January, and January bills in the preceding
+   December. Due dates and actual payments retain their real dates.
+2. **Authorization boundary:** all reads require active membership and scoped
+   queries. There are no review-assignment or group-default mutation routes.
+3. **Business rules:** derive the review month from the bill's due month minus
+   one calendar month, independently of purchase dates and confirmed payments.
+   The same rule applies to historical and future bills, imports, manual entries,
+   installments, credits, and empty scheduled bills. Checking transactions use
+   their occurrence month with no override. Imports and manual entries choose
+   only the bill due month. No group default, bill assignment, or transaction
+   review-month column is stored; response review months are computed read-only
+   values. Reject stale clients that submit review assignments. Transaction
+   sorting uses an immutable ID to break equal-value ties.
    The details dialog keeps the visible transaction order from when it opens
    through category edits and refreshes, while displaying the latest record
    values. Rows removed from the filtered ledger are skipped; new rows join the
@@ -303,8 +327,33 @@ Production observability around authentication and import failures remains.
    transactions, grouped checking transactions, and bill-detail purchases.
    Changing the active group ends the open details session.
    Display opens a compact anchored panel with an ordering dropdown, a separate
-   sort-direction control, and toggles for date, account, card, category, installment,
-   amount, and import indicators. Changes apply immediately to inline and
+   sort-direction control, and toggles for date, account, card name, masked
+   card number, category, installment, and amount. Account chips and masked
+   card numbers are off by default. Account combines the institution icon and
+   name in one outlined chip; its toggle hides or shows the entire chip and
+   column in inline, grouped, and bill-detail lists. The renamed Account option
+   preserves the existing saved account-name visibility choice. Import and credit-card
+   indicators are always visible when applicable; the credit-card icon follows the import
+   icon and reveals the transaction's card label and optional final four digits on hover
+   or keyboard focus. Unidentified credit-card
+   purchases show `Not identified` when Card name is enabled, with an explanatory
+   icon tooltip rather than a guessed card identity. Checking rows have no card label.
+   Import and card indicators sit directly after the description, in that order,
+   without placeholder gaps for inapplicable icons. The account icon is never
+   separated from its chip's name. Categories use
+   outlined rounded chips with a colored dot and name, not pictograms. Category
+   creation and editing offer a color picker and chip preview; legacy icon
+   metadata remains API-compatible but is not displayed or configurable. New
+   categories use the existing safe icon default, and color edits preserve
+   legacy icon metadata. Uncategorized rows show a muted, outlined `Uncategorized`
+   chip without a colored dot; clicking or keyboard-activating it opens the category
+   picker. Hiding Category removes its whole chip, picker, and column. Hiding
+   Account removes both its icon and name; card-text toggles do not hide the
+   permanent credit-card indicator.
+   These hover targets use an ordinary cursor, not a question mark. The number
+   option displays only masked final four digits, never a full payment number.
+   Obsolete saved account/import icon flags are ignored while supported sorting
+   and visibility choices remain preserved. Changes apply immediately to inline and
    grouped ledgers and bill-detail purchases. Description and bill reconciliation
    context remain visible. Only validated property visibility booleans and a
    supported sort option are saved locally; no financial records are persisted
@@ -318,7 +367,7 @@ Production observability around authentication and import failures remains.
    input cursor keys. Below 640px, editors open below their property rather than
    beside it, and collision handling keeps them within the viewport.
    The picker provides
-   category, bank-account and individual-card multiselects, imported/manual source and specific
+   category, bank-account and transaction-card-value multiselects, imported/manual source and specific
    import selection, signed exact/minimum/maximum/inclusive-range amount filters,
    description search, and a date or review-month range editor. Multiple values
    within one property match any selected value; different properties combine
@@ -336,7 +385,7 @@ Production observability around authentication and import failures remains.
    the full forecast bill or confirmed payment amount. Account links intersect
    selected account filters, and a conflicting selection produces an empty view.
    The Transactions page also remembers its applied text query, category IDs,
-   account/card IDs, import-source/import IDs, signed amount bounds,
+   account IDs, import-source/import IDs, signed amount bounds,
    and selected date/month range in this browser, separately for each signed-in
    user and active group. Versioned storage contains only these allowlisted
    filter preferences, not transaction response fields, statements, tokens, or
@@ -369,10 +418,14 @@ Production observability around authentication and import failures remains.
    list surface is inset 8px from both sides, has 8px rounded row states, and
    includes 48px of trailing space without changing virtual row height or count.
    A shared metadata grid is derived from the complete loaded list. Optional
-   account, import, card, installment, category, and reconciliation fields keep
+   account chip, card name/number, installment, category, and reconciliation fields keep
    the same column positions across rows, using empty noninteractive slots for
    absent values. Checking purchases do not acquire fake card attribution.
-   The enabled installment column always reserves 64px, even when no loaded
+   Descriptions stay left-aligned and take the flexible width. The remaining
+   text fields form a compact right-anchored block, with their contents aligned to
+   each column's end without changing positions for absent values.
+   Rows use 8px column gaps and an 80px date column to keep dates close to their
+   descriptions. The enabled installment column always reserves 40px, even when no loaded
    rows have installments, so filtering or different label lengths do not
    resize the column or move adjacent fields.
    Hidden properties release their columns and gaps consistently; descriptions
@@ -391,7 +444,7 @@ Production observability around authentication and import failures remains.
    includes only loaded transactions, never derived bills or unloaded query rows.
    A compact bottom bar shows the selected count, signed BRL net total, and any
    unavailable amounts. It offers select/clear, category assignment or removal,
-   individual-card assignment for selections within one credit account, and
+   card-detail editing for selections within one credit account, and
    confirmed soft deletion. Category/card assignment reuses the generated,
    authorized transaction mutation with at most eight concurrent requests;
    partial failures report success/failure counts and remain retryable rather
@@ -399,16 +452,24 @@ Production observability around authentication and import failures remains.
    disabled during bulk mutations, as are row editing and details navigation to
    avoid competing writes; successful category edits retain selection
    unless the updated rows stop matching the active filters.
-4. **Acceptance criteria:** July bills appear in June review when assigned there;
+4. **Acceptance criteria:** July bills automatically appear in June review;
    individual transaction rows show their original day, month, and year and date
    sorting follows that date, including purchases outside the selected review
-   month. Grouped bills retain their assigned review-month display;
-   January-to-December defaults, conflicting/concurrent imports, checking
-   overrides, historical stability, authorization, migration, and cascade behavior
-   are covered with disposable PostgreSQL tests. The browser journey proves the
-   separate import choices and both ledger views through the real API.
+   month. Grouped bills show their calculated review month. January-to-December
+   rollover, leap months, nonadjacent selections, concurrent imports, checking
+   occurrence dates, authorization, and metadata removal without rewriting
+   financial/source records are covered with disposable PostgreSQL tests. The
+   browser journey proves due-month-only imports and both ledger views through
+   the real API.
 5. **Non-goals:** expense responsibility splits, reimbursement balances, and
    closing/locking a reviewed month are a subsequent increment.
+6. **Deployment:** `1792034936757-DeriveMonthlyReview` is a forward-only migration
+   removing only obsolete review metadata. Deploy the matching API and web code
+   together; the old API depends on the removed fields. Existing financial dates,
+   values, attribution, source files, soft-deletion flags, and reconciliation
+   records are preserved. The migration is PostgreSQL-tested, committed, and
+   applied to the verified local Supabase development database. Production is
+   unchanged by local implementation.
 
 ### Transaction and import deletion
 

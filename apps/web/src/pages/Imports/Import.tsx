@@ -1,8 +1,11 @@
-import type { CreateImportInputDto, ImportMappingConfig } from "@fina/types"
+import type {
+  CreateImportInputDto,
+  ImportMappingConfig,
+  ImportProfile
+} from "@fina/types"
 import { ApiError } from "@/api/generated/core/ApiError"
 import { FinaPage, FinaPageHeader } from "@/components/FinaPage"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
-import { useBillReviewMonth } from "@/data/creditCardBills/useBillReviewMonth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,12 +55,7 @@ import {
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
-import { ImportCardAttribution } from "@/components/creditCards/ImportCardAttribution"
-import {
-  formatCardLabel,
-  type CardOption
-} from "@/components/creditCards/cardLabelFormat"
-import { useCreditCards } from "@/data/creditCards/useCreditCards"
+import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
 import { useImportProfiles } from "@/data/imports/useImportProfiles"
 import { useImportsMutation } from "@/data/imports/useImportsMutation"
 import {
@@ -80,6 +78,11 @@ import {
   subscribeToPendingImport,
   takePendingImportFile
 } from "@/imports/pendingImport"
+import {
+  configFromSavedMapping,
+  savedImportMapping,
+  type ImportFileFormat
+} from "@/imports/savedImportMapping"
 import { IMPORT_LIMITS } from "@fina/types"
 import {
   AlertCircle,
@@ -131,7 +134,6 @@ type ServerPreview = {
 type ImportView = "upload" | "review"
 
 const pageSize = 100
-const noCards: readonly CardOption[] = []
 
 export const Import = () => {
   const { selectedGroup } = useActiveGroup()
@@ -141,7 +143,6 @@ export const Import = () => {
   const [loaded, setLoaded] = useState<LoadedFile | null>(null)
   const [draft, setDraft] = useState<DraftConfig | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState("")
-  const [fileCardId, setFileCardId] = useState<string | null>(null)
   const [billMonth, setBillMonth] = useState("")
   const [excludedRows, setExcludedRows] = useState<Set<number>>(new Set())
   const [importView, setImportView] = useState<ImportView>("upload")
@@ -160,6 +161,11 @@ export const Import = () => {
     count: number
   } | null>(null)
   const profileAppliedFor = useRef<string | null>(null)
+  const accountSuggestedFor = useRef<string | null>(null)
+  const mappingEdited = useRef(false)
+  const [appliedProfile, setAppliedProfile] = useState<ImportProfile | null>(
+    null
+  )
   const draftGroupId = useRef(groupId)
   const { data: profiles, isFetched: profilesFetched } = useImportProfiles({
     groupId,
@@ -170,38 +176,31 @@ export const Import = () => {
     (account) => account.id === selectedAccountId
   )
   const creditCardSelected = selectedAccount?.type === "credit"
-  const {
-    data: cards = noCards,
-    isLoading: cardsLoading,
-    isError: cardsError,
-    refetch: retryCards
-  } = useCreditCards({
-    groupId: creditCardSelected ? groupId : undefined,
-    accountId: creditCardSelected ? selectedAccountId : undefined,
-    includeArchived: true
-  })
-  const accountCards = useMemo(
-    () => cards.filter((card) => card.accountId === selectedAccountId),
-    [cards, selectedAccountId]
+  const fileFormat = useMemo<ImportFileFormat | null>(
+    () =>
+      loaded
+        ? {
+            fingerprint: loaded.fingerprint,
+            columnCount: loaded.structure.columnCount,
+            hasHeader: loaded.structure.headerRecordIndex !== null,
+            delimiter: loaded.structure.delimiter,
+            encoding: loaded.encoding
+          }
+        : null,
+    [loaded]
   )
-  const fileCardAvailable =
-    fileCardId === null ||
-    accountCards.some((card) => card.id === fileCardId && !card.archived)
-  const {
-    reviewMonth,
-    setReviewMonth,
-    resetReviewMonth,
-    isLoading: reviewMonthLoading
-  } = useBillReviewMonth(
-    creditCardSelected ? selectedAccountId : undefined,
-    billMonth
+  const savedMapping = useMemo(
+    () =>
+      selectedAccount && fileFormat
+        ? savedImportMapping({
+            profiles: profiles ?? [],
+            account: selectedAccount,
+            format: fileFormat
+          })
+        : null,
+    [fileFormat, profiles, selectedAccount]
   )
   const config = completeConfig(draft)
-  const mappedCardsAvailable = (config?.creditCardMappings ?? []).every(
-    ({ creditCardId }) =>
-      creditCardId === null ||
-      accountCards.some((card) => card.id === creditCardId && !card.archived)
-  )
   const normalization = useMemo(
     () =>
       loaded && config
@@ -210,44 +209,20 @@ export const Import = () => {
             structure: loaded.structure,
             config: creditCardSelected
               ? config
-              : { ...config, creditCardColumn: null, creditCardMappings: [] },
-            excludedRows,
-            ...(creditCardSelected
-              ? {
-                  creditCardId: fileCardId,
-                  creditCards: accountCards,
-                  accountId: selectedAccountId
-                }
-              : {})
+              : { ...config, cardNameColumn: null, cardLast4Column: null },
+            excludedRows
           })
         : null,
-    [
-      config,
-      excludedRows,
-      loaded,
-      creditCardSelected,
-      fileCardId,
-      accountCards,
-      selectedAccountId
-    ]
+    [config, excludedRows, loaded, creditCardSelected]
   )
   const payload = useMemo<CreateImportInputDto | null>(() => {
     if (
       !loaded ||
+      !loaded.fingerprint ||
       !config ||
       !groupId ||
       !selectedAccount ||
-      (creditCardSelected &&
-        (!billMonth ||
-          !reviewMonth ||
-          reviewMonthLoading ||
-          !fileCardAvailable ||
-          !mappedCardsAvailable ||
-          ((fileCardId !== null ||
-            (config.creditCardMappings ?? []).some(
-              (mapping) => mapping.creditCardId !== null
-            )) &&
-            (cardsLoading || cardsError)))) ||
+      (creditCardSelected && !billMonth) ||
       !normalization ||
       normalization.summary.errorCount > 0 ||
       normalization.normalizedRows.length === 0
@@ -257,9 +232,7 @@ export const Import = () => {
     return {
       groupId,
       accountId: selectedAccountId,
-      ...(creditCardSelected ? { creditCardId: fileCardId } : {}),
       billMonth: creditCardSelected ? billMonth : null,
-      reviewMonth: creditCardSelected ? reviewMonth : undefined,
       fileName: loaded.file.name,
       fileSize: loaded.file.size,
       fileHash: loaded.hash,
@@ -267,25 +240,18 @@ export const Import = () => {
       excludedRowCount: normalization.summary.excludedRowCount,
       config: creditCardSelected
         ? config
-        : { ...config, creditCardColumn: null, creditCardMappings: [] },
+        : { ...config, cardNameColumn: null, cardLast4Column: null },
       rows: normalization.normalizedRows
     }
   }, [
     billMonth,
-    reviewMonth,
-    reviewMonthLoading,
     config,
     creditCardSelected,
     groupId,
     loaded,
     normalization,
     selectedAccountId,
-    selectedAccount,
-    fileCardId,
-    fileCardAvailable,
-    mappedCardsAvailable,
-    cardsLoading,
-    cardsError
+    selectedAccount
   ])
   const payloadKey = payload ? JSON.stringify(payload) : ""
   const currentServerPreview =
@@ -295,40 +261,83 @@ export const Import = () => {
     if (draftGroupId.current === groupId) return
     draftGroupId.current = groupId
     setSelectedAccountId("")
-    setFileCardId(null)
-    setDraft((current) =>
-      current ? { ...current, creditCardMappings: [] } : current
-    )
     setBillMonth("")
-    resetReviewMonth()
     setServerPreview(null)
     profileAppliedFor.current = null
-  }, [groupId, resetReviewMonth])
+    accountSuggestedFor.current = null
+    mappingEdited.current = false
+    setAppliedProfile(null)
+    if (loaded) {
+      setDraft(
+        draftFromSuggestion(
+          loaded.suggestion,
+          loaded.structure,
+          loaded.encoding
+        )
+      )
+    }
+  }, [groupId, loaded])
 
   useEffect(() => {
     if (
       !loaded ||
       !profilesFetched ||
-      profileAppliedFor.current === loaded.fingerprint
+      !profiles ||
+      accounts.length === 0 ||
+      accountSuggestedFor.current === loaded.hash
     ) {
       return
     }
-    profileAppliedFor.current = loaded.fingerprint
-    if (profiles?.length === 1) {
-      setDraft({ ...profiles[0].config, version: 1 })
-      setSelectedAccountId(profiles[0].accountId)
-      setFileCardId(null)
-      setServerPreview(null)
+    accountSuggestedFor.current = loaded.hash
+    if (selectedAccountId) return
+    const savedAccountIds = new Set(
+      (profiles ?? [])
+        .filter(
+          (profile) =>
+            profile.sourceFingerprint === loaded.fingerprint &&
+            accounts.some((account) => account.id === profile.accountId)
+        )
+        .map((profile) => profile.accountId)
+    )
+    if (savedAccountIds.size === 1) {
+      setSelectedAccountId([...savedAccountIds][0])
       return
     }
-    if ((profiles?.length ?? 0) > 1) return
+    if (savedAccountIds.size > 1) return
     const accountType = loaded.suggestion.accountType
     if (!accountType) return
     const candidates = accounts.filter(
       (account) => account.type === accountType
     )
     if (candidates.length === 1) setSelectedAccountId(candidates[0].id)
-  }, [accounts, loaded, profiles, profilesFetched])
+  }, [accounts, loaded, profiles, profilesFetched, selectedAccountId])
+
+  useEffect(() => {
+    if (
+      !loaded ||
+      !fileFormat ||
+      !selectedAccount ||
+      !profilesFetched ||
+      !profiles
+    )
+      return
+    const key = `${groupId}:${loaded.hash}:${loaded.fingerprint}:${selectedAccount.id}`
+    if (profileAppliedFor.current === key) return
+    profileAppliedFor.current = key
+    if (mappingEdited.current || !savedMapping?.profile) return
+    setDraft(configFromSavedMapping(savedMapping.profile, fileFormat))
+    setAppliedProfile(savedMapping.profile)
+    setServerPreview(null)
+    setReviewPage(0)
+  }, [
+    fileFormat,
+    groupId,
+    loaded,
+    profiles,
+    profilesFetched,
+    savedMapping,
+    selectedAccount
+  ])
 
   const loadFile = useCallback(async (file: File) => {
     setError(null)
@@ -382,13 +391,15 @@ export const Import = () => {
         draftFromSuggestion(suggestion, detected.structure, decoded.encoding)
       )
       setSelectedAccountId("")
-      setFileCardId(null)
       setBillMonth("")
       setExcludedRows(new Set())
       setServerPreview(null)
       setReviewPage(0)
       setImportView("review")
       profileAppliedFor.current = null
+      accountSuggestedFor.current = null
+      mappingEdited.current = false
+      setAppliedProfile(null)
     } catch {
       setError(
         "Fina could not decode this CSV. Try changing the encoding after reselecting it."
@@ -435,13 +446,16 @@ export const Import = () => {
       suggestion
     })
     setDraft(draftFromSuggestion(suggestion, detected.structure, encoding))
-    setFileCardId(null)
     setExcludedRows(new Set())
     setServerPreview(null)
-    profileAppliedFor.current = null
+    // Re-detection is an explicit edit, not permission to reapply a profile.
+    mappingEdited.current = true
+    setAppliedProfile(null)
   }
 
   const updateDraft = (update: (current: DraftConfig) => DraftConfig) => {
+    mappingEdited.current = true
+    setAppliedProfile(null)
     setDraft((current) => (current ? update(current) : current))
     setServerPreview(null)
     setReviewPage(0)
@@ -449,10 +463,24 @@ export const Import = () => {
 
   const updateStructure = (structure: CsvStructure) => {
     if (!loaded) return
+    mappingEdited.current = true
+    setAppliedProfile(null)
     const suggestion = inferFieldMapping(loaded.matrix, structure)
-    setLoaded({ ...loaded, structure, suggestion })
+    setLoaded({ ...loaded, structure, suggestion, fingerprint: "" })
+    void structuralFingerprint(loaded.matrix, structure)
+      .then((fingerprint) => {
+        setLoaded((current) =>
+          current?.hash === loaded.hash && current.structure === structure
+            ? { ...current, fingerprint }
+            : current
+        )
+      })
+      .catch(() => {
+        setError(
+          "Fina could not identify this layout. Reselect the file to retry."
+        )
+      })
     setDraft(draftFromSuggestion(suggestion, structure, loaded.encoding))
-    setFileCardId(null)
     setExcludedRows(new Set())
     setServerPreview(null)
     setReviewPage(0)
@@ -462,7 +490,6 @@ export const Import = () => {
     setLoaded(null)
     setDraft(null)
     setSelectedAccountId("")
-    setFileCardId(null)
     setBillMonth("")
     setExcludedRows(new Set())
     setServerPreview(null)
@@ -471,6 +498,9 @@ export const Import = () => {
     setImportView("upload")
     setConfigurationOpen(false)
     profileAppliedFor.current = null
+    accountSuggestedFor.current = null
+    mappingEdited.current = false
+    setAppliedProfile(null)
   }
 
   const handleImportOpenChange = (open: boolean) => {
@@ -656,25 +686,30 @@ export const Import = () => {
                     <Select
                       value={selectedAccountId}
                       onValueChange={(value) => {
-                        setSelectedAccountId(value)
-                        setFileCardId(null)
-                        setDraft((current) =>
-                          current
-                            ? {
-                                ...current,
-                                creditCardColumn:
-                                  accounts.find(
-                                    (account) => account.id === value
-                                  )?.type === "credit"
-                                    ? (current.creditCardColumn ??
-                                      loaded.suggestion.creditCardColumn)
-                                    : null,
-                                creditCardMappings: []
-                              }
-                            : current
+                        const account = accounts.find(
+                          (candidate) => candidate.id === value
                         )
+                        const inferred = draftFromSuggestion(
+                          loaded.suggestion,
+                          loaded.structure,
+                          loaded.encoding
+                        )
+                        setSelectedAccountId(value)
+                        setDraft({
+                          ...inferred,
+                          cardNameColumn:
+                            account?.type === "credit"
+                              ? inferred.cardNameColumn
+                              : null,
+                          cardLast4Column:
+                            account?.type === "credit"
+                              ? inferred.cardLast4Column
+                              : null
+                        })
+                        profileAppliedFor.current = null
+                        mappingEdited.current = false
+                        setAppliedProfile(null)
                         setBillMonth("")
-                        resetReviewMonth()
                         setServerPreview(null)
                       }}
                     >
@@ -708,7 +743,7 @@ export const Import = () => {
                       </p>
                     )}
                     {creditCardSelected ? (
-                      <div className="grid max-w-3xl gap-4 pt-2 sm:grid-cols-2">
+                      <div className="max-w-md pt-2">
                         <BillMonthPicker
                           id="bill-month"
                           className="max-w-md pt-2"
@@ -716,65 +751,12 @@ export const Import = () => {
                           dueDate={selectedAccount?.dueDate}
                           onValueChange={(value) => {
                             setBillMonth(value)
-                            resetReviewMonth()
-                            setServerPreview(null)
-                          }}
-                        />
-                        <BillMonthPicker
-                          id="import-review-month"
-                          label="Include in monthly review"
-                          description="Every transaction in this bill belongs to this review month. Existing bills keep their saved month; change it from the bill details."
-                          value={reviewMonth}
-                          disabled={!billMonth || reviewMonthLoading}
-                          onValueChange={(value) => {
-                            setReviewMonth(value)
                             setServerPreview(null)
                           }}
                         />
                       </div>
                     ) : null}
                   </div>
-                  {creditCardSelected && draft ? (
-                    <ImportCardAttribution
-                      cards={accountCards}
-                      isLoading={cardsLoading}
-                      isError={cardsError}
-                      onRetry={() => {
-                        void retryCards()
-                      }}
-                      disabled={processing !== null}
-                      fallbackCardId={fileCardId}
-                      onFallbackChange={(id) => {
-                        setFileCardId(id)
-                        setServerPreview(null)
-                      }}
-                      column={draft.creditCardColumn ?? null}
-                      columns={columnOptions(loaded)}
-                      onColumnChange={(column) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          creditCardColumn: column,
-                          creditCardMappings: []
-                        }))
-                      }
-                      identifiers={cardSourceValues(
-                        normalization?.rows ?? [],
-                        draft.creditCardMappings ?? []
-                      )}
-                      mappings={draft.creditCardMappings ?? []}
-                      onMappingChange={(value, creditCardId) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          creditCardMappings: [
-                            ...(current.creditCardMappings ?? []).filter(
-                              (mapping) => mapping.value !== value
-                            ),
-                            { value, creditCardId }
-                          ]
-                        }))
-                      }
-                    />
-                  ) : null}
                   <div className="border-t border-fina-grid pt-5">
                     <h3 className="text-xl font-semibold tracking-[-0.03em]">
                       Review and map
@@ -783,6 +765,62 @@ export const Import = () => {
                       Edit a column header to change its CSV source. The preview
                       and validation state update immediately.
                     </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Mappings and formats are saved automatically after a
+                      successful import and reused for matching statements.
+                    </p>
+                    {appliedProfile ? (
+                      <p
+                        role="status"
+                        className="mt-2 text-sm text-foreground/80"
+                      >
+                        <CheckCircle2 className="mr-1.5 inline size-3.5 text-fina-violet" />
+                        Saved mapping applied from {appliedProfile.accountName}.
+                      </p>
+                    ) : null}
+                    {savedMapping &&
+                    !savedMapping.profile &&
+                    savedMapping.choices.length > 1 ? (
+                      <div className="mt-3 max-w-md space-y-2">
+                        <label
+                          htmlFor="saved-import-mapping"
+                          className="text-sm font-medium"
+                        >
+                          Saved mapping
+                        </label>
+                        <Select
+                          value={appliedProfile?.id ?? ""}
+                          onValueChange={(value) => {
+                            const profile = savedMapping.choices.find(
+                              (choice) => choice.id === value
+                            )
+                            if (!profile || !fileFormat) return
+                            setDraft(
+                              configFromSavedMapping(profile, fileFormat)
+                            )
+                            setAppliedProfile(profile)
+                            mappingEdited.current = false
+                            setServerPreview(null)
+                            setReviewPage(0)
+                          }}
+                        >
+                          <SelectTrigger id="saved-import-mapping">
+                            <SelectValue placeholder="Choose a saved mapping" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {savedMapping.choices.map((profile) => (
+                              <SelectItem key={profile.id} value={profile.id}>
+                                {profile.accountName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          This institution has different mappings for these
+                          columns. Choose one or map the columns below.
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                   {!config && (
                     <Alert variant="destructive">
@@ -1072,7 +1110,76 @@ export const Import = () => {
                           </TableHead>
                           <TableHead>Status</TableHead>
                           {creditCardSelected ? (
-                            <TableHead>Card</TableHead>
+                            <>
+                              <TableHead>
+                                <MappingHeader
+                                  label="Card name"
+                                  summary={columnName(
+                                    loaded,
+                                    draft.cardNameColumn ?? null,
+                                    "Not mapped"
+                                  )}
+                                >
+                                  <LabeledSelect
+                                    label="Source column"
+                                    ariaLabel="Card name source column"
+                                    value={
+                                      draft.cardNameColumn?.toString() ?? "none"
+                                    }
+                                    onValueChange={(value) =>
+                                      updateDraft((current) => ({
+                                        ...current,
+                                        cardNameColumn:
+                                          value === "none"
+                                            ? null
+                                            : Number(value)
+                                      }))
+                                    }
+                                    options={[
+                                      ["none", "Not mapped"],
+                                      ...columnOptions(loaded)
+                                    ]}
+                                  />
+                                </MappingHeader>
+                              </TableHead>
+                              <TableHead>
+                                <MappingHeader
+                                  label="Card number"
+                                  summary={columnName(
+                                    loaded,
+                                    draft.cardLast4Column ?? null,
+                                    "Not mapped"
+                                  )}
+                                >
+                                  <p className="text-xs text-muted-foreground">
+                                    Only the final four digits are stored.
+                                    Masked numbers are accepted; full numbers
+                                    are rejected.
+                                  </p>
+                                  <LabeledSelect
+                                    label="Source column"
+                                    ariaLabel="Card number source column"
+                                    value={
+                                      draft.cardLast4Column?.toString() ??
+                                      "none"
+                                    }
+                                    onValueChange={(value) =>
+                                      updateDraft((current) => ({
+                                        ...current,
+                                        cardLast4Column:
+                                          value === "none"
+                                            ? null
+                                            : Number(value)
+                                      }))
+                                    }
+                                    options={[
+                                      ["none", "Not mapped"],
+                                      ...columnOptions(loaded)
+                                    ]}
+                                  />
+                                </MappingHeader>
+                              </TableHead>
+                            </>
                           ) : null}
                           <TableHead>Exclude</TableHead>
                         </TableRow>
@@ -1081,7 +1188,7 @@ export const Import = () => {
                         {!normalization ? (
                           <TableRow>
                             <TableCell
-                              colSpan={creditCardSelected ? 8 : 7}
+                              colSpan={creditCardSelected ? 9 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
                               Complete the Date and Amount headers to preview
@@ -1091,7 +1198,7 @@ export const Import = () => {
                         ) : visibleRows.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={creditCardSelected ? 8 : 7}
+                              colSpan={creditCardSelected ? 9 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
                               No rows match this filter.
@@ -1119,21 +1226,21 @@ export const Import = () => {
                                     : "Ready"}
                               </TableCell>
                               {creditCardSelected ? (
-                                <TableCell>
-                                  {row.excluded
-                                    ? "—"
-                                    : row.issues.some(
-                                          (issue) =>
-                                            issue.field === "creditCard"
-                                        )
-                                      ? "Needs mapping"
-                                      : formatCardLabel(
-                                          accountCards.find(
-                                            (card) =>
-                                              card.id === row.creditCardId
-                                          )
-                                        )}
-                                </TableCell>
+                                <>
+                                  <TableCell>
+                                    {row.excluded
+                                      ? "—"
+                                      : (row.cardName ??
+                                        (row.cardLast4
+                                          ? "—"
+                                          : "Not identified"))}
+                                  </TableCell>
+                                  <TableCell>
+                                    {row.excluded || !row.cardLast4
+                                      ? "—"
+                                      : `••${row.cardLast4}`}
+                                  </TableCell>
+                                </>
                               ) : null}
                               <TableCell>
                                 {row.exclusionReason === "empty" ||
@@ -1168,10 +1275,7 @@ export const Import = () => {
                       aria-label="Card attribution summary"
                       className="text-[13px] text-muted-foreground"
                     >
-                      {cardAttributionCounts(
-                        normalization.rows,
-                        accountCards
-                      ).join(" · ")}
+                      {cardAttributionCounts(normalization.rows).join(" · ")}
                     </p>
                   ) : null}
                   {filteredRows.length > pageSize && (
@@ -1589,8 +1693,8 @@ function draftFromSuggestion(
     dateColumn: suggestion.dateColumn,
     descriptionColumns: suggestion.descriptionColumns,
     installmentColumn: suggestion.installmentColumn,
-    creditCardColumn: suggestion.creditCardColumn,
-    creditCardMappings: [],
+    cardNameColumn: suggestion.cardNameColumn,
+    cardLast4Column: suggestion.cardLast4Column,
     amountMode: suggestion.amountMode,
     amountColumn: suggestion.amountColumn,
     debitColumn: suggestion.debitColumn,
@@ -1614,38 +1718,15 @@ function completeConfig(draft: DraftConfig | null): ImportMappingConfig | null {
   return draft as ImportMappingConfig
 }
 
-function cardSourceValues(
-  rows: readonly RowPreview[],
-  mappings: readonly { value: string }[]
-): { value: string; count: number }[] {
-  const counts = new Map<string, number>()
-  for (const row of rows) {
-    if (!row.excluded && row.creditCardIdentifier) {
-      counts.set(
-        row.creditCardIdentifier,
-        (counts.get(row.creditCardIdentifier) ?? 0) + 1
-      )
-    }
-  }
-  for (const mapping of mappings) {
-    if (!counts.has(mapping.value)) counts.set(mapping.value, 0)
-  }
-  return [...counts].map(([value, count]) => ({ value, count }))
-}
-
-function cardAttributionCounts(
-  rows: readonly RowPreview[],
-  cards: readonly CardOption[]
-): string[] {
-  const cardById = new Map(cards.map((card) => [card.id, card]))
+function cardAttributionCounts(rows: readonly RowPreview[]): string[] {
   const counts = new Map<string, number>()
   for (const row of rows) {
     if (row.excluded) continue
-    const label = row.issues.some((issue) => issue.field === "creditCard")
-      ? "Needs mapping"
-      : formatCardLabel(
-          row.creditCardId ? cardById.get(row.creditCardId) : null
-        )
+    const label = row.issues.some(
+      (issue) => issue.field === "cardName" || issue.field === "cardLast4"
+    )
+      ? "Invalid card details"
+      : formatCardLabel(row)
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
   return [...counts].map(
@@ -1804,9 +1885,6 @@ function apiMessage(error: unknown): string {
     const body = error.body as { message?: unknown; code?: unknown }
     if (body?.code === "DUPLICATE_IMPORT") {
       return "This exact file has already been imported into the selected account."
-    }
-    if (body?.code === "BILL_REVIEW_MONTH_CONFLICT") {
-      return "This bill already has a different review month. Open the bill details to change the month for the whole bill, then retry the import."
     }
     if (typeof body?.message === "string") return body.message
   }
