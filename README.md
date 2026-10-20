@@ -146,6 +146,14 @@ matching API and web together. Existing amounts, dates, bills, payments, and
 original CSVs remain unchanged; standalone card inventory requires a backup
 to recover.
 
+Historical statements retained before card-column mapping can be enriched by
+the data-only `1792501867419-BackfillImportedCardMetadata` migration. It recognizes
+the original `Nome no Cartão` / `Final do Cartão` layout, verifies the retained
+CSV and source rows, and fills missing card fields on existing active credit
+transactions. Categories and other manual edits are preserved. Deleted history,
+checking transactions, unsupported layouts, and conflicting existing card
+details are left alone; no files are re-imported or transactions recreated.
+
 ## Monthly review and cash flow
 
 **Monthly review** automatically includes credit-card bills due in the following

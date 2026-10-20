@@ -111,6 +111,20 @@ soft-deletion flags are preserved. Missing or unverifiable sources abort the
 whole migration. The correction is idempotent and forward-only; ordinary
 rollback must not restore the incorrect financial values.
 
+The historical card-field repair adds the data-only migration
+`BackfillImportedCardMetadata1792501867419`. Apply it using the same controlled
+TypeORM workflow with `migration:run --transaction all`, after local disposable
+PostgreSQL tests and `pnpm verify`. Its `plan(queryRunner)` method supports a
+read-only dry run: report only counts by import, conflicts, and unsupported
+layouts; never print the returned card values or retained CSV bytes. The repair
+recognizes the verified historical name/final-four headers in columns two and
+three. It verifies CSV hashes/sizes and physical source rows, preserves existing
+card values, and skips deleted history and checking transactions. Before commit,
+compare transaction records excluding only the two card fields and compare
+retained files, mappings, and reconciliation links. Abort if any differ. The
+repair is idempotent and forward-only; do not clear later manual card edits as
+a rollback strategy.
+
 Application startup never synchronizes or migrates the schema automatically.
 Do not place `migration:run` in the normal start command: a failed migration
 must stop deployment before new application instances receive traffic.

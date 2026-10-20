@@ -257,6 +257,17 @@ Production observability around authentication and import failures remains.
    verified local Supabase development database. Production is unchanged by local
    implementation.
 
+   `1792501867419-BackfillImportedCardMetadata` is a data-only repair for retained
+   historical statements with `Nome no Cartão` and `Final do Cartão` in the
+   second and third columns. It verifies original CSV hashes/sizes and physical
+   source rows, then fills missing card fields on active credit purchases using
+   the shared metadata schemas. Existing conflicting card details, deleted
+   imports/purchases, checking transactions, and unsupported layouts are left
+   alone. Transaction IDs, categories, manual financial edits, source files,
+   saved mappings, and reconciliation links are preserved. Invalid or ambiguous
+   source rows abort the repair; concurrent card changes abort the transaction.
+   The migration is idempotent and forward-only.
+
 ### Credit-card bill grouping and reconciliation
 
 1. **User outcome:** Cash flow shows one bill/payment row per credit account and bill month.

@@ -24,6 +24,7 @@ import { BankAccountInstitution1791200000000 } from '../src/database/migrations/
 import { IndividualCreditCards1791300000000 } from '../src/database/migrations/1791300000000-IndividualCreditCards';
 import { DeriveMonthlyReview1792034936757 } from '../src/database/migrations/1792034936757-DeriveMonthlyReview';
 import { TransactionCardMetadata1792459849364 } from '../src/database/migrations/1792459849364-TransactionCardMetadata';
+import { BackfillImportedCardMetadata1792501867419 } from '../src/database/migrations/1792501867419-BackfillImportedCardMetadata';
 import { TransactionsService } from '../src/transactions/transactions.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -59,6 +60,7 @@ const migrations = [
   IndividualCreditCards1791300000000,
   DeriveMonthlyReview1792034936757,
   TransactionCardMetadata1792459849364,
+  BackfillImportedCardMetadata1792501867419,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -247,7 +249,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -2),
+      migrations: migrations.slice(0, 17),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -257,7 +259,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -1),
+      migrations: migrations.slice(0, 18),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -327,7 +329,7 @@ describe('backend-only PostgreSQL boundary', () => {
     const migrationCount = await dataSource.query<Array<{ count: number }>>(
       'SELECT count(*)::integer AS count FROM migrations',
     );
-    expect(migrationCount[0]?.count).toBe(19);
+    expect(migrationCount[0]?.count).toBe(migrations.length);
 
     const columns = await dataSource.query<
       Array<{ table_name: string; column_name: string }>
@@ -2372,6 +2374,173 @@ describe('backend-only PostgreSQL boundary', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ confirmName: 'Wrong name' })
       .expect(404);
+  });
+
+  it('backfills verified source card fields while preserving categories, edits, source files, and deleted history', async () => {
+    const { importId, groupId } = await cardBackfillFixture();
+    const [category] = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO public.categories (name, group_id)
+       VALUES ('Synthetic backfill category', $1) RETURNING id`,
+      [groupId],
+    );
+    await dataSource.query(
+      `UPDATE public.transactions SET category_id = $1,
+         observation = 'Synthetic manual note', value = -42
+       WHERE import_id = $2 AND group_id = $3`,
+      [category.id, importId, groupId],
+    );
+    await dataSource.query(
+      `UPDATE public.transactions SET card_name = CASE source_row
+         WHEN 4 THEN 'Manual' WHEN 5 THEN 'Shared' END,
+         removed = (source_row = 7)
+       WHERE import_id = $1 AND group_id = $2`,
+      [importId, groupId],
+    );
+    const deleted = await cardBackfillFixture();
+    await dataSource.query(
+      'UPDATE public.imports SET removed = true WHERE id = $1',
+      [deleted.importId],
+    );
+    const checking = await cardBackfillFixture('checking');
+    const foreign = await cardBackfillFixture('foreign');
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      const before = await cardBackfillSnapshot(runner, true);
+      const migration = new BackfillImportedCardMetadata1792501867419();
+      const plan = await migration.plan(runner);
+      expect(plan.conflictingRows).toBe(1);
+      expect(
+        plan.updates.filter((row) => row.import_id === importId),
+      ).toHaveLength(3);
+      expect(
+        plan.updates.some(
+          (row) =>
+            row.import_id === deleted.importId ||
+            row.import_id === checking.importId,
+        ),
+      ).toBe(false);
+      await migration.up(runner);
+      await migration.up(runner);
+      expect(await cardBackfillSnapshot(runner, true)).toEqual(before);
+      const cards = await runner.manager.query<
+        Array<{
+          source_row: number;
+          card_name: string | null;
+          card_last4: string | null;
+        }>
+      >(
+        `SELECT source_row, card_name, card_last4 FROM public.transactions
+         WHERE import_id = $1 AND group_id = $2 ORDER BY source_row`,
+        [importId, groupId],
+      );
+      expect(cards).toEqual([
+        { source_row: 2, card_name: 'Personal', card_last4: '0042' },
+        { source_row: 4, card_name: 'Manual', card_last4: null },
+        { source_row: 5, card_name: 'Shared', card_last4: '0099' },
+        { source_row: 6, card_name: null, card_last4: null },
+        { source_row: 7, card_name: null, card_last4: null },
+        { source_row: 8, card_name: 'Name only', card_last4: null },
+      ]);
+      const [other] = await runner.manager.query<
+        Array<{
+          card_name: string | null;
+          card_last4: string | null;
+        }>
+      >(
+        `SELECT card_name, card_last4 FROM public.transactions
+         WHERE import_id = $1 AND group_id = $2 AND source_row = 2`,
+        [foreign.importId, foreign.groupId],
+      );
+      expect(other).toEqual({ card_name: 'Foreign', card_last4: '0042' });
+    } finally {
+      await runner.rollbackTransaction();
+      await runner.release();
+    }
+  });
+
+  it.each(['file', 'hash', 'row', 'duplicate-row', 'digits', 'mapping'])(
+    'rejects unverifiable card backfills (%s) without changing financial records',
+    async (failure) => {
+      const { importId, content } = await cardBackfillFixture();
+      const runner = dataSource.createQueryRunner();
+      await runner.connect();
+      await runner.startTransaction();
+      try {
+        if (failure === 'file') {
+          await runner.query(
+            'DELETE FROM public.import_files WHERE import_id = $1',
+            [importId],
+          );
+        } else if (failure === 'hash') {
+          await runner.query(
+            "UPDATE public.imports SET file_hash = repeat('0', 64) WHERE id = $1",
+            [importId],
+          );
+        } else if (failure === 'row' || failure === 'duplicate-row') {
+          await runner.query(
+            'UPDATE public.transactions SET source_row = $1 WHERE import_id = $2 AND source_row = 2',
+            [failure === 'row' ? 999 : 4, importId],
+          );
+        } else if (failure === 'mapping') {
+          await runner.query(
+            "UPDATE public.imports SET mapping_config = '{}'::jsonb WHERE id = $1",
+            [importId],
+          );
+        } else {
+          const invalid = Buffer.from(
+            content.toString().replace('**** 0042', '1234567890123456'),
+          );
+          await runner.query(
+            'UPDATE public.import_files SET content = $1 WHERE import_id = $2',
+            [invalid, importId],
+          );
+          await runner.query(
+            'UPDATE public.imports SET file_hash = $1, file_size = $2 WHERE id = $3',
+            [
+              createHash('sha256').update(invalid).digest('hex'),
+              invalid.length,
+              importId,
+            ],
+          );
+        }
+        const before = await cardBackfillSnapshot(runner);
+        await expect(
+          new BackfillImportedCardMetadata1792501867419().up(runner),
+        ).rejects.toThrow('Card backfill');
+        expect(await cardBackfillSnapshot(runner)).toEqual(before);
+      } finally {
+        await runner.rollbackTransaction();
+        await runner.release();
+      }
+    },
+  );
+
+  it('rolls back the entire card backfill when an update is skipped concurrently', async () => {
+    await cardBackfillFixture();
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    const before = await cardBackfillSnapshot(runner);
+    await runner.startTransaction();
+    try {
+      await runner.query(`
+        CREATE FUNCTION private.skip_card_backfill_test() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.source_row = 5 THEN RETURN NULL; END IF; RETURN NEW; END; $$;
+        CREATE TRIGGER skip_card_backfill_test BEFORE UPDATE OF card_name ON public.transactions
+        FOR EACH ROW EXECUTE FUNCTION private.skip_card_backfill_test();
+      `);
+      await expect(
+        new BackfillImportedCardMetadata1792501867419().up(runner),
+      ).rejects.toThrow('changed concurrently');
+    } finally {
+      await runner.rollbackTransaction();
+    }
+    try {
+      expect(await cardBackfillSnapshot(runner)).toEqual(before);
+    } finally {
+      await runner.release();
+    }
   });
 
   it('corrects retained imported refund signs without changing edits, tenant attribution, dates, or deletion history', async () => {
@@ -5109,6 +5278,81 @@ describe('backend-only PostgreSQL boundary', () => {
         payment_transaction_id, reconciled_bill_total) VALUES ($1, $2, '2026-07-01', $3, -10)`,
       [groupId, creditAccountId, paymentId],
     );
+  }
+
+  async function cardBackfillFixture(
+    kind: 'credit' | 'checking' | 'foreign' = 'credit',
+  ) {
+    const fixture = await reviewFixture();
+    const groupId = kind === 'foreign' ? fixture.otherGroupId : fixture.groupId;
+    const accountId =
+      kind === 'foreign'
+        ? fixture.otherCreditAccountId
+        : kind === 'checking'
+          ? fixture.checkingAccountId
+          : fixture.creditAccountId;
+    const token =
+      kind === 'foreign' ? fixture.outsiderToken : fixture.memberToken;
+    const content = Buffer.from(
+      [
+        '\uFEFFDate;Nome no Cartão;Final do Cartão;Description;Amount',
+        `2026-06-18;${kind === 'foreign' ? 'Foreign' : 'Personal'};**** 0042;"Synthetic;\nmultiline";-10`,
+        '2026-06-18;Personal;0042;Synthetic manual;-10',
+        '2026-06-18;Shared;0099;Synthetic partial;-10',
+        '2026-06-18;;;Synthetic blank;-10',
+        '2026-06-18;Removed;0011;Synthetic removed;-10',
+        '2026-06-18;Name only;;Synthetic name;-10',
+        '2026-06-18;Excluded;0022;Synthetic excluded;-10',
+      ].join('\r\n'),
+    );
+    const payload = importPayload({
+      groupId,
+      accountId,
+      fileContent: content,
+      billMonth: kind === 'checking' ? null : '2026-07',
+      rows: [2, 4, 5, 6, 7, 8].map((sourceRow) => ({
+        sourceRow,
+        date: '2026-06-18',
+        amount: -10,
+        description: 'Synthetic retained card transaction',
+        installmentCurrent: null,
+        installmentTotal: null,
+      })),
+    });
+    payload.config.descriptionColumns = [3];
+    payload.config.amountColumn = 4;
+    payload.config.numberFormat = 'decimal-point';
+    payload.excludedRowCount = 1;
+    const response = await postImport(token, payload, content).expect(201);
+    return {
+      groupId,
+      importId: responseBody<{ id: string }>(response).id,
+      content,
+    };
+  }
+
+  async function cardBackfillSnapshot(
+    runner: ReturnType<DataSource['createQueryRunner']>,
+    omitCard = false,
+  ) {
+    const snapshot: Record<string, unknown[]> = {};
+    for (const table of [
+      'transactions',
+      'imports',
+      'import_files',
+      'import_profiles',
+      'credit_card_bill_reconciliations',
+    ]) {
+      const omit =
+        table === 'transactions' && omitCard
+          ? " - 'card_name' - 'card_last4'"
+          : '';
+      const key = table === 'import_files' ? 'import_id' : 'id';
+      snapshot[table] = await runner.manager.query<Array<{ data: unknown }>>(
+        `SELECT to_jsonb(record)${omit} AS data FROM public.${table} record ORDER BY ${key}`,
+      );
+    }
+    return snapshot;
   }
 
   async function financialMigrationSnapshot(): Promise<
