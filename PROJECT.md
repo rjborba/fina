@@ -516,7 +516,10 @@ empty notes clear to null. Note controls do not open transaction details or
 trigger navigation/category shortcuts. Notes use the existing authenticated,
 group-scoped transaction PATCH and query cache; no new schema or API field is
 needed. The earlier `flagged` column remains backward-compatible but does not
-control the interface highlight.
+control the interface highlight. Migration
+`1792503000000-TransactionFlags` was applied to production on 2026-10-20;
+the non-null boolean/default and migration history were verified, with no
+pending migrations remaining.
 
 ### Transaction and import deletion
 
