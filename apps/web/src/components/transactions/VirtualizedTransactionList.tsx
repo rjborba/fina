@@ -1,3 +1,8 @@
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
 import {
@@ -39,6 +44,7 @@ export function VirtualizedTransactionList({
     height: totalSize + TRANSACTION_LIST_BOTTOM_PADDING,
     minWidth: `calc(${layout.minWidth}px + var(--transaction-responsive-space))`,
     "--transaction-list-columns": [
+      "32px",
       displayProperties.date ? `${TRANSACTION_DATE_WIDTH}px` : null,
       "minmax(0, 1fr)",
       displayProperties.value ? "132px" : null
@@ -95,6 +101,8 @@ interface VirtualizedTransactionRowProps
   index: number
   start: number
   isFocused: boolean
+  notePreview?: string | null
+  flagged?: boolean
   isSelected?: boolean
   selectionDisabled?: boolean
   onSelectionClick?: (event: MouseEvent<HTMLButtonElement>) => void
@@ -108,6 +116,8 @@ export const VirtualizedTransactionRow = memo(
     start,
     isFocused,
     isSelected,
+    flagged,
+    notePreview,
     selectionDisabled,
     onSelectionClick,
     tabIndex,
@@ -115,22 +125,25 @@ export const VirtualizedTransactionRow = memo(
     children,
     ...props
   }: VirtualizedTransactionRowProps) {
-    return (
+    const row = (
       <div
         {...props}
         role="row"
         data-index={index}
         data-list-key={rowKey}
         data-focused={isFocused || undefined}
+        data-flagged={flagged || undefined}
         aria-rowindex={index + 1}
         aria-selected={isSelected}
         className={cn(
-          "group/transaction-row absolute left-0 top-0 w-full cursor-pointer select-none rounded-lg border-0",
-          isSelected
-            ? "bg-fina-violet/10 hover:bg-fina-violet/15"
-            : isFocused
-              ? "bg-fina-violet/5 hover:bg-fina-violet/10"
-              : "bg-fina-surface hover:bg-foreground/[0.035] dark:bg-fina-canvas dark:hover:bg-foreground/[0.035]",
+          "group/transaction-row absolute left-0 top-0 w-full cursor-pointer select-none rounded-lg border-0 text-foreground",
+          flagged
+            ? "bg-yellow-200/65 hover:bg-yellow-200/85 dark:bg-yellow-400/15 dark:hover:bg-yellow-400/25"
+            : isSelected
+              ? "bg-fina-violet/10 hover:bg-fina-violet/15"
+              : isFocused
+                ? "bg-fina-violet/5 hover:bg-fina-violet/10"
+                : "bg-fina-surface hover:bg-foreground/[0.035] dark:bg-fina-canvas dark:hover:bg-foreground/[0.035]",
           className
         )}
         style={{
@@ -182,6 +195,19 @@ export const VirtualizedTransactionRow = memo(
           {children}
         </div>
       </div>
+    )
+    if (!notePreview?.trim()) return row
+    return (
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>{row}</TooltipTrigger>
+        <TooltipContent
+          side="top"
+          sideOffset={8}
+          className="max-w-[min(24rem,calc(100vw-2rem))] whitespace-pre-wrap break-words border border-fina-grid bg-fina-surface text-left text-xs leading-relaxed text-foreground shadow-fina-lg [overflow-wrap:anywhere]"
+        >
+          {notePreview}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 )

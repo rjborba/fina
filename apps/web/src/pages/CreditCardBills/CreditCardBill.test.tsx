@@ -51,6 +51,7 @@ const transport = {
 
 const transaction = {
   id: "coffee-purchase",
+  flagged: false,
   cardName: null,
   cardLast4: null,
   createdAt: "2026-06-18T00:00:00.000Z",

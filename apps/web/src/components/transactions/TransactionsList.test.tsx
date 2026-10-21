@@ -150,6 +150,7 @@ vi.mock("./TransactionDetailsModal", () => ({
 
 const transaction = (id: string, description: string): Transaction => ({
   id,
+  flagged: false,
   cardName: null,
   cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
@@ -777,6 +778,77 @@ describe("TransactionsList", () => {
       cardLast4: null
     })
     expect(screen.getByRole("status")).toHaveTextContent("2 selected")
+  })
+
+  it("edits notes from the comment icon without opening transaction details", async () => {
+    const user = userEvent.setup()
+    const onUpdateTransaction = vi.fn().mockResolvedValue(undefined)
+    const purchase = transaction("comment-test", "Commented purchase")
+    const props: TransactionsListProps = {
+      sort: "date-desc",
+      data: [purchase],
+      isLoading: false,
+      isError: false,
+      onUpdateTransaction,
+      onDeleteTransactions: vi.fn()
+    }
+    const { rerender } = render(<TransactionsList {...props} />)
+    await user.click(
+      screen.getByRole("button", { name: "Add transaction note" })
+    )
+    expect(
+      screen.getByRole("dialog", { name: "Transaction note" })
+    ).toBeVisible()
+    await user.type(
+      screen.getByRole("textbox", { name: "Transaction note" }),
+      "Review this charge"
+    )
+    await user.click(screen.getByRole("button", { name: "Save note" }))
+    expect(onUpdateTransaction).toHaveBeenCalledWith("comment-test", {
+      observation: "Review this charge"
+    })
+    rerender(
+      <TransactionsList
+        {...props}
+        data={[{ ...purchase, observation: "Review this charge" }]}
+      />
+    )
+    const button = screen.getByRole("button", { name: "Edit transaction note" })
+    expect(button.closest('[role="row"]')).toHaveAttribute(
+      "data-flagged",
+      "true"
+    )
+    await user.click(button)
+    await user.click(screen.getByRole("button", { name: "Remove comment" }))
+    expect(onUpdateTransaction).toHaveBeenLastCalledWith("comment-test", {
+      observation: null
+    })
+  })
+
+  it("keeps failed note drafts for retry and cancels without saving", async () => {
+    const user = userEvent.setup()
+    const onUpdateTransaction = vi.fn().mockRejectedValue(new Error("Failed"))
+    render(
+      <TransactionsList
+        sort="date-desc"
+        data={[transaction("comment-failure", "Retry purchase")]}
+        isLoading={false}
+        isError={false}
+        onUpdateTransaction={onUpdateTransaction}
+        onDeleteTransactions={vi.fn()}
+      />
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Add transaction note" })
+    )
+    const input = screen.getByRole("textbox", { name: "Transaction note" })
+    await user.type(input, "Keep draft")
+    await user.click(screen.getByRole("button", { name: "Save note" }))
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not save note")
+    expect(input).toHaveValue("Keep draft")
+    await user.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(onUpdateTransaction).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   afterEach(() => {

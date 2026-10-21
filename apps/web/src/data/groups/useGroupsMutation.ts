@@ -1,5 +1,6 @@
 import {
   CreateGroupInputDto,
+  groupsControllerRename,
   groupsControllerCreate,
   groupsControllerRemove
 } from "@/api/generated"
@@ -20,5 +21,11 @@ export const useGroupsMutation = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] })
   })
 
-  return { addGroup, removeGroup }
+  const renameGroup = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      groupsControllerRename({ id, requestBody: { name } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] })
+  })
+
+  return { addGroup, removeGroup, renameGroup }
 }

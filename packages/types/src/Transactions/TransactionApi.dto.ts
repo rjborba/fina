@@ -11,6 +11,7 @@ import { CardNameSchema, CardLast4Schema } from "./CardMetadata";
 export const TransactionOutputSchema = z.object({
   id: z.string(),
   createdAt: z.string().datetime(),
+  flagged: z.boolean(),
   description: z.string().nullable(),
   value: z.number().nullable(),
   cardName: CardNameSchema.nullable(),

@@ -591,6 +591,44 @@
           "Groups"
         ]
       },
+      "patch": {
+        "operationId": "GroupsController_rename",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameGroupInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Groups"
+        ]
+      },
       "delete": {
         "operationId": "GroupsController_remove",
         "parameters": [
@@ -1519,6 +1557,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "flagged": {
+            "type": "boolean"
+          },
           "description": {
             "type": "string",
             "nullable": true
@@ -1758,6 +1799,7 @@
         "required": [
           "id",
           "createdAt",
+          "flagged",
           "description",
           "value",
           "cardName",
@@ -1796,6 +1838,9 @@
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
+                },
+                "flagged": {
+                  "type": "boolean"
                 },
                 "description": {
                   "type": "string",
@@ -2036,6 +2081,7 @@
               "required": [
                 "id",
                 "createdAt",
+                "flagged",
                 "description",
                 "value",
                 "cardName",
@@ -2132,6 +2178,9 @@
           },
           "calculatedDate": {
             "nullable": true
+          },
+          "flagged": {
+            "type": "boolean"
           },
           "bankaccountId": {
             "type": "string",
@@ -2500,6 +2549,19 @@
             "isOwner"
           ]
         }
+      },
+      "RenameGroupInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
       },
       "DeleteGroupInputDto": {
         "type": "object",
@@ -4303,6 +4365,9 @@
                   "type": "string",
                   "format": "date-time"
                 },
+                "flagged": {
+                  "type": "boolean"
+                },
                 "description": {
                   "type": "string",
                   "nullable": true
@@ -4542,6 +4607,7 @@
               "required": [
                 "id",
                 "createdAt",
+                "flagged",
                 "description",
                 "value",
                 "cardName",

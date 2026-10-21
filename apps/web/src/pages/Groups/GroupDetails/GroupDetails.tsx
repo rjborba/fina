@@ -7,6 +7,7 @@ import {
   User,
   Users
 } from "lucide-react"
+import { RenameGroupInputSchema } from "@fina/types"
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 
@@ -27,9 +28,11 @@ import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup"
 import { toast } from "@/hooks/use-toast"
 
 export function GroupDetails() {
+  const [workspaceName, setWorkspaceName] = useState<string | null>(null)
+  const [renameError, setRenameError] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
   const { groupId } = useParams()
-  const { removeGroup } = useGroupsMutation()
+  const { removeGroup, renameGroup } = useGroupsMutation()
   const navigate = useNavigate()
   const { data: usersPerGroup } = useUsersPerGroup({ groupId })
   const { groups } = useActiveGroup()
@@ -90,6 +93,71 @@ export function GroupDetails() {
       />
 
       <main className="space-y-8 p-5 md:p-8">
+        {group.isOwner ? (
+          <FinaSurface className="p-5">
+            <form
+              className="space-y-3"
+              onSubmit={async (event) => {
+                event.preventDefault()
+                const parsed = RenameGroupInputSchema.safeParse({
+                  name: workspaceName ?? group.name
+                })
+                if (!parsed.success) {
+                  setRenameError(
+                    "Enter a workspace name between 1 and 120 characters."
+                  )
+                  return
+                }
+                setRenameError("")
+                try {
+                  await renameGroup.mutateAsync({
+                    id: group.id,
+                    name: parsed.data.name
+                  })
+                  setWorkspaceName(null)
+                  toast({ title: "Workspace renamed" })
+                } catch {
+                  setRenameError(
+                    "Could not rename the workspace. Please try again."
+                  )
+                }
+              }}
+            >
+              <label htmlFor="workspace-name" className="block font-semibold">
+                Workspace name
+              </label>
+              <Input
+                id="workspace-name"
+                value={workspaceName ?? group.name}
+                maxLength={120}
+                disabled={renameGroup.isPending}
+                aria-invalid={Boolean(renameError)}
+                aria-describedby={
+                  renameError ? "workspace-name-error" : undefined
+                }
+                onChange={(event) => {
+                  setWorkspaceName(event.target.value)
+                  setRenameError("")
+                }}
+              />
+              {renameError ? (
+                <p id="workspace-name-error" role="alert">
+                  {renameError}
+                </p>
+              ) : null}
+              <Button
+                type="submit"
+                disabled={
+                  renameGroup.isPending ||
+                  (workspaceName ?? group.name).trim() === group.name
+                }
+              >
+                {renameGroup.isPending ? "Saving…" : "Save name"}
+              </Button>
+            </form>
+          </FinaSurface>
+        ) : null}
+
         <section aria-labelledby="people-title">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>

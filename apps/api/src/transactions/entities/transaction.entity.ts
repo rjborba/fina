@@ -26,6 +26,9 @@ export class Transactions {
   @Column('character varying', { name: 'description', nullable: true })
   description: string | null;
 
+  @Column('boolean', { name: 'flagged', default: false })
+  flagged: boolean;
+
   @Column('real', { name: 'value', nullable: true })
   value: number | null;
 

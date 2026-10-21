@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateGroupInputDto, GroupOutput } from '@fina/types';
+import {
+  CreateGroupInputDto,
+  RenameGroupInputDto,
+  GroupOutput,
+} from '@fina/types';
 import { DataSource, Repository } from 'typeorm';
 import { Groups } from './entities/group.entity';
 import { UserGroup } from '../user-groups/entities/user-group.entity';
@@ -92,6 +96,26 @@ export class GroupsService {
       createdAt: toDateTimeOutput(row.createdAt),
       isOwner: Boolean(row.isOwner),
     };
+  }
+
+  async rename(
+    userId: string,
+    id: string,
+    input: RenameGroupInputDto,
+  ): Promise<GroupOutput> {
+    await this.authorization.assertOwner(userId, id);
+    const result = await this.groups
+      .createQueryBuilder()
+      .update(Groups)
+      .set({ name: input.name })
+      .where('id = :id', { id })
+      .andWhere(
+        `EXISTS (SELECT 1 FROM public.user_group membership WHERE membership.group_id = :id AND membership.user_id = :userId AND membership.role = 'owner')`,
+        { userId },
+      )
+      .execute();
+    if (!result.affected) throw new NotFoundException('Resource not found');
+    return this.findOne(userId, id);
   }
 
   async remove(

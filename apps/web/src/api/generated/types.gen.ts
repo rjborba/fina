@@ -315,6 +315,7 @@ export type CreditCardBillDetailDto = {
     transactions: Array<{
         id: string;
         createdAt: string;
+        flagged: boolean;
         description: (string) | null;
         value: (number) | null;
         cardName: (string) | null;
@@ -686,6 +687,7 @@ export type QueryTransactionOutputDto = {
     data: Array<{
         id: string;
         createdAt: string;
+        flagged: boolean;
         description: (string) | null;
         value: (number) | null;
         cardName: (string) | null;
@@ -736,6 +738,10 @@ export type ReconcileCreditCardBillInputDto = {
     paymentTransactionId: string;
 };
 
+export type RenameGroupInputDto = {
+    name: string;
+};
+
 export type TransactionCardValuesOutputDto = Array<{
     cardName: (string) | null;
     cardLast4: (string) | null;
@@ -744,6 +750,7 @@ export type TransactionCardValuesOutputDto = Array<{
 export type TransactionOutputDto = {
     id: string;
     createdAt: string;
+    flagged: boolean;
     description: (string) | null;
     value: (number) | null;
     cardName: (string) | null;
@@ -953,6 +960,7 @@ export type UpdateTransactionInputDto = {
     observation?: (string) | null;
     toBeConsideredAt?: unknown;
     calculatedDate?: unknown;
+    flagged?: boolean;
     bankaccountId?: (string) | null;
     categoryId?: (string) | null;
 };
@@ -1056,6 +1064,13 @@ export type GroupsControllerFindOneData = {
 };
 
 export type GroupsControllerFindOneResponse = (GroupOutputDto);
+
+export type GroupsControllerRenameData = {
+    id: string;
+    requestBody: RenameGroupInputDto;
+};
+
+export type GroupsControllerRenameResponse = (GroupOutputDto);
 
 export type GroupsControllerRemoveData = {
     id: string;

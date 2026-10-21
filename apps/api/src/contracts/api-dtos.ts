@@ -16,6 +16,7 @@ import {
   CreditCardBillQuerySchema,
   CreditCardBillSummarySchema,
   CreateGroupInputSchema,
+  RenameGroupInputSchema,
   CreateImportInputDtoSchema,
   CreateInviteInputSchema,
   CreateTransactionInputDtoSchema,
@@ -189,3 +190,5 @@ export class GroupMemberListOutputDto extends createZodDto(
   GroupMemberListOutputSchema,
 ) {}
 export class GroupMemberOutputDto extends createZodDto(GroupMemberSchema) {}
+
+export class RenameGroupInputDto extends createZodDto(RenameGroupInputSchema) {}

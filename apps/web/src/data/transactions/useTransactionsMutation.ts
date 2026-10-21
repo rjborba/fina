@@ -56,6 +56,7 @@ export const useTransactionMutation = () => {
       transaction: Partial<TransactionOutput>
     }) => {
       const update = {
+        flagged: transaction.flagged,
         description: transaction.description,
         value: transaction.value,
         date: transaction.date,

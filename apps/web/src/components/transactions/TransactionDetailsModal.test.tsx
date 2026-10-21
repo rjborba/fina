@@ -58,6 +58,7 @@ vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }))
 
 const transaction: TransactionOutput = {
   id: "7",
+  flagged: false,
   cardName: null,
   cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
@@ -88,6 +89,77 @@ describe("TransactionDetailsModal", () => {
   })
 
   afterEach(cleanup)
+
+  it("shows compact read-only facts without the removed fields or duplicate header date", () => {
+    render(
+      <TransactionDetailsModal
+        transaction={{
+          ...transaction,
+          cardName: "Personal",
+          cardLast4: "0042",
+          calculatedDate: "2026-10-01",
+          toBeConsideredAt: "2026-10-05",
+          creditDueDate: "2026-10-10",
+          bankaccount: {
+            id: "21",
+            name: "Card",
+            type: "credit",
+            institutionId: "nubank",
+            dueDate: 10
+          }
+        }}
+        open
+        onOpenChange={vi.fn()}
+        totalTransactions={1}
+        currentTransactionIndex={0}
+        onNextTransaction={vi.fn()}
+        onPreviousTransaction={vi.fn()}
+      />
+    )
+    expect(screen.queryByLabelText("Card name")).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Save card details" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("Calculated", { exact: true })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("Considered", { exact: true })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getAllByText("Transaction date", { exact: true })
+    ).toHaveLength(1)
+    expect(screen.getByText("Personal · ••0042")).toBeVisible()
+    expect(screen.getByText(/^Added /)).toBeVisible()
+    expect(screen.getByRole("button", { name: /Uncategorized/ })).toBeVisible()
+  })
+
+  it("cancels note editing with Escape without closing transaction details or categorizing", async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <TransactionDetailsModal
+        transaction={transaction}
+        open
+        onOpenChange={onOpenChange}
+        totalTransactions={1}
+        currentTransactionIndex={0}
+        onNextTransaction={vi.fn()}
+        onPreviousTransaction={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Add note" }))
+    const editor = screen.getByRole("textbox", { name: "Transaction note" })
+    fireEvent.change(editor, { target: { value: "Draft 123" } })
+    fireEvent.keyDown(editor, { key: "1", code: "Digit1" })
+    fireEvent.keyDown(editor, { key: "Escape", code: "Escape" })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("textbox", { name: "Transaction note" })
+      ).not.toBeInTheDocument()
+    )
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(mocks.mutateAsync).not.toHaveBeenCalled()
+  })
 
   it("shows checking details without reference-month controls", () => {
     render(
@@ -151,7 +223,7 @@ describe("TransactionDetailsModal", () => {
     expect(screen.queryByLabelText("Reference month")).not.toBeInTheDocument()
   })
 
-  it("categorizes with number keys and shows the available shortcut range", async () => {
+  it("categorizes with number keys without displaying shortcut instructions", async () => {
     render(
       <TransactionDetailsModal
         transaction={transaction}
@@ -164,7 +236,9 @@ describe("TransactionDetailsModal", () => {
       />
     )
 
-    expect(screen.getByText("Keys 1–2 · 0 clears")).toBeInTheDocument()
+    expect(screen.queryByText(/Keys 1–/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Transaction / Details")).not.toBeInTheDocument()
+    expect(screen.queryByText("Edit / Category")).not.toBeInTheDocument()
     document.addEventListener("keydown", (event) => event.stopPropagation(), {
       once: true
     })

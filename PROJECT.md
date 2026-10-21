@@ -15,8 +15,8 @@ Existing code is evidence, not an implicit specification.
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | Identity            | Nest globally verifies Supabase HS256 or signing-key JWTs, validates issuer/audience/role, and attaches typed identity. Stable errors include a request ID.                                                                                                                                                                                                                                                                                                           | A typed authenticated identity is derived from every verified token.                                                                                                   | Add production observability around failures without logging tokens.                                                |
 | Tenant isolation    | Every application route uses shared membership policy and group-scoped queries. Cross-tenant resource lookups return the same not-found response.                                                                                                                                                                                                                                                                                                                     | Every query and mutation is membership-checked and group-scoped without resource-existence disclosure.                                                                 | Keep PostgreSQL-backed denial tests with every new resource.                                                        |
-| Roles               | Memberships have owner/member roles. Owners manage invitations and group deletion; both roles manage financial data.                                                                                                                                                                                                                                                                                                                                                  | Owners administer groups and members; both roles manage financial data.                                                                                                | Member removal, ownership transfer, and final-owner rules still need routes.                                        |
-| First-run setup     | Every Supabase Auth signup atomically creates an application profile, a `My finances` group, and an owner membership; existing profiles without any membership are backfilled by migration.                                                                                                                                                                                                                                                                           | A newly authenticated user can immediately use every group-scoped product flow.                                                                                        | Add first-run guidance and group renaming to the browser experience.                                                |
+| Roles               | Memberships have owner/member roles. Owners rename workspaces and manage invitations and group deletion; both roles manage financial data.                                                                                                                                                                                                                                                                                                                            | Owners administer groups and members; both roles manage financial data.                                                                                                | Member removal, ownership transfer, and final-owner rules still need routes.                                        |
+| First-run setup     | Every Supabase Auth signup atomically creates an application profile, a `My finances` group, and an owner membership; existing profiles without any membership are backfilled by migration.                                                                                                                                                                                                                                                                           | A newly authenticated user can immediately use every group-scoped product flow.                                                                                        | Add first-run guidance to the browser experience.                                                                   |
 | Accounts/categories | Nest provides group-scoped create/list/read/delete behavior; ordinary deletion archives records without changing transaction history. Credit-card accounts accept and persist a constrained due day from 1 through 31, rather than an artificial calendar date. Categories carry a validated icon and color from the product palette, with safe defaults for existing rows and older clients, and members can change existing category appearance.                    | Members manage group-scoped accounts and visually distinct categories; referenced records archive without owning transaction lifecycle.                                | Add account/category name editing and recovery UX.                                                                  |
 | CSV import          | The CSV workflow validates mapping, preserves source files, rejects active duplicates, and atomically imports group-scoped transactions. Card imports choose only the bill due month. Monthly review automatically includes bills due in the following month; no review assignments are stored.                                                                                                                                                                       | Preview validated generic mapping, detect same-file duplicates, atomically persist normalized rows and the original CSV, and retain the source for audit/reprocessing. | Extend bank-format detection and original file recovery UX as needed.                                               |
 | Transactions        | Monthly review calculates card attribution as the month before each bill's due month and supports inline or grouped card bills. Cash flow shows unpaid bills on their due date as forecasts and confirmed card payments once on their actual payment date and amount. Checking transactions use their occurrence month. No group defaults, bill assignments, or transaction review overrides are stored. All data remains group-scoped and ordinary deletion is soft. | Group-scoped review/editing, exact minor-unit money, explicit account currencies, explicit posting/accounting/occurrence dates, and soft deletion.                     | Add responsibility splits and settlement tracking; migrate money and currency with explicit data handling.          |
@@ -101,6 +101,14 @@ Production observability around authentication and import failures remains.
 6. **Discrepancy:** initial group provisioning and membership/owner enforcement
    exist; membership removal, ownership transfer, final-owner protection, and
    first-run guidance remain.
+
+### Workspace renaming
+
+Owners can rename a workspace from its settings page. `PATCH /groups/:id`
+accepts only a trimmed name of 1–120 characters. The shared owner policy and
+owner-scoped update reject members and hide inaccessible resources. Successful
+renames refresh workspace lists, selectors, headings, and deletion confirmation;
+failed saves preserve the entered name for retry. No schema change is required.
 
 ### Account institutions and issuer logos
 
@@ -222,8 +230,9 @@ Production observability around authentication and import failures remains.
    file-wide card fallback. Historical import mappings and original files remain
    retained for audit; old profiles lose obsolete identity assignments and require
    an explicit choice of which column contains a name versus digits.
-   Manual creation, details, and same-account bulk editing use ordinary optional
-   fields, with retryable errors and no separate card management.
+   Manual creation and same-account bulk editing use ordinary optional fields,
+   with retryable errors and no separate card management. Transaction details
+   display existing card attribution read-only beneath the account.
    Display controls card name and masked digits independently. The permanent card
    indicator follows the import indicator and reveals available metadata. Entirely
    unidentified credit purchases retain `Not identified`; checking rows stay blank.
@@ -339,7 +348,14 @@ Production observability around authentication and import failures remains.
    values. Rows removed from the filtered ledger are skipped; new rows join the
    navigation sequence when the dialog is reopened. This applies to inline
    transactions, grouped checking transactions, and bill-detail purchases.
-   Changing the active group ends the open details session.
+   Changing the active group ends the open details session. The dialog uses a
+   compact description/amount header, read-only transaction date, account and
+   masked card attribution, due date, installment, source, workspace, and notes.
+   Card editing, calculated/considered dates, and the duplicate header date are
+   omitted. Added time appears as subdued metadata; category buttons and their
+   keyboard behavior remains available. The modal omits decorative section
+   badges, shortcut instructions, and navigation keycaps; it uses restrained
+   typography, unboxed facts, and a quiet position counter in the footer.
    Display opens a compact anchored panel with an ordering dropdown, a separate
    sort-direction control, and toggles for date, account, card name, masked
    card number, category, installment, and amount. Account chips and masked
@@ -484,6 +500,23 @@ Production observability around authentication and import failures remains.
    records are preserved. The migration is PostgreSQL-tested, committed, and
    applied to the verified local Supabase development database. Production is
    unchanged by local implementation.
+
+### Transaction notes
+
+The existing nullable `observation` field is displayed as Note. A comment icon
+replaces the flag control on transaction rows, including grouped checking rows
+and bill purchases. Clicking it opens a text editor dialog with Save note and
+Cancel; Ctrl/Cmd+Enter saves and Escape cancels. Existing comments also offer
+a trash icon to remove the saved note directly. Nonblank notes highlight the
+comment icon and row yellow in light/dark mode. Clearing a note clears the
+highlight. Hovering a highlighted row or its comment icon shows the saved
+comment in a wrapped tooltip. Bill aggregates have no comment control. Details show the full note
+and allow editing using the same field. Failed saves retain the draft for retry;
+empty notes clear to null. Note controls do not open transaction details or
+trigger navigation/category shortcuts. Notes use the existing authenticated,
+group-scoped transaction PATCH and query cache; no new schema or API field is
+needed. The earlier `flagged` column remains backward-compatible but does not
+control the interface highlight.
 
 ### Transaction and import deletion
 

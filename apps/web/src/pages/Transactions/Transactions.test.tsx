@@ -136,6 +136,7 @@ function expectInitialQuery(filters: typeof marchFilters, groupId = "group-1") {
 
 const checkingTransaction = {
   id: "checking-transaction",
+  flagged: false,
   cardName: null,
   cardLast4: null,
   createdAt: "2026-02-10T00:00:00.000Z",

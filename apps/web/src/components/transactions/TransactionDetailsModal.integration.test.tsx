@@ -88,6 +88,7 @@ const categories = [
 
 const initialTransaction: TransactionOutput = {
   id: "7",
+  flagged: false,
   cardName: null,
   cardLast4: null,
   createdAt: "2026-09-27T00:00:00.000Z",
@@ -139,83 +140,6 @@ describe("transaction detail category shortcut flow", () => {
   })
 
   afterEach(cleanup)
-
-  it.each(["success", "failure"] as const)(
-    "saves ordinary card fields through the generated mutation and preserves persisted values after %s",
-    async (outcome) => {
-      let stored = { ...initialTransaction }
-      api.update.mockImplementation(async ({ requestBody }) => {
-        if (outcome === "failure") throw new Error("Synthetic save failure")
-        stored = {
-          ...stored,
-          cardName: requestBody.cardName,
-          cardLast4: requestBody.cardLast4
-        }
-        return stored
-      })
-      const client = new QueryClient({
-        defaultOptions: {
-          queries: { retry: false },
-          mutations: { retry: false }
-        }
-      })
-      function Flow() {
-        const { data } = useQuery({
-          queryKey: ["transactions", "1", "metadata"],
-          queryFn: async () => ({ data: [stored], totalCount: 1 })
-        })
-        return (
-          <TransactionDetailsModal
-            transaction={data?.data[0] ?? null}
-            open
-            onOpenChange={() => {}}
-            onNextTransaction={() => {}}
-            onPreviousTransaction={() => {}}
-            totalTransactions={1}
-            currentTransactionIndex={0}
-          />
-        )
-      }
-      render(
-        <QueryClientProvider client={client}>
-          <Flow />
-        </QueryClientProvider>
-      )
-      const user = userEvent.setup()
-      await user.type(await screen.findByLabelText("Card name"), "Personal")
-      await user.type(screen.getByLabelText("Last four digits"), "0042")
-      await user.click(
-        screen.getByRole("button", { name: "Save card details" })
-      )
-      await waitFor(() =>
-        expect(api.update).toHaveBeenCalledWith({
-          id: initialTransaction.id,
-          requestBody: expect.objectContaining({
-            cardName: "Personal",
-            cardLast4: "0042"
-          })
-        })
-      )
-      if (outcome === "failure") {
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-          "could not be saved"
-        )
-        expect(stored).toMatchObject({ cardName: null, cardLast4: null })
-        expect(screen.getByLabelText("Card name")).toHaveValue("Personal")
-      } else {
-        await waitFor(() =>
-          expect(stored).toMatchObject({
-            cardName: "Personal",
-            cardLast4: "0042"
-          })
-        )
-        expect(
-          client.getQueryData(["transactions", "1", "metadata"])
-        ).toMatchObject({ data: [{ cardName: "Personal", cardLast4: "0042" }] })
-      }
-      client.clear()
-    }
-  )
 
   it("saves number-key categories through the real mutation hook and renders the bill purchase update", async () => {
     let storedTransaction = initialTransaction
@@ -371,7 +295,7 @@ describe("transaction detail category shortcut flow", () => {
       expect(ledgerOrder()).toEqual(["Purchase B", "Purchase C", "Purchase A"])
     })
     expect(storedTransactions[0].category).toBeNull()
-    expect(details.getByText("1 / 3")).toBeInTheDocument()
+    expect(details.getByText("1 of 3")).toBeInTheDocument()
 
     await act(async () => resolveFirstUpdate())
     await waitFor(() => {
@@ -381,7 +305,7 @@ describe("transaction detail category shortcut flow", () => {
     expect(storedTransactions[0].category?.id).toBe("10")
     await user.keyboard("{ArrowRight}")
     expect(details.getByRole("heading", { name: "Purchase B" })).toBeVisible()
-    expect(details.getByText("2 / 3")).toBeInTheDocument()
+    expect(details.getByText("2 of 3")).toBeInTheDocument()
     await user.keyboard("2")
 
     await waitFor(() => {
@@ -398,7 +322,7 @@ describe("transaction detail category shortcut flow", () => {
     })
     await user.keyboard("{ArrowRight}")
     expect(details.getByRole("heading", { name: "Purchase C" })).toBeVisible()
-    expect(details.getByText("3 / 3")).toBeInTheDocument()
+    expect(details.getByText("3 of 3")).toBeInTheDocument()
     await user.keyboard("{ArrowLeft}")
     expect(details.getByRole("heading", { name: "Purchase B" })).toBeVisible()
     expect(

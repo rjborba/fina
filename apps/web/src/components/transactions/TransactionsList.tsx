@@ -1,3 +1,4 @@
+import { TransactionCommentButton } from "./TransactionCommentButton"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
 import { useToast } from "@/hooks/use-toast"
@@ -139,6 +140,8 @@ const TransactionLedger = function TransactionLedger({
             rowKey={transaction.id}
             index={virtualRow.index}
             start={virtualRow.start}
+            notePreview={transaction.observation}
+            flagged={Boolean(transaction.observation?.trim())}
             isSelected={isSelected}
             isFocused={isFocused}
             selectionDisabled={selectionDisabled}
@@ -153,6 +156,11 @@ const TransactionLedger = function TransactionLedger({
             onMouseLeave={() => onRowHover(null)}
             onClick={(event) => onRowClick(event, transaction.id)}
           >
+            <TransactionCommentButton
+              transaction={transaction}
+              onUpdateTransaction={onUpdateTransaction}
+              disabled={selectionDisabled}
+            />
             {displayProperties.date ? (
               <div
                 data-column="date"

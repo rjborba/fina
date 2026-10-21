@@ -1,7 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import {
   CreateGroupInputDto,
+  RenameGroupInputDto,
   DeleteGroupInputDto,
   DeleteGroupOutputDto,
   GroupListOutputDto,
@@ -40,6 +49,18 @@ export class GroupsController {
   @ZodSerializerDto(GroupOutputDto)
   findOne(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.groupsService.findOne(user.id, params.id);
+  }
+
+  @Patch(':id')
+  @ApiOkResponse({ type: GroupOutputDto })
+  @ApiParam({ name: 'id', type: String })
+  @ZodSerializerDto(GroupOutputDto)
+  rename(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+    @Body() input: RenameGroupInputDto,
+  ) {
+    return this.groupsService.rename(user.id, params.id, input);
   }
 
   @Delete(':id')

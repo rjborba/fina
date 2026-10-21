@@ -26,3 +26,6 @@ export const GroupQueryInputSchema = z.object({
 export type GroupOutput = z.infer<typeof GroupOutputSchema>;
 export type CreateGroupInputDto = z.infer<typeof CreateGroupInputSchema>;
 export type DeleteGroupInputDto = z.infer<typeof DeleteGroupInputSchema>;
+
+export const RenameGroupInputSchema = CreateGroupInputSchema.strict();
+export type RenameGroupInputDto = z.infer<typeof RenameGroupInputSchema>;

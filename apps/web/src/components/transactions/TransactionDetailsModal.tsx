@@ -1,8 +1,8 @@
+import { TransactionNote } from "./TransactionNote"
 import type { BankaccountOutputDto, CategoryOutputDto } from "@/api/generated"
-import { FinaBadge } from "@/components/ui/fina"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
-import { CardMetadataEditor } from "@/components/creditCards/CardMetadataEditor"
+import { CardLabel } from "@/components/creditCards/CardLabel"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useBankAccounts } from "@/data/bankAccounts/useBankAccounts"
 import { useCategories } from "@/data/categories/useCategories"
@@ -10,27 +10,18 @@ import { useTransactionMutation } from "@/data/transactions/useTransactionsMutat
 import { dayjs } from "@/dayjs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import type { CardMetadata, TransactionOutput } from "@fina/types"
+import type { TransactionOutput } from "@fina/types"
 import {
-  ArrowDown,
   ArrowLeft,
   ArrowRight,
-  ArrowUp,
   CalendarDays,
   CreditCard,
   FileSpreadsheet,
-  Hash,
   Landmark,
   Layers3,
   ReceiptText
 } from "lucide-react"
-import React, {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState
-} from "react"
+import React, { type ReactNode, useCallback, useEffect, useRef } from "react"
 
 import { Button } from "../ui/button"
 import {
@@ -55,7 +46,6 @@ interface DetailCellProps {
   icon: ReactNode
   label: string
   value: ReactNode
-  tone?: "surface" | "sky" | "yellow"
 }
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -67,20 +57,14 @@ function formatDate(value: string | null | undefined) {
   return value ? dayjs(value).format("ddd, DD MMM YYYY") : "—"
 }
 
-function DetailCell({ icon, label, value, tone = "surface" }: DetailCellProps) {
-  const toneClass = {
-    surface: "bg-fina-surface",
-    sky: "bg-fina-sky",
-    yellow: "bg-fina-yellow"
-  }[tone]
-
+function DetailCell({ icon, label, value }: DetailCellProps) {
   return (
-    <div className={cn("min-h-20 border-fina-grid p-3", toneClass)}>
-      <div className="flex items-center gap-2 font-mono text-[9px] font-semibold tracking-[0.17em] text-foreground/55">
+    <div className="min-w-0 px-1 py-3 sm:py-4">
+      <div className="flex items-center gap-2 text-[11px] font-medium text-foreground/50">
         {icon}
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold tracking-[-0.025em]">
+      <div className="mt-2 break-words text-sm font-medium leading-relaxed [overflow-wrap:anywhere]">
         {value}
       </div>
     </div>
@@ -89,7 +73,7 @@ function DetailCell({ icon, label, value, tone = "surface" }: DetailCellProps) {
 
 function KeyboardKey({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex min-w-6 items-center justify-center rounded border border-fina-grid bg-fina-surface px-1.5 py-1 font-mono text-[9px] font-semibold shadow-fina-sm">
+    <span className="inline-flex min-w-4 items-center justify-center text-[10px] font-normal text-current/45">
       {children}
     </span>
   )
@@ -114,12 +98,7 @@ export function TransactionDetailsModal({
     groupId: selectedGroup?.id?.toString()
   })
 
-  const [highlightNextButton, setHighlightNextButton] = useState(false)
-  const [highlightPreviousButton, setHighlightPreviousButton] = useState(false)
-
   const dialogContentRef = useRef<HTMLDivElement>(null)
-  const highlightNextRef = useRef<NodeJS.Timeout | null>(null)
-  const highlightPreviousRef = useRef<NodeJS.Timeout | null>(null)
 
   const hasNextTransaction = currentTransactionIndex < totalTransactions - 1
   const hasPreviousTransaction = currentTransactionIndex > 0
@@ -167,11 +146,6 @@ export function TransactionDetailsModal({
     [transaction, updateTransaction, updateMutation.isPending]
   )
 
-  const handleCardSave = async (metadata: CardMetadata) => {
-    if (!transaction || updateMutation.isPending) return
-    await updateTransaction({ id: transaction.id, transaction: metadata })
-  }
-
   useEffect(() => {
     if (!open) return
 
@@ -184,6 +158,11 @@ export function TransactionDetailsModal({
         (target.closest('[cmdk-root], [role="listbox"]') ||
           target.closest('[role="combobox"]')?.getAttribute("aria-expanded") ===
             "true")
+      )
+        return
+      if (
+        target instanceof HTMLElement &&
+        target.closest("[data-note-control]")
       )
         return
       if (event.key === "Escape") {
@@ -233,33 +212,17 @@ export function TransactionDetailsModal({
       if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
         if (!hasPreviousTransaction) return
 
-        if (highlightPreviousRef.current) {
-          clearTimeout(highlightPreviousRef.current)
-        }
-
         event.preventDefault()
         event.stopPropagation()
         onPreviousTransaction()
-        setHighlightPreviousButton(true)
-        highlightPreviousRef.current = setTimeout(() => {
-          setHighlightPreviousButton(false)
-        }, 300)
       }
 
       if (event.key === "ArrowRight" || event.key === "ArrowDown") {
         if (!hasNextTransaction) return
 
-        if (highlightNextRef.current) {
-          clearTimeout(highlightNextRef.current)
-        }
-
         event.preventDefault()
         event.stopPropagation()
         onNextTransaction()
-        setHighlightNextButton(true)
-        highlightNextRef.current = setTimeout(() => {
-          setHighlightNextButton(false)
-        }, 300)
       }
     }
 
@@ -296,55 +259,46 @@ export function TransactionDetailsModal({
   const hasValue =
     transaction?.value !== null && transaction?.value !== undefined
   const isIncome = (transaction?.value ?? 0) > 0
-  const categoryShortcutCount = Math.min(categoriesData?.length ?? 0, 9)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={dialogContentRef}
-        className="max-h-[calc(100svh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-7xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-lg border border-fina-grid bg-fina-canvas p-0 text-foreground shadow-fina-lg outline-none [&>button]:right-4 [&>button]:top-4 [&>button]:rounded-md [&>button]:border [&>button]:border-fina-grid [&>button]:bg-fina-surface [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:shadow-fina-sm [&>button]:hover:bg-fina-canvas"
+        className="max-h-[calc(100svh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-lg border border-fina-grid bg-fina-canvas p-0 text-foreground shadow-fina-lg outline-none [&>button]:right-4 [&>button]:top-4 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:shadow-none [&>button]:hover:bg-fina-canvas"
+        onEscapeKeyDown={(event) => {
+          if (
+            event.target instanceof HTMLElement &&
+            event.target.closest("[data-note-editor]")
+          )
+            event.preventDefault()
+        }}
         onOpenAutoFocus={(event) => {
           event.preventDefault()
           dialogContentRef.current?.focus()
         }}
       >
-        <DialogHeader className="grid space-y-0 border-b border-fina-grid bg-fina-surface px-5 py-4 pr-16 text-left lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-8 lg:px-6 lg:pr-16">
+        <DialogHeader className="grid space-y-0 border-b border-fina-grid bg-fina-canvas px-5 py-5 pr-16 text-left lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-8 lg:px-6 lg:pr-16">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <FinaBadge>Transaction / Details</FinaBadge>
-              <FinaBadge tone="surface">
-                {currentTransactionIndex + 1} / {totalTransactions}
-              </FinaBadge>
-            </div>
-            <DialogTitle className="mt-3 max-w-4xl text-2xl font-semibold leading-[0.92] tracking-[-0.05em] sm:text-3xl lg:text-4xl">
+            <DialogTitle className="max-w-2xl break-words text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
               {transaction?.description || "Untitled transaction"}
             </DialogTitle>
-            <DialogDescription className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] font-semibold tracking-[0.12em] text-foreground/55">
-              <span className="inline-flex items-center gap-1.5">
-                <Hash className="size-3" /> {transaction?.id ?? "—"}
-              </span>
-              <span>{formatDate(transaction?.date)}</span>
+            <DialogDescription className="sr-only">
+              Transaction #{transaction?.id ?? "—"}
             </DialogDescription>
           </div>
 
           <div
             className={cn(
-              "mt-4 min-w-64 rounded-lg border border-fina-grid bg-fina-canvas px-4 py-3 shadow-fina-sm lg:mt-0",
+              "mt-4 lg:mt-0 lg:text-right",
               isIncome
                 ? "text-emerald-700 dark:text-emerald-300"
                 : "text-foreground"
             )}
           >
-            <div className="font-mono text-[9px] font-semibold tracking-[0.16em] opacity-55">
-              Posted value
-            </div>
-            <div className="mt-1 whitespace-nowrap font-mono text-[clamp(1.6rem,2.5vw,2.4rem)] font-semibold leading-none tracking-[-0.07em]">
+            <div className="whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
               {hasValue
                 ? currencyFormatter.format(transaction.value ?? 0)
                 : "—"}
-            </div>
-            <div className="mt-2 font-mono text-[8px] font-semibold tracking-[0.13em] opacity-60">
-              {isIncome ? "Income / Credit" : "Expense / Debit"}
             </div>
           </div>
         </DialogHeader>
@@ -354,25 +308,19 @@ export function TransactionDetailsModal({
             aria-labelledby="transaction-facts-title"
             className="border-fina-grid p-4 sm:p-5"
           >
-            <div className="font-mono text-[9px] font-semibold tracking-[0.17em] text-foreground/50">
-              Ledger / Facts
-            </div>
-            <h3
-              id="transaction-facts-title"
-              className="mt-1 text-xl font-semibold tracking-[-0.04em]"
-            >
+            <h3 id="transaction-facts-title" className="sr-only">
               Transaction data
             </h3>
 
-            <div className="mt-3 grid overflow-hidden border-l border-t border-fina-grid sm:grid-cols-2 lg:grid-cols-4">
-              <div className="border-b border-r border-fina-grid">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3">
+              <div className="min-w-0">
                 <DetailCell
                   icon={<CalendarDays className="size-3.5" />}
                   label="Transaction date"
                   value={formatDate(transaction?.date)}
                 />
               </div>
-              <div className="border-b border-r border-fina-grid">
+              <div className="min-w-0">
                 <DetailCell
                   icon={
                     <FinancialInstitutionLogo
@@ -384,7 +332,6 @@ export function TransactionDetailsModal({
                     />
                   }
                   label="Account"
-                  tone="sky"
                   value={
                     <div>
                       <div>{accountData?.name ?? "—"}</div>
@@ -394,35 +341,19 @@ export function TransactionDetailsModal({
                           {accountIsCredit ? "Credit card" : "Checking account"}
                         </div>
                       ) : null}
+                      {accountIsCredit &&
+                      transaction &&
+                      (transaction.cardName || transaction.cardLast4) ? (
+                        <div className="mt-1 text-xs font-normal text-foreground/60">
+                          <CardLabel card={transaction} />
+                        </div>
+                      ) : null}
                     </div>
                   }
                 />
               </div>
-              {accountIsCredit ? (
-                <div className="border-b border-r border-fina-grid">
-                  <DetailCell
-                    icon={<CreditCard className="size-3.5" />}
-                    label="Purchase card"
-                    value={
-                      <div>
-                        {transaction ? (
-                          <CardMetadataEditor
-                            key={`${transaction.id}:${transaction.cardName}:${transaction.cardLast4}`}
-                            value={transaction}
-                            onSave={handleCardSave}
-                            disabled={updateMutation.isPending}
-                          />
-                        ) : null}
-                        <p className="mt-1.5 text-xs font-normal text-muted-foreground">
-                          One shared account bill.
-                        </p>
-                      </div>
-                    }
-                  />
-                </div>
-              ) : null}
               {transaction?.creditDueDate ? (
-                <div className="border-b border-r border-fina-grid">
+                <div className="min-w-0">
                   <DetailCell
                     icon={<CalendarDays className="size-3.5" />}
                     label="Credit due date"
@@ -431,93 +362,72 @@ export function TransactionDetailsModal({
                 </div>
               ) : null}
               {hasInstallment ? (
-                <div className="border-b border-r border-fina-grid">
+                <div className="min-w-0">
                   <DetailCell
                     icon={<Layers3 className="size-3.5" />}
                     label="Installment"
-                    tone="yellow"
                     value={`${transaction?.installmentCurrent}/${transaction?.installmentTotal}`}
                   />
                 </div>
               ) : null}
-              <div className="border-b border-r border-fina-grid">
+              <div className="min-w-0">
                 <DetailCell
                   icon={<FileSpreadsheet className="size-3.5" />}
                   label="Source"
-                  tone="yellow"
                   value={transaction?.import?.fileName ?? "Manual entry"}
                 />
               </div>
-              <div className="border-b border-r border-fina-grid">
+              <div className="min-w-0">
                 <DetailCell
                   icon={<Layers3 className="size-3.5" />}
                   label="Workspace"
                   value={transaction?.group.name ?? "—"}
                 />
               </div>
-              <div className="border-b border-r border-fina-grid">
-                <DetailCell
-                  icon={<CalendarDays className="size-3.5" />}
-                  label="Added"
-                  value={
-                    transaction?.createdAt
-                      ? dayjs(transaction.createdAt).format("DD MMM YY, HH:mm")
-                      : "—"
-                  }
-                />
-              </div>
-              {transaction?.calculatedDate ? (
-                <div className="border-b border-r border-fina-grid">
-                  <DetailCell
-                    icon={<CalendarDays className="size-3.5" />}
-                    label="Calculated"
-                    value={formatDate(transaction.calculatedDate)}
-                  />
-                </div>
-              ) : null}
-              {transaction?.toBeConsideredAt ? (
-                <div className="border-b border-r border-fina-grid">
-                  <DetailCell
-                    icon={<CalendarDays className="size-3.5" />}
-                    label="Considered"
-                    value={formatDate(transaction.toBeConsideredAt)}
-                  />
-                </div>
-              ) : null}
-              {transaction?.observation ? (
-                <div className="border-b border-r border-fina-grid sm:col-span-2">
+              {transaction ? (
+                <div className="min-w-0 border-t sm:col-span-2 lg:col-span-3">
                   <DetailCell
                     icon={<ReceiptText className="size-3.5" />}
-                    label="Observation"
-                    value={transaction.observation}
+                    label="Note"
+                    value={
+                      <TransactionNote
+                        key={transaction.id}
+                        value={transaction.observation}
+                        disabled={updateMutation.isPending}
+                        onSave={(observation) =>
+                          updateTransaction({
+                            id: transaction.id,
+                            transaction: { observation }
+                          })
+                        }
+                      />
+                    }
                   />
                 </div>
               ) : null}
             </div>
+            <p className="mt-2 px-1 text-[11px] text-foreground/35">
+              Added{" "}
+              {transaction?.createdAt
+                ? dayjs(transaction.createdAt).format("DD MMM YYYY, HH:mm")
+                : "—"}
+            </p>
           </section>
 
           <section
             aria-labelledby="transaction-category-title"
-            className="border-t border-fina-grid bg-fina-surface p-4 sm:p-5 xl:grid xl:grid-cols-[11rem_minmax(0,1fr)] xl:items-center xl:gap-5"
+            className="border-t border-fina-grid p-4 sm:p-5"
           >
             <div>
-              <div className="font-mono text-[9px] font-semibold tracking-[0.17em] text-foreground/50">
-                Edit / Category
-              </div>
               <h3
                 id="transaction-category-title"
-                className="mt-1 text-xl font-semibold tracking-[-0.04em]"
+                className="text-xs font-medium text-foreground/55"
               >
-                Categorize
+                Category
               </h3>
-              <p className="mt-1 font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-foreground/50">
-                {categoryShortcutCount > 0
-                  ? `Keys 1–${categoryShortcutCount} · 0 clears`
-                  : "0 clears"}
-              </p>
             </div>
 
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:mt-0">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {categoriesData?.map((category, index) => {
                 const isSelected = transaction?.category?.id === category.id
                 return (
@@ -554,53 +464,29 @@ export function TransactionDetailsModal({
           </section>
         </div>
 
-        <footer className="flex flex-col gap-3 border-t border-fina-grid bg-fina-canvas p-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <footer className="flex items-center justify-between gap-3 border-t border-fina-grid px-4 py-3 sm:px-5">
           <Button
-            variant="fina-secondary"
-            className={cn("justify-between sm:min-w-40", {
-              "bg-fina-lime": highlightPreviousButton
-            })}
+            variant="ghost"
+            size="sm"
             disabled={updateMutation.isPending || !hasPreviousTransaction}
             onClick={() => {
               if (!updateMutation.isPending) onPreviousTransaction()
             }}
           >
-            <ArrowLeft />
-            <span>Previous</span>
-            <span className="flex gap-1">
-              <KeyboardKey>
-                <ArrowUp className="size-3" />
-              </KeyboardKey>
-              <KeyboardKey>
-                <ArrowLeft className="size-3" />
-              </KeyboardKey>
-            </span>
+            <ArrowLeft className="size-4" /> Previous
           </Button>
-
-          <div className="hidden font-mono text-[9px] font-semibold tracking-[0.14em] text-foreground/55 lg:block">
-            Arrow keys browse · Number keys categorize
-          </div>
-
+          <span className="text-xs tabular-nums text-foreground/40">
+            {currentTransactionIndex + 1} of {totalTransactions}
+          </span>
           <Button
-            variant="fina-primary"
-            className={cn("justify-between sm:min-w-40", {
-              "bg-fina-yellow": highlightNextButton
-            })}
+            variant="ghost"
+            size="sm"
             disabled={updateMutation.isPending || !hasNextTransaction}
             onClick={() => {
               if (!updateMutation.isPending) onNextTransaction()
             }}
           >
-            <span className="flex gap-1">
-              <KeyboardKey>
-                <ArrowDown className="size-3" />
-              </KeyboardKey>
-              <KeyboardKey>
-                <ArrowRight className="size-3" />
-              </KeyboardKey>
-            </span>
-            <span>Next</span>
-            <ArrowRight />
+            Next <ArrowRight className="size-4" />
           </Button>
         </footer>
       </DialogContent>

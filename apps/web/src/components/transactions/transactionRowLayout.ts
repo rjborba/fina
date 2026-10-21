@@ -34,7 +34,7 @@ type TransactionMetadata = Pick<
 
 const COLUMN_GAP = 8
 const DESCRIPTION_MIN_WIDTH = 120
-const ROW_HORIZONTAL_PADDING = 48
+const ROW_HORIZONTAL_PADDING = 48 + 32 + COLUMN_GAP
 const INSTALLMENT_WIDTH = 40
 export const TRANSACTION_DATE_WIDTH = 80
 

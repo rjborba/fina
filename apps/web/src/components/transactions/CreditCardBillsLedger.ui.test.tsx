@@ -132,6 +132,7 @@ vi.mock("./TransactionDetailsModal", () => ({
 }))
 
 const checkingTransaction = {
+  flagged: false,
   cardName: null,
   cardLast4: null,
   id: "checking-1",

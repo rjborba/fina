@@ -321,6 +321,7 @@ export class TransactionsService {
       });
     }
 
+    if (input.flagged !== undefined) current.flagged = input.flagged;
     if (input.description !== undefined)
       current.description = input.description;
     if (input.value !== undefined) current.value = input.value;
@@ -495,6 +496,7 @@ export class TransactionsService {
       id: transaction.id,
       createdAt: toDateTimeOutput(transaction.createdAt),
       description: transaction.description,
+      flagged: transaction.flagged,
       value: transaction.value,
       cardName: transaction.cardName ?? null,
       cardLast4: transaction.cardLast4 ?? null,

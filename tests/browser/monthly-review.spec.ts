@@ -1021,6 +1021,70 @@ test("inverts charges and refunds on a July card bill in June review while prese
       .locator('[data-column="date"] [data-field-value]'),
   ).toHaveText(`12 May ${year}`);
   await expect(page.getByText(longDescription, { exact: true })).toBeVisible();
+  const commentedPurchase = page
+    .getByRole("row")
+    .filter({ hasText: "Fixture groceries" });
+  await commentedPurchase
+    .getByRole("button", { name: "Add transaction note" })
+    .click();
+  const noteDialog = page.getByRole("dialog", {
+    name: "Transaction note",
+    exact: true,
+  });
+  await noteDialog
+    .getByRole("textbox", { name: "Transaction note" })
+    .fill("Check this charge");
+  await noteDialog.getByRole("button", { name: "Save note" }).click();
+  await expect(noteDialog).toHaveCount(0);
+  await expect(commentedPurchase).toHaveAttribute("data-flagged", "true");
+  await commentedPurchase.locator('[data-column="date"]').hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Check this charge");
+  await page.locator(".transactions-list-shell").focus();
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await page.reload();
+  await commentedPurchase
+    .getByRole("button", { name: "Edit transaction note" })
+    .click();
+  await expect(
+    noteDialog.getByRole("textbox", { name: "Transaction note" }),
+  ).toHaveValue("Check this charge");
+  await noteDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await commentedPurchase
+    .getByRole("button", { name: "Open transaction: Fixture groceries" })
+    .click();
+  const purchaseDetails = page.getByRole("dialog", {
+    name: "Fixture groceries",
+    exact: true,
+  });
+  await expect(
+    purchaseDetails.getByText("Check this charge", { exact: true }),
+  ).toBeVisible();
+  await purchaseDetails
+    .getByRole("button", { name: "Edit note", exact: true })
+    .click();
+  await purchaseDetails
+    .getByRole("textbox", { name: "Transaction note" })
+    .fill("Updated in details");
+  await purchaseDetails.getByRole("button", { name: "Save note" }).click();
+  await expect(
+    purchaseDetails.getByText("Updated in details", { exact: true }),
+  ).toBeVisible();
+  await purchaseDetails
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await commentedPurchase
+    .getByRole("button", { name: "Edit transaction note" })
+    .click();
+  await expect(
+    noteDialog.getByRole("textbox", { name: "Transaction note" }),
+  ).toHaveValue("Updated in details");
+  await expectFiniteAnimationsSettled(page);
+  await page.screenshot({ path: "test-results/transaction-note-dialog.png" });
+  await noteDialog.getByRole("button", { name: "Remove comment" }).click();
+  await expect(noteDialog).toHaveCount(0);
+  await expect(commentedPurchase).not.toHaveAttribute("data-flagged", "true");
+
   await expectCompactTransactionList(page);
   await expect(
     page
@@ -1638,6 +1702,9 @@ test("reviews selected nonadjacent months across years with the same inline and 
   await chooseFixtureInstitution(page, "credit");
   await page.getByRole("button", { name: "Add account", exact: true }).click();
   await expect(page.getByText(cardName, { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Account name" })).toHaveValue(
+    "",
+  );
   await page.getByRole("textbox", { name: "Account name" }).fill(checkingName);
   await chooseFixtureInstitution(page, "checkout");
   await page.getByRole("button", { name: "Add account", exact: true }).click();
@@ -3371,31 +3438,52 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
     name: "Metadata Family purchase",
     exact: true,
   });
-  await expect(modal.getByLabel("Card name", { exact: true })).toHaveValue(
-    "Family",
-  );
-  await modal.getByLabel("Card name", { exact: true }).fill("Family virtual");
-  await modal.getByLabel("Last four digits", { exact: true }).fill("0007");
-  const updated = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PATCH" &&
-      new URL(response.url()).pathname.startsWith("/transactions/") &&
-      response.ok(),
-  );
-  await modal
-    .getByRole("button", { name: "Save card details", exact: true })
-    .click();
-  await updated;
+  await expect(
+    modal.getByText("Family · ••5151", { exact: true }),
+  ).toBeVisible();
+  await expect(modal.getByLabel("Card name", { exact: true })).toHaveCount(0);
+  await expect(modal.getByText("Considered", { exact: true })).toHaveCount(0);
+  await expect(modal.getByText("Calculated", { exact: true })).toHaveCount(0);
+  await expect(
+    modal.getByText("Transaction date", { exact: true }),
+  ).toHaveCount(1);
+  await expectFiniteAnimationsSettled(page);
+  await page.screenshot({
+    path: "test-results/transaction-details-light.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expect(modal).toHaveCSS("color", "rgb(236, 236, 241)");
+  await page.screenshot({
+    path: "test-results/transaction-details-dark.png",
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    modal.getByRole("button", { name: "Uncategorized", exact: false }),
+  ).toBeVisible();
+  expect(
+    await modal.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  await expectFiniteAnimationsSettled(page);
+  const modalBounds = await modal.boundingBox();
+  expect(modalBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(modalBounds!.x + modalBounds!.width).toBeLessThanOrEqual(391);
+  await page.screenshot({
+    path: "test-results/transaction-details-mobile.png",
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
   await page.keyboard.press("Escape");
   detail = await openFixtureSharedBill(page, parent.id, `${year}-07`);
   expect(
     detail.transactions.find(
       (purchase) => purchase.description === "Metadata Family purchase",
     ),
-  ).toMatchObject({ cardName: "Family virtual", cardLast4: "0007" });
+  ).toMatchObject({ cardName: "Family", cardLast4: "5151" });
   expect(detail.bill.total).toBe(-125);
   await expect(
-    page.getByTestId("transaction-card-number").filter({ hasText: "••0007" }),
+    page.getByTestId("transaction-card-number").filter({ hasText: "••5151" }),
   ).toHaveCount(1);
   await expectCompactTransactionList(page);
   await page.screenshot({

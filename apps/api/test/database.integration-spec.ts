@@ -40,6 +40,8 @@ import {
   TransactionOutput,
 } from '@fina/types';
 
+import { TransactionFlags1792503000000 } from '../src/database/migrations/1792503000000-TransactionFlags';
+
 const migrations = [
   InitialSchema1789960612000,
   ProvisionInitialGroup1790104136223,
@@ -61,6 +63,7 @@ const migrations = [
   DeriveMonthlyReview1792034936757,
   TransactionCardMetadata1792459849364,
   BackfillImportedCardMetadata1792501867419,
+  TransactionFlags1792503000000,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -305,6 +308,19 @@ describe('backend-only PostgreSQL boundary', () => {
     if (dataSource?.isInitialized) await dataSource.destroy();
   });
 
+  it('migrates existing transactions to unflagged without changing their data', async () => {
+    const [column] = await dataSource.query<
+      Array<{ is_nullable: string; column_default: string }>
+    >(
+      `SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'transactions' AND column_name = 'flagged'`,
+    );
+    expect(column).toEqual({ is_nullable: 'NO', column_default: 'false' });
+    const flagged = await dataSource.query<Array<{ id: string }>>(
+      'SELECT id FROM public.transactions WHERE flagged IS DISTINCT FROM false',
+    );
+    expect(flagged).toEqual([]);
+  });
+
   it('builds the final application schema exclusively from migrations', async () => {
     const tables = await dataSource.query<Array<{ tablename: string }>>(`
       SELECT tablename
@@ -463,7 +479,7 @@ describe('backend-only PostgreSQL boundary', () => {
     ).toEqual(cardMigrationExpected);
     expect(
       await dataSource.query<Array<{ data: unknown }>>(
-        "SELECT to_jsonb(purchase) - 'card_name' - 'card_last4' AS data FROM public.transactions purchase ORDER BY id",
+        "SELECT to_jsonb(purchase) - 'card_name' - 'card_last4' - 'flagged' AS data FROM public.transactions purchase ORDER BY id",
       ),
     ).toEqual(cardMigrationBefore);
     expect(
@@ -2125,6 +2141,131 @@ describe('backend-only PostgreSQL boundary', () => {
     expect(unauthorized.headers['x-request-id'] as unknown).toBe(
       unauthorizedBody.requestId,
     );
+
+    await request(httpServer)
+      .patch(`/groups/${groupId}`)
+      .send({ name: 'Renamed' })
+      .expect(401);
+    await request(httpServer)
+      .patch(`/groups/${groupId}`)
+      .set('Authorization', 'Bearer invalid')
+      .send({ name: 'Renamed' })
+      .expect(401);
+    for (const body of [
+      { name: '   ' },
+      { name: 'x'.repeat(121) },
+      {},
+      { name: 'Renamed', groupId: otherGroupId },
+      { name: 'Renamed', userId: ownerId },
+    ]) {
+      await request(httpServer)
+        .patch(`/groups/${groupId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send(body)
+        .expect(400);
+    }
+    await request(httpServer)
+      .patch(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ name: 'Member change' })
+      .expect(403);
+    for (const id of [groupId, '999999999']) {
+      const denied = await request(httpServer)
+        .patch(`/groups/${id}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ name: 'Outsider change' })
+        .expect(404);
+      expect(responseBody<{ message: string }>(denied).message).toBe(
+        'Resource not found',
+      );
+    }
+    const renamed = await request(httpServer)
+      .patch(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: '  Renamed workspace  ' })
+      .expect(200);
+    expect(responseBody<{ name: string }>(renamed).name).toBe(
+      'Renamed workspace',
+    );
+    const persisted = await request(httpServer)
+      .get(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<{ name: string }>(persisted).name).toBe(
+      'Renamed workspace',
+    );
+    // Restore this fixture's name for the deletion confirmation checks below.
+    await request(httpServer)
+      .patch(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'API Group' })
+      .expect(200);
+
+    const initialFlag = await request(httpServer)
+      .get(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(responseBody<{ flagged: boolean }>(initialFlag).flagged).toBe(false);
+    await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .send({ flagged: true })
+      .expect(401);
+    await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', 'Bearer invalid')
+      .send({ flagged: true })
+      .expect(401);
+    for (const flagged of ['true', 1, null]) {
+      await request(httpServer)
+        .patch(`/transactions/${transactionId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ flagged })
+        .expect(400);
+    }
+    for (const body of [
+      { flagged: true, groupId: otherGroupId },
+      { flagged: true, userId: ownerId },
+    ]) {
+      await request(httpServer)
+        .patch(`/transactions/${transactionId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(body)
+        .expect(400);
+    }
+    for (const id of [transactionId, '999999999']) {
+      await request(httpServer)
+        .patch(`/transactions/${id}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ flagged: true })
+        .expect(404);
+    }
+    const flagged = await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ flagged: true })
+      .expect(200);
+    expect(responseBody<{ flagged: boolean }>(flagged).flagged).toBe(true);
+    const flagReload = await request(httpServer)
+      .get(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect(responseBody<{ flagged: boolean }>(flagReload).flagged).toBe(true);
+    const flagList = await request(httpServer)
+      .get(`/transactions?groupId=${groupId}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(
+      responseBody<{ data: Array<{ id: string; flagged: boolean }> }>(flagList)
+        .data,
+    ).toContainEqual(
+      expect.objectContaining({ id: transactionId, flagged: true }),
+    );
+    const unflagged = await request(httpServer)
+      .patch(`/transactions/${transactionId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ flagged: false })
+      .expect(200);
+    expect(responseBody<{ flagged: boolean }>(unflagged).flagged).toBe(false);
 
     const groupsResponse = await request(httpServer)
       .get('/groups')

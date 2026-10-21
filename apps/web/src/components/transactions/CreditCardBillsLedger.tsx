@@ -1,3 +1,4 @@
+import { TransactionCommentButton } from "./TransactionCommentButton"
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal"
 import {
   TransactionAccountChip,
@@ -527,6 +528,13 @@ export function CreditCardBillsLedger({
               rowKey={row.key}
               index={virtualRow.index}
               start={virtualRow.start}
+              flagged={
+                row.kind === "transaction" &&
+                Boolean(row.transaction.observation?.trim())
+              }
+              notePreview={
+                row.kind === "transaction" ? row.transaction.observation : null
+              }
               isFocused={isFocused}
               isSelected={isBill ? undefined : isSelected}
               selectionDisabled={isSelectionBusy}
@@ -548,6 +556,15 @@ export function CreditCardBillsLedger({
               onMouseLeave={() => setHoveredRowKey(null)}
               onClick={(event) => handleRowClick(event, row)}
             >
+              {row.kind === "transaction" ? (
+                <TransactionCommentButton
+                  transaction={row.transaction}
+                  onUpdateTransaction={onUpdateTransaction}
+                  disabled={isSelectionBusy}
+                />
+              ) : (
+                <div data-column="comment" aria-hidden="true" />
+              )}
               {displayProperties.date ? (
                 <div
                   data-column="date"

@@ -139,7 +139,7 @@ describe("shared transaction row layout", () => {
     expect(layout.desktopColumns).toBe(
       "minmax(120px, 1fr) 80px 128px 144px 56px 40px 112px"
     )
-    expect(layout.minWidth).toBe(916)
+    expect(layout.minWidth).toBe(956)
     expect(layout.desktopExtraWidth).toBe(88)
   })
 
@@ -152,7 +152,7 @@ describe("shared transaction row layout", () => {
       { id: "installment", width: 40 },
       { id: "category", width: 112 }
     ])
-    expect(layout.minWidth).toBe(564)
+    expect(layout.minWidth).toBe(604)
     const withoutInstallment = buildTransactionRowLayout([blank], {
       ...DEFAULT_TRANSACTION_DISPLAY_PROPERTIES,
       installment: false
@@ -171,7 +171,7 @@ describe("shared transaction row layout", () => {
     expect(hidden.slots).toEqual([])
     expect(hidden.columns).toBe("minmax(120px, 1fr)")
     expect(hidden.desktopColumns).toBe(hidden.columns)
-    expect(hidden.minWidth).toBe(168)
+    expect(hidden.minWidth).toBe(208)
     expect(hidden.desktopExtraWidth).toBe(0)
   })
 
