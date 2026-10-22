@@ -14,6 +14,10 @@ export const CustomValueParamsSchema = z.object({ groupId: id }).strict();
 export const CustomValueItemParamsSchema = CustomValueParamsSchema.extend({
   id
 });
+export const CustomValueColumnSpanSchema = z.union([
+  z.literal(1),
+  z.literal(2)
+]);
 export const SaveCustomValueSchema = z
   .object({
     title: z
@@ -26,7 +30,8 @@ export const SaveCustomValueSchema = z
         "Title cannot contain braces or control characters"
       ),
     expression: z.string().trim().min(1).max(16000),
-    color: CategoryColorSchema.optional()
+    color: CategoryColorSchema.optional(),
+    columnSpan: CustomValueColumnSpanSchema.optional()
   })
   .strict();
 export const CustomValueOutputSchema = z.object({
@@ -34,6 +39,7 @@ export const CustomValueOutputSchema = z.object({
   groupId: id,
   title: z.string(),
   color: CategoryColorSchema,
+  columnSpan: CustomValueColumnSpanSchema,
   expression: z.string(),
   resolvedExpression: z.string()
 });
@@ -41,4 +47,5 @@ export const CustomValueListSchema = z.array(CustomValueOutputSchema);
 export const DeleteCustomValueSchema = z.object({ id });
 export type CustomValue = z.infer<typeof CustomValueOutputSchema>;
 export type SaveCustomValue = z.infer<typeof SaveCustomValueSchema>;
+export type CustomValueColumnSpan = z.infer<typeof CustomValueColumnSpanSchema>;
 export * from "./formula";

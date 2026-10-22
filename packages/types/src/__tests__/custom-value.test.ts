@@ -91,4 +91,15 @@ describe("custom value formulas", () => {
         .success
     ).toBe(false);
   });
+  it("accepts only one- or two-column tile widths without coercion", () => {
+    const input = { title: "Width fixture", expression: "2 * 3" };
+    for (const columnSpan of [undefined, 1, 2])
+      expect(
+        SaveCustomValueSchema.safeParse({ ...input, columnSpan }).success
+      ).toBe(true);
+    for (const columnSpan of [0, 3, -1, 1.5, "2", null])
+      expect(
+        SaveCustomValueSchema.safeParse({ ...input, columnSpan }).success
+      ).toBe(false);
+  });
 });

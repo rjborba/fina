@@ -442,6 +442,7 @@ export type CustomValueListDto = Array<{
     groupId: string;
     title: string;
     color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    columnSpan: (number);
     expression: string;
     resolvedExpression: string;
 }>;
@@ -451,6 +452,7 @@ export type CustomValueOutputDto = {
     groupId: string;
     title: string;
     color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    columnSpan: (number);
     expression: string;
     resolvedExpression: string;
 };
@@ -785,6 +787,7 @@ export type SaveCustomValueDto = {
     title: string;
     expression: string;
     color?: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    columnSpan?: (number);
 };
 
 export namespace SaveCustomValueDto {

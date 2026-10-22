@@ -3762,6 +3762,12 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("My Custom Tile");
   await section.getByRole("radio", { name: "Teal", exact: true }).click();
+  await expect(
+    section.getByRole("radio", { name: "One tile", exact: true }),
+  ).toBeChecked();
+  await section
+    .getByRole("radio", { name: "Two tiles (full width)", exact: true })
+    .click();
   const logic = section.getByRole("combobox", { name: "Logic", exact: true });
   await logic.fill("({{Dividido");
   await section
@@ -3804,8 +3810,23 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     exact: true,
   });
   await expect(combined).toContainText(/R\$\s*10,00/);
+  await expectFiniteAnimationsSettled(page);
+  const tileWidth = async (tile: typeof first) => {
+    const bounds = await tile.boundingBox();
+    if (!bounds) throw new Error("Expected a visible custom tile");
+    return bounds.width;
+  };
+  expect(await tileWidth(first)).toBeCloseTo(
+    2 * (await tileWidth(combined)),
+    0,
+  );
   await page.reload();
   await expect(combined).toContainText(/R\$\s*10,00/);
+  await expectFiniteAnimationsSettled(page);
+  expect(await tileWidth(first)).toBeCloseTo(
+    2 * (await tileWidth(combined)),
+    0,
+  );
   await expect(
     first.getByRole("img", { name: "Tile color: teal" }),
   ).toBeVisible();
@@ -3816,6 +3837,10 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     section.getByRole("radio", { name: "Teal", exact: true }),
   ).toBeChecked();
   await section.getByRole("radio", { name: "Sky", exact: true }).click();
+  await expect(
+    section.getByRole("radio", { name: "Two tiles (full width)", exact: true }),
+  ).toBeChecked();
+  await section.getByRole("radio", { name: "One tile", exact: true }).click();
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("Renamed tile");
@@ -3830,6 +3855,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await expect(
     renamed.getByRole("img", { name: "Tile color: sky" }),
   ).toBeVisible();
+  expect(await tileWidth(renamed)).toBeCloseTo(await tileWidth(combined), 0);
   await renamed
     .getByRole("button", { name: "Delete Renamed tile", exact: true })
     .click();
@@ -3844,6 +3870,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     .getByRole("button", { name: "Edit Combined tile", exact: true })
     .click();
   await logic.fill("1 / 0");
+  await section
+    .getByRole("radio", { name: "Two tiles (full width)", exact: true })
+    .click();
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
   await expect(combined).toContainText("Cannot divide by zero.");
   await expect(combined).not.toContainText(/Infinity|NaN/);
@@ -3855,6 +3884,10 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await page.setViewportSize({ width: 390, height: 844 });
   await section.scrollIntoViewIfNeeded();
   await expect(combined).toBeInViewport();
+  expect(await tileWidth(combined)).toBeCloseTo(
+    2 * (await tileWidth(renamed)),
+    0,
+  );
   expect(
     await summary.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,

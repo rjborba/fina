@@ -12,7 +12,8 @@ import {
   rewriteCustomFormula,
   SaveCustomValueSchema,
   type CategoryOutput,
-  type CustomValue
+  type CustomValue,
+  type CustomValueColumnSpan
 } from "@fina/types"
 import { FormulaInput, type FormulaOption } from "./FormulaInput"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
@@ -56,6 +57,7 @@ export function CustomValuesSection({
     title: string
     expression: string
     color: CategoryColor
+    columnSpan: CustomValueColumnSpan
   } | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState("")
@@ -137,7 +139,8 @@ export function CustomValuesSection({
     const parsed = SaveCustomValueSchema.safeParse({
       title: editing.title,
       expression: editing.expression,
-      color: editing.color
+      color: editing.color,
+      columnSpan: editing.columnSpan
     })
     if (!parsed.success) {
       setError(parsed.error.issues[0].message)
@@ -177,7 +180,12 @@ export function CustomValuesSection({
           onClick={() => {
             setError("")
             setDeleting(null)
-            setEditing({ title: "", expression: "", color: "violet" })
+            setEditing({
+              title: "",
+              expression: "",
+              color: "violet",
+              columnSpan: 1
+            })
           }}
         >
           <Plus className="size-3.5" /> Add tile
@@ -250,6 +258,27 @@ export function CustomValuesSection({
             label="Tile color"
             disabled={pending}
           />
+          <fieldset disabled={pending}>
+            <legend className="mb-1.5 text-xs font-medium">Tile width</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {([1, 2] as const).map((columnSpan) => (
+                <label
+                  key={columnSpan}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-fina-grid px-3 py-2 text-xs has-[:checked]:border-fina-violet has-[:checked]:bg-fina-violet/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet has-[:disabled]:cursor-default has-[:disabled]:opacity-50"
+                >
+                  <input
+                    type="radio"
+                    name={`${formId}-width`}
+                    value={columnSpan}
+                    checked={editing.columnSpan === columnSpan}
+                    onChange={() => setEditing({ ...editing, columnSpan })}
+                    className="accent-current"
+                  />
+                  {columnSpan === 1 ? "One tile" : "Two tiles (full width)"}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div>
             <label
               htmlFor={`${formId}-logic`}
@@ -324,7 +353,7 @@ export function CustomValuesSection({
           <article
             key={tile.id}
             aria-label={tile.title}
-            className="min-w-0 border-b border-r border-fina-grid p-4"
+            className={`min-w-0 border-b border-r border-fina-grid p-4${tile.columnSpan === 2 ? " col-span-2" : ""}`}
           >
             <div className="flex items-start justify-between gap-1">
               <div className="flex min-w-0 items-start gap-2">
@@ -352,7 +381,8 @@ export function CustomValuesSection({
                       id: tile.id,
                       title: tile.title,
                       expression: tile.expression,
-                      color: tile.color
+                      color: tile.color,
+                      columnSpan: tile.columnSpan
                     })
                   }}
                 >

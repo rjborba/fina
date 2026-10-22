@@ -43,6 +43,7 @@ import {
 import { TransactionFlags1792503000000 } from '../src/database/migrations/1792503000000-TransactionFlags';
 import { WorkspaceCustomValues1792620000000 } from '../src/database/migrations/1792620000000-WorkspaceCustomValues';
 import { CustomValueColors1792668625989 } from '../src/database/migrations/1792668625989-CustomValueColors';
+import { CustomValueWidth1792669875893 } from '../src/database/migrations/1792669875893-CustomValueWidth';
 import { CustomValue, evaluateCustomValues } from '@fina/types';
 
 const migrations = [
@@ -69,6 +70,7 @@ const migrations = [
   TransactionFlags1792503000000,
   WorkspaceCustomValues1792620000000,
   CustomValueColors1792668625989,
+  CustomValueWidth1792669875893,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -124,6 +126,7 @@ describe('backend-only PostgreSQL boundary', () => {
     title: string;
     resolved_expression: string;
   };
+  let legacyWidthValue: typeof legacyCustomValue & { color: string };
 
   beforeAll(async () => {
     const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -296,7 +299,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -1),
+      migrations: migrations.slice(0, -2),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -309,6 +312,17 @@ describe('backend-only PostgreSQL boundary', () => {
     >(
       "INSERT INTO public.custom_values (group_id, title, resolved_expression) VALUES ($1, 'Legacy custom tile', '2 * 3') RETURNING *",
       [legacyGroup.id],
+    );
+    await dataSource.destroy();
+    dataSource = new DataSource({
+      ...dataSourceOptions,
+      migrations: migrations.slice(0, -1),
+    });
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+    [legacyWidthValue] = await dataSource.query<Array<typeof legacyWidthValue>>(
+      'SELECT * FROM public.custom_values WHERE id = $1',
+      [legacyCustomValue.id],
     );
     await dataSource.destroy();
     dataSource = new DataSource({ ...dataSourceOptions, migrations });
@@ -5454,7 +5468,11 @@ describe('backend-only PostgreSQL boundary', () => {
     >('SELECT * FROM public.custom_values WHERE id = $1', [
       legacyCustomValue.id,
     ]);
-    expect(tile).toEqual({ ...legacyCustomValue, color: 'violet' });
+    expect(tile).toEqual({
+      ...legacyCustomValue,
+      color: 'violet',
+      column_span: 1,
+    });
     await expect(
       dataSource.query(
         "UPDATE public.custom_values SET color = 'invalid' WHERE id = $1",
@@ -5514,6 +5532,83 @@ describe('backend-only PostgreSQL boundary', () => {
         .expect(201),
     );
     expect(fallback.color).toBe('violet');
+  });
+
+  it('backfills single-width tiles without changing definitions and constrains persisted widths', async () => {
+    const [tile] = await dataSource.query<
+      Array<typeof legacyWidthValue & { column_span: number }>
+    >('SELECT * FROM public.custom_values WHERE id = $1', [
+      legacyWidthValue.id,
+    ]);
+    expect(tile).toEqual({ ...legacyWidthValue, column_span: 1 });
+    for (const width of [0, 3, null])
+      await expect(
+        dataSource.query(
+          'UPDATE public.custom_values SET column_span = $1 WHERE id = $2',
+          [width, tile.id],
+        ),
+      ).rejects.toThrow();
+  });
+
+  it('shares editable tile widths across members and preserves widths for older clients', async () => {
+    const { groupId, ownerToken, memberToken, outsiderToken } =
+      await reviewFixture();
+    const path = `/groups/${groupId}/custom-values`;
+    const create = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          title: 'Width fixture',
+          expression: '2 * 3',
+          color: 'teal',
+          columnSpan: 2,
+        })
+        .expect(201),
+    );
+    expect(create.columnSpan).toBe(2);
+    const input = { title: create.title, expression: create.expression };
+    for (const columnSpan of [1, 2]) {
+      const updated = responseBody<CustomValue>(
+        await request(httpServer)
+          .patch(`${path}/${create.id}`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .send({ ...input, columnSpan })
+          .expect(200),
+      );
+      expect(updated).toEqual({ ...create, columnSpan });
+    }
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(input)
+      .expect(200);
+    const listed = responseBody<CustomValue[]>(
+      await request(httpServer)
+        .get(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200),
+    );
+    expect(listed).toEqual([create]);
+    for (const columnSpan of [0, 3, 1.5, '2', null])
+      await request(httpServer)
+        .patch(`${path}/${create.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ ...input, columnSpan })
+        .expect(400);
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ ...input, columnSpan: 1 })
+      .expect(404);
+    const fallback = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ title: 'Default width fixture', expression: '0' })
+        .expect(201),
+    );
+    expect(fallback.columnSpan).toBe(1);
   });
 
   function tokenFor(userId: string, email: string): string {

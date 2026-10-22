@@ -515,6 +515,14 @@ new and existing tiles default to violet. Colors are validated by the shared
 contract and a PostgreSQL constraint. Older clients that omit color preserve
 an existing tile's color when editing instead of resetting it.
 
+Each tile has a shared width setting: **One tile** (one column, the default) or
+**Two tiles (full width)** (both columns of the summary grid). Members can choose
+it on creation and change it in the editor. Grid order stays unchanged; a wide
+tile starts on a new row if needed. The setting persists across reloads and is
+shared with workspace members, including on mobile. Older clients that omit
+`columnSpan` preserve an existing width; only numeric 1 or 2 are accepted by the
+shared contract and PostgreSQL constraint.
+
 Each tile has a unique 1–120 character title and arithmetic logic using decimal
 numbers (dot separator), `+`, `-`, `*`, `/`, unary signs, parentheses and
 `{{Category name}}` / `{{Custom tile title}}` references. Typing `{{` opens a
@@ -558,6 +566,12 @@ Tile colors additionally require `1792668625989-CustomValueColors` before the
 matching API deployment. It adds only the constrained color/default and leaves
 existing formulas, titles, ownership and financial records unchanged. It is
 PostgreSQL-tested and applied locally; production remains unchanged.
+
+Tile widths require `1792669875893-CustomValueWidth` before the matching API
+deployment. The migration defaults existing tiles to one column without
+changing definitions, colors or financial records. Verification uses disposable
+local PostgreSQL databases. It is also applied to the verified local development
+database; production remains unchanged.
 
 ### Transaction notes
 
