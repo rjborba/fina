@@ -501,6 +501,50 @@ failed saves preserve the entered name for retry. No schema change is required.
    applied to the verified local Supabase development database. Production is
    unchanged by local implementation.
 
+### Workspace customizable summary values
+
+Period summary includes **Customizable Values** below its category breakdown.
+Every active workspace member can create, edit and delete shared tiles; owners
+have no exclusive editing capability. Definitions are persisted in the workspace,
+not browser storage. The client refreshes shared definitions on focus and every
+15 seconds while the panel is open. Closing the panel discards unsaved drafts.
+
+Each tile has a unique 1–120 character title and arithmetic logic using decimal
+numbers (dot separator), `+`, `-`, `*`, `/`, unary signs, parentheses and
+`{{Category name}}` / `{{Custom tile title}}` references. Typing `{{` opens a
+searchable, keyboard-accessible reference list including both kinds. References
+are bound to workspace-scoped IDs on save, so tile renames do not break dependent
+formulas. Duplicate or reserved category names use explicit `{{category:ID}}`
+tokens; archived category references retain their attribution. New titles cannot
+collide with existing category or tile names (case/Unicode-normalized).
+
+Tiles calculate from the same signed category totals used in the displayed
+period summary, including its period and filters, not from bill payments or an
+independent responsibility/settlement ledger. They never mutate transactions.
+The UI previews calculations and marks values unavailable while source totals
+are loading, failed or incomplete (including the ledger pagination limit).
+Division by zero, non-finite/oversized results and unavailable dependencies show
+an error, never Infinity/NaN or a fabricated zero. Errors propagate to dependent
+tiles. Syntax errors, unresolved/ambiguous names and direct/indirect cycles are
+rejected on save. Runtime arithmetic errors can be saved because a formula may
+be valid in another period. JavaScript, functions and arbitrary code are never
+executed. Limit each workspace to 100 tiles and each formula to 256 tokens,
+32 nesting levels and 16,000 characters.
+
+The Nest API exposes membership-checked `/groups/:groupId/custom-values` CRUD
+through generated clients and strict shared Zod contracts. Writes lock the
+workspace row for the short transaction, serializing graph validation with
+updates/deletions so simultaneous edits cannot introduce cycles. Last successful
+write wins for ordinary concurrent edits. Delete requires confirmation and is
+blocked while another tile references it. Workspace deletion cascades all tile
+definitions atomically. Public Data API roles have no table or sequence grants;
+the existing Nest-only authorization boundary is preserved, without adding RLS.
+
+Deployment requires TypeORM migration `1792620000000-WorkspaceCustomValues`
+before the matching API/web deployment. Verification uses disposable local
+PostgreSQL databases. The migration is also applied to the verified local
+development database; production is unchanged.
+
 ### Transaction notes
 
 The existing nullable `observation` field is displayed as Note. A comment icon

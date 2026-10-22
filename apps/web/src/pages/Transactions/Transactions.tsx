@@ -12,6 +12,7 @@ import { TransactionFilterProvider } from "@/components/transactions/Transaction
 import { CreditCardBillsLedger } from "@/components/transactions/CreditCardBillsLedger"
 import type { TransactionsListProps } from "@/components/transactions/TransactionsList"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { CustomValuesSection } from "@/components/transactions/CustomValuesSection"
 import { useTransactionDisplayPreferences } from "@/components/transactions/useTransactionDisplayPreferences"
 import { Button } from "@/components/ui/button"
 import {
@@ -707,6 +708,19 @@ const TransactionsView: FC = () => {
               </div>
             ))}
           </div>
+          {isDrawerOpen && selectedGroup ? (
+            <CustomValuesSection
+              key={selectedGroup.id}
+              groupId={selectedGroup.id}
+              categories={categories ?? []}
+              categoryTotals={sumCategories}
+              totalsUnavailable={
+                isLoading ||
+                isError ||
+                (transactionsData?.totalCount ?? 0) > visibleTransactions.length
+              }
+            />
+          ) : null}
         </div>
       </aside>
       <TransactionShortcuts

@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AppControllerGetHelloResponse, TransactionsControllerCreateData, TransactionsControllerCreateResponse, TransactionsControllerFindAllData, TransactionsControllerFindAllResponse, TransactionsControllerCardValuesData, TransactionsControllerCardValuesResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CategoriesControllerCreateData, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, CategoriesControllerUpdateAppearanceData, CategoriesControllerUpdateAppearanceResponse, GroupsControllerCreateData, GroupsControllerCreateResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRenameData, GroupsControllerRenameResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, BankaccountsControllerUpdateInstitutionData, BankaccountsControllerUpdateInstitutionResponse, UserGroupsControllerFindAllData, UserGroupsControllerFindAllResponse, InvitesControllerCreateData, InvitesControllerCreateResponse, InvitesControllerFindAllData, InvitesControllerFindAllResponse, InvitesControllerFindMineResponse, InvitesControllerAcceptData, InvitesControllerAcceptResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerPreviewData, ImportsControllerPreviewResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindProfilesData, ImportsControllerFindProfilesResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, CreditCardBillsControllerFindAllData, CreditCardBillsControllerFindAllResponse, CreditCardBillsControllerFindOneData, CreditCardBillsControllerFindOneResponse, CreditCardBillsControllerReconcileData, CreditCardBillsControllerReconcileResponse, CreditCardBillsControllerUnlinkData, CreditCardBillsControllerUnlinkResponse } from './types.gen';
+import type { AppControllerGetHelloResponse, TransactionsControllerCreateData, TransactionsControllerCreateResponse, TransactionsControllerFindAllData, TransactionsControllerFindAllResponse, TransactionsControllerCardValuesData, TransactionsControllerCardValuesResponse, TransactionsControllerFindOneData, TransactionsControllerFindOneResponse, TransactionsControllerUpdateData, TransactionsControllerUpdateResponse, TransactionsControllerRemoveData, TransactionsControllerRemoveResponse, CategoriesControllerCreateData, CategoriesControllerCreateResponse, CategoriesControllerFindAllData, CategoriesControllerFindAllResponse, CategoriesControllerFindOneData, CategoriesControllerFindOneResponse, CategoriesControllerRemoveData, CategoriesControllerRemoveResponse, CategoriesControllerUpdateAppearanceData, CategoriesControllerUpdateAppearanceResponse, GroupsControllerCreateData, GroupsControllerCreateResponse, GroupsControllerFindAllResponse, GroupsControllerFindOneData, GroupsControllerFindOneResponse, GroupsControllerRenameData, GroupsControllerRenameResponse, GroupsControllerRemoveData, GroupsControllerRemoveResponse, BankaccountsControllerCreateData, BankaccountsControllerCreateResponse, BankaccountsControllerFindAllData, BankaccountsControllerFindAllResponse, BankaccountsControllerRemoveData, BankaccountsControllerRemoveResponse, BankaccountsControllerUpdateInstitutionData, BankaccountsControllerUpdateInstitutionResponse, UserGroupsControllerFindAllData, UserGroupsControllerFindAllResponse, InvitesControllerCreateData, InvitesControllerCreateResponse, InvitesControllerFindAllData, InvitesControllerFindAllResponse, InvitesControllerFindMineResponse, InvitesControllerAcceptData, InvitesControllerAcceptResponse, InvitesControllerRemoveData, InvitesControllerRemoveResponse, ImportsControllerPreviewData, ImportsControllerPreviewResponse, ImportsControllerCreateData, ImportsControllerCreateResponse, ImportsControllerFindAllData, ImportsControllerFindAllResponse, ImportsControllerFindProfilesData, ImportsControllerFindProfilesResponse, ImportsControllerFindOneData, ImportsControllerFindOneResponse, ImportsControllerRemoveData, ImportsControllerRemoveResponse, CreditCardBillsControllerFindAllData, CreditCardBillsControllerFindAllResponse, CreditCardBillsControllerFindOneData, CreditCardBillsControllerFindOneResponse, CreditCardBillsControllerReconcileData, CreditCardBillsControllerReconcileResponse, CreditCardBillsControllerUnlinkData, CreditCardBillsControllerUnlinkResponse, CustomValuesControllerFindAllData, CustomValuesControllerFindAllResponse, CustomValuesControllerCreateData, CustomValuesControllerCreateResponse, CustomValuesControllerUpdateData, CustomValuesControllerUpdateResponse, CustomValuesControllerRemoveData, CustomValuesControllerRemoveResponse } from './types.gen';
 
 /**
  * @returns unknown
@@ -660,6 +660,80 @@ export const creditCardBillsControllerUnlink = (data: CreditCardBillsControllerU
             accountId: data.accountId
         },
         query: {
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.groupId
+ * @returns CustomValueListDto
+ * @throws ApiError
+ */
+export const customValuesControllerFindAll = (data: CustomValuesControllerFindAllData): CancelablePromise<CustomValuesControllerFindAllResponse> => {
+    return __request(OpenAPI, {
+        method: 'GET',
+        url: '/groups/{groupId}/custom-values',
+        path: {
+            groupId: data.groupId
+        }
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.groupId
+ * @param data.requestBody
+ * @returns CustomValueOutputDto
+ * @throws ApiError
+ */
+export const customValuesControllerCreate = (data: CustomValuesControllerCreateData): CancelablePromise<CustomValuesControllerCreateResponse> => {
+    return __request(OpenAPI, {
+        method: 'POST',
+        url: '/groups/{groupId}/custom-values',
+        path: {
+            groupId: data.groupId
+        },
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.id
+ * @param data.groupId
+ * @param data.requestBody
+ * @returns CustomValueOutputDto
+ * @throws ApiError
+ */
+export const customValuesControllerUpdate = (data: CustomValuesControllerUpdateData): CancelablePromise<CustomValuesControllerUpdateResponse> => {
+    return __request(OpenAPI, {
+        method: 'PATCH',
+        url: '/groups/{groupId}/custom-values/{id}',
+        path: {
+            id: data.id,
+            groupId: data.groupId
+        },
+        body: data.requestBody,
+        mediaType: 'application/json'
+    });
+};
+
+/**
+ * @param data The data for the request.
+ * @param data.id
+ * @param data.groupId
+ * @returns DeleteCustomValueDto
+ * @throws ApiError
+ */
+export const customValuesControllerRemove = (data: CustomValuesControllerRemoveData): CancelablePromise<CustomValuesControllerRemoveResponse> => {
+    return __request(OpenAPI, {
+        method: 'DELETE',
+        url: '/groups/{groupId}/custom-values/{id}',
+        path: {
+            id: data.id,
             groupId: data.groupId
         }
     });

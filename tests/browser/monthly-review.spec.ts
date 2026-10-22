@@ -3691,3 +3691,165 @@ test("saves a C6 column mapping and automatically reuses it across statements an
   );
   expect(browserErrors).toEqual([]);
 });
+
+test("creates, chains, edits and deletes workspace custom summary tiles safely", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.name));
+  await signInAsFixture(page);
+  await page.goto("/categories");
+  for (const name of ["Dividido Proporcionalmente", "Vale"]) {
+    await page.getByRole("textbox", { name: "Category name" }).fill(name);
+    await page
+      .getByRole("button", { name: "Add category", exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole("region", { name: "Existing categories" })
+        .getByText(name, { exact: true }),
+    ).toBeVisible();
+  }
+  const account = await addFixtureAccount(
+    page,
+    "Custom values checking fixture",
+  );
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  await importMonthFixture(page, {
+    name: "custom-values.csv",
+    accountName: "Custom values checking fixture",
+    accountType: "checkout",
+    rows: [
+      `19/${month}/${now.getFullYear()};Custom shared purchase;-100,00`,
+      `20/${month}/${now.getFullYear()};Custom benefit;40,00`,
+    ],
+  });
+  await page.goto(`/transactions?accountId=${account.id}`);
+  for (const [description, category] of [
+    ["Custom shared purchase", "Dividido Proporcionalmente"],
+    ["Custom benefit", "Vale"],
+  ]) {
+    await page
+      .getByRole("button", {
+        name: `Open transaction: ${description}`,
+        exact: true,
+      })
+      .click();
+    const dialog = page.getByRole("dialog", { name: description, exact: true });
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PATCH" &&
+        new URL(response.url()).pathname.startsWith("/transactions/") &&
+        response.ok(),
+    );
+    await dialog
+      .getByRole("button", { name: new RegExp(` ${category}$`) })
+      .click();
+    await saved;
+    await page.keyboard.press("Escape");
+  }
+  await page
+    .getByRole("button", { name: "Period totals", exact: true })
+    .click();
+  const summary = page.getByRole("dialog", {
+    name: "Period totals",
+    exact: true,
+  });
+  const section = summary.getByRole("region", { name: "Customizable Values" });
+  await section.getByRole("button", { name: "Add tile", exact: true }).click();
+  await section
+    .getByRole("textbox", { name: "Title", exact: true })
+    .fill("My Custom Tile");
+  const logic = section.getByRole("combobox", { name: "Logic", exact: true });
+  await logic.fill("{{Dividido");
+  await section
+    .getByRole("option", { name: /^Dividido Proporcionalmente/ })
+    .click();
+  await logic.press("End");
+  await logic.pressSequentially("*0.3");
+  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*30,00/);
+  await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  const first = section.getByRole("article", {
+    name: "My Custom Tile",
+    exact: true,
+  });
+  await expect(first).toContainText(/-R\$\s*30,00/);
+  await section.getByRole("button", { name: "Add tile", exact: true }).click();
+  await section
+    .getByRole("textbox", { name: "Title", exact: true })
+    .fill("Combined tile");
+  await logic.fill("{{My");
+  await section.getByRole("option", { name: /^My Custom Tile/ }).click();
+  await logic.press("End");
+  await logic.pressSequentially(" + {{Va");
+  await expect(section.getByRole("option", { name: /^Vale/ })).toBeVisible();
+  await page.screenshot({
+    path: "test-results/custom-values-autocomplete.png",
+  });
+  await logic.press("ArrowDown");
+  await logic.press("Enter");
+  await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  const combined = section.getByRole("article", {
+    name: "Combined tile",
+    exact: true,
+  });
+  await expect(combined).toContainText(/R\$\s*10,00/);
+  await page.reload();
+  await expect(combined).toContainText(/R\$\s*10,00/);
+  await first
+    .getByRole("button", { name: "Edit My Custom Tile", exact: true })
+    .click();
+  await section
+    .getByRole("textbox", { name: "Title", exact: true })
+    .fill("Renamed tile");
+  await logic.fill("{{Dividido Proporcionalmente}}*0.5");
+  await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  await expect(combined).toContainText(/-R\$\s*10,00/);
+  await expect(combined).toContainText("{{Renamed tile}} + {{Vale}}");
+  const renamed = section.getByRole("article", {
+    name: "Renamed tile",
+    exact: true,
+  });
+  await renamed
+    .getByRole("button", { name: "Delete Renamed tile", exact: true })
+    .click();
+  await renamed
+    .getByRole("button", { name: "Delete tile", exact: true })
+    .click();
+  await expect(section.getByRole("alert")).toHaveText(
+    /used by another formula/,
+  );
+  await renamed.getByRole("button", { name: "Keep tile", exact: true }).click();
+  await combined
+    .getByRole("button", { name: "Edit Combined tile", exact: true })
+    .click();
+  await logic.fill("1 / 0");
+  await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  await expect(combined).toContainText("Cannot divide by zero.");
+  await expect(combined).not.toContainText(/Infinity|NaN/);
+  await section.scrollIntoViewIfNeeded();
+  await expectFiniteAnimationsSettled(page);
+  await page.screenshot({ path: "test-results/custom-values-light.png" });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({ path: "test-results/custom-values-dark.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await section.scrollIntoViewIfNeeded();
+  await expect(combined).toBeInViewport();
+  expect(
+    await summary.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: "test-results/custom-values-mobile.png" });
+  for (const tile of [combined, renamed]) {
+    await tile.getByRole("button", { name: /^Delete .+/ }).click();
+    await tile
+      .getByRole("button", { name: "Delete tile", exact: true })
+      .click();
+    await expect(tile).toHaveCount(0);
+  }
+  await page.reload();
+  await expect(section.getByRole("article")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

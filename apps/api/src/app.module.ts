@@ -29,6 +29,8 @@ import { ImportProfiles } from './imports/entities/import-profile.entity';
 import { ImportFiles } from './imports/entities/import-file.entity';
 import { CreditCardBillReconciliations } from './credit-card-bills/entities/credit-card-bill-reconciliation.entity';
 import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.module';
+import { CustomValues } from './custom-values/entities/custom-value.entity';
+import { CustomValuesModule } from './custom-values/custom-values.module';
 
 @Module({
   imports: [
@@ -70,6 +72,7 @@ import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.mod
             ImportProfiles,
             Invites,
             CreditCardBillReconciliations,
+            CustomValues,
           ],
           synchronize: false,
           logging: false,
@@ -85,6 +88,7 @@ import { CreditCardBillsModule } from './credit-card-bills/credit-card-bills.mod
     InvitesModule,
     ImportsModule,
     CreditCardBillsModule,
+    CustomValuesModule,
   ],
   controllers: [AppController],
   providers: [

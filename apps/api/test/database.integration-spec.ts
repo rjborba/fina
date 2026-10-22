@@ -41,6 +41,8 @@ import {
 } from '@fina/types';
 
 import { TransactionFlags1792503000000 } from '../src/database/migrations/1792503000000-TransactionFlags';
+import { WorkspaceCustomValues1792620000000 } from '../src/database/migrations/1792620000000-WorkspaceCustomValues';
+import { CustomValue, evaluateCustomValues } from '@fina/types';
 
 const migrations = [
   InitialSchema1789960612000,
@@ -64,6 +66,7 @@ const migrations = [
   TransactionCardMetadata1792459849364,
   BackfillImportedCardMetadata1792501867419,
   TransactionFlags1792503000000,
+  WorkspaceCustomValues1792620000000,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -332,6 +335,7 @@ describe('backend-only PostgreSQL boundary', () => {
       'bankaccounts',
       'categories',
       'credit_card_bill_reconciliations',
+      'custom_values',
       'groups',
       'import_files',
       'import_profiles',
@@ -5233,6 +5237,191 @@ describe('backend-only PostgreSQL boundary', () => {
       `Unexpected fixture 401: tokenValid=${independentlyValid}, expired=${expired}, notYetValid=${notYetValid}, providerMatches=${configuration.get<string>('SUPABASE_URL') === testUrl}, verifierMatches=${configuration.get<string>('SUPABASE_JWT_SECRET') === testSecret}, missingHeader=${message === 'Missing Authorization header'}`,
     );
   }
+
+  it('persists workspace custom values for all members, protects tenant boundaries, and cascades workspace deletion', async () => {
+    const { groupId, otherGroupId, ownerToken, memberToken, outsiderToken } =
+      await reviewFixture();
+    const path = `/groups/${groupId}/custom-values`;
+    await request(httpServer).get(path).expect(401);
+    await request(httpServer)
+      .get(path)
+      .set('Authorization', 'Bearer invalid')
+      .expect(401);
+    const category = responseBody<{ id: string }>(
+      await request(httpServer)
+        .post('/categories')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ groupId, name: 'Shared costs' })
+        .expect(201),
+    );
+    const create = (title: string, expression: string, token = memberToken) =>
+      request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title, expression });
+    const first = responseBody<CustomValue>(
+      await create('My custom tile', '{{Shared costs}} * 0.3').expect(201),
+    );
+    const second = responseBody<CustomValue>(
+      await create('Combined', '{{My custom tile}} + 20', ownerToken).expect(
+        201,
+      ),
+    );
+    const read = async () =>
+      responseBody<CustomValue[]>(
+        await request(httpServer)
+          .get(path)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200),
+      );
+    expect(
+      evaluateCustomValues(await read(), { [category.id]: -100 })[second.id],
+    ).toEqual({ value: -10 });
+    await request(httpServer)
+      .patch(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ title: 'Renamed tile', expression: '{{Shared costs}} * 0.5' })
+      .expect(200);
+    expect(
+      (await read()).find((tile) => tile.id === second.id)?.expression,
+    ).toBe('{{Renamed tile}} + 20');
+    expect(
+      evaluateCustomValues(await read(), { [category.id]: -100 })[second.id],
+    ).toEqual({ value: -30 });
+    await create('my CUSTOM tile', '1').expect(201);
+    await create('combined', '1').expect(409);
+    await create('Shared costs', '1').expect(409);
+    await request(httpServer)
+      .post(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ title: 'Bypass', expression: '1', groupId: otherGroupId })
+      .expect(400);
+    await request(httpServer)
+      .post(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ title: 'Bypass', expression: '1', userId: randomUUID() })
+      .expect(400);
+    await create('Foreign', '1', outsiderToken).expect(404);
+    for (const target of [path, `/groups/9223372036854775807/custom-values`]) {
+      const denied = responseBody<{ code: string; message: string }>(
+        await request(httpServer)
+          .get(target)
+          .set('Authorization', `Bearer ${outsiderToken}`)
+          .expect(404),
+      );
+      expect(denied).toMatchObject({
+        code: 'RESOURCE_NOT_FOUND',
+        message: 'Resource not found',
+      });
+    }
+    for (const method of ['patch', 'delete'] as const) {
+      await request(httpServer)
+        [method](`/groups/${otherGroupId}/custom-values/${first.id}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send(
+          method === 'patch' ? { title: 'Foreign edit', expression: '1' } : {},
+        )
+        .expect(404);
+      await request(httpServer)
+        [method](`${path}/${first.id}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send(
+          method === 'patch' ? { title: 'Foreign edit', expression: '1' } : {},
+        )
+        .expect(404);
+    }
+    await request(httpServer)
+      .delete(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(409);
+    await request(httpServer)
+      .delete(`${path}/${second.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    await request(httpServer)
+      .delete(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    await request(httpServer)
+      .delete(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ confirmName: 'Monthly review fixture' })
+      .expect(200);
+    expect(
+      await dataSource.query(
+        'SELECT id FROM public.custom_values WHERE group_id = $1',
+        [groupId],
+      ),
+    ).toEqual([]);
+    const [privileges] = await dataSource.query<
+      Array<{ read: boolean; write: boolean }>
+    >(
+      "SELECT has_table_privilege('anon','public.custom_values','SELECT') OR has_table_privilege('authenticated','public.custom_values','SELECT') AS read, has_table_privilege('authenticated','public.custom_values','INSERT') AS write",
+    );
+    expect(privileges).toEqual({ read: false, write: false });
+  });
+
+  it('rejects invalid formulas and cycles atomically, including concurrent workspace graph edits', async () => {
+    const { groupId, otherGroupId, memberToken, outsiderToken } =
+      await reviewFixture();
+    const path = `/groups/${groupId}/custom-values`;
+    const create = (title: string, expression: string) =>
+      request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ title, expression });
+    const foreign = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(`/groups/${otherGroupId}/custom-values`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ title: 'Foreign tile', expression: '9' })
+        .expect(201),
+    );
+    for (const expression of [
+      '1 +',
+      'Math.random()',
+      '{{Unknown}}',
+      `{{tile:${foreign.id}}}`,
+    ])
+      await create('Invalid', expression).expect(400);
+    const a = responseBody<CustomValue>(await create('A', '10').expect(201));
+    const b = responseBody<CustomValue>(await create('B', '20').expect(201));
+    const edit = (id: string, title: string, expression: string) =>
+      request(httpServer)
+        .patch(`${path}/${id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ title, expression });
+    await edit(a.id, 'A', '{{A}}').expect(400);
+    const attempts = await Promise.all([
+      edit(a.id, 'A', '{{B}}'),
+      edit(b.id, 'B', '{{A}}'),
+    ]);
+    expect(attempts.map((result) => result.status).sort()).toEqual([200, 400]);
+    const tiles = responseBody<CustomValue[]>(
+      await request(httpServer)
+        .get(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200),
+    );
+    expect(
+      Object.values(evaluateCustomValues(tiles, {})).every(
+        (result) => result.error === undefined,
+      ),
+    ).toBe(true);
+    await create('Zero divisor', '1/(2-2)').expect(201);
+    const stored = responseBody<CustomValue[]>(
+      await request(httpServer)
+        .get(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200),
+    );
+    expect(
+      evaluateCustomValues(stored, {})[
+        stored.find((tile) => tile.title === 'Zero divisor')!.id
+      ],
+    ).toEqual({ error: 'Cannot divide by zero.' });
+    expect(stored).toHaveLength(3);
+  });
 
   function tokenFor(userId: string, email: string): string {
     return jwt.sign({ sub: userId, email, role: 'authenticated' }, testSecret, {

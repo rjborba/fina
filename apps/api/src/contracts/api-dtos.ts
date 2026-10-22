@@ -1,4 +1,10 @@
 import {
+  CustomValueParamsSchema,
+  CustomValueItemParamsSchema,
+  SaveCustomValueSchema,
+  CustomValueOutputSchema,
+  CustomValueListSchema,
+  DeleteCustomValueSchema,
   AcceptInviteOutputSchema,
   BankaccountListOutputSchema,
   BankaccountOutputSchema,
@@ -54,6 +60,21 @@ import {
   UnlinkCreditCardBillOutputSchema,
 } from '@fina/types';
 import { createZodDto } from 'nestjs-zod';
+
+export class CustomValueParamsDto extends createZodDto(
+  CustomValueParamsSchema,
+) {}
+export class CustomValueItemParamsDto extends createZodDto(
+  CustomValueItemParamsSchema,
+) {}
+export class SaveCustomValueDto extends createZodDto(SaveCustomValueSchema) {}
+export class CustomValueOutputDto extends createZodDto(
+  CustomValueOutputSchema,
+) {}
+export class CustomValueListDto extends createZodDto(CustomValueListSchema) {}
+export class DeleteCustomValueDto extends createZodDto(
+  DeleteCustomValueSchema,
+) {}
 
 export class GroupOutputDto extends createZodDto(GroupOutputSchema) {}
 export class TransactionCardValuesQueryDto extends createZodDto(

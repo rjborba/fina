@@ -35,6 +35,10 @@ import {
 } from "@/components/transactions/transactionDisplay"
 import { Transactions } from "./Transactions"
 
+vi.mock("@/components/transactions/CustomValuesSection", () => ({
+  CustomValuesSection: () => null
+}))
+
 type TransactionQuery = QueryTransactionInputDto & {
   startDate: Date
   endDate: Date

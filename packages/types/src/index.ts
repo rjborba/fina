@@ -8,3 +8,4 @@ export * from "./UserGroup/index";
 export * from "./Transactions/index";
 export * from "./Category/index";
 export * from "./BankAccount/index";
+export * from "./CustomValue/index";

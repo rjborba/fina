@@ -437,11 +437,31 @@ export type CreditCardBillListOutputDto = Array<{
     } | null;
 }>;
 
+export type CustomValueListDto = Array<{
+    id: string;
+    groupId: string;
+    title: string;
+    expression: string;
+    resolvedExpression: string;
+}>;
+
+export type CustomValueOutputDto = {
+    id: string;
+    groupId: string;
+    title: string;
+    expression: string;
+    resolvedExpression: string;
+};
+
 export type DeleteBankaccountOutputDto = {
     id: string;
 };
 
 export type DeleteCategoryOutputDto = {
+    id: string;
+};
+
+export type DeleteCustomValueDto = {
     id: string;
 };
 
@@ -740,6 +760,11 @@ export type ReconcileCreditCardBillInputDto = {
 
 export type RenameGroupInputDto = {
     name: string;
+};
+
+export type SaveCustomValueDto = {
+    title: string;
+    expression: string;
 };
 
 export type TransactionCardValuesOutputDto = Array<{
@@ -1217,3 +1242,31 @@ export type CreditCardBillsControllerUnlinkData = {
 };
 
 export type CreditCardBillsControllerUnlinkResponse = (UnlinkCreditCardBillOutputDto);
+
+export type CustomValuesControllerFindAllData = {
+    groupId: string;
+};
+
+export type CustomValuesControllerFindAllResponse = (CustomValueListDto);
+
+export type CustomValuesControllerCreateData = {
+    groupId: string;
+    requestBody: SaveCustomValueDto;
+};
+
+export type CustomValuesControllerCreateResponse = (CustomValueOutputDto);
+
+export type CustomValuesControllerUpdateData = {
+    groupId: string;
+    id: string;
+    requestBody: SaveCustomValueDto;
+};
+
+export type CustomValuesControllerUpdateResponse = (CustomValueOutputDto);
+
+export type CustomValuesControllerRemoveData = {
+    groupId: string;
+    id: string;
+};
+
+export type CustomValuesControllerRemoveResponse = (DeleteCustomValueDto);

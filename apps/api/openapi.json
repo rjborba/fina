@@ -1450,6 +1450,158 @@
           "CreditCardBills"
         ]
       }
+    },
+    "/groups/{groupId}/custom-values": {
+      "get": {
+        "operationId": "CustomValuesController_findAll",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomValueListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CustomValues"
+        ]
+      },
+      "post": {
+        "operationId": "CustomValuesController_create",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCustomValueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomValueOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CustomValues"
+        ]
+      }
+    },
+    "/groups/{groupId}/custom-values/{id}": {
+      "patch": {
+        "operationId": "CustomValuesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCustomValueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomValueOutputDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CustomValues"
+        ]
+      },
+      "delete": {
+        "operationId": "CustomValuesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteCustomValueDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CustomValues"
+        ]
+      }
     }
   },
   "info": {
@@ -4775,6 +4927,98 @@
         "required": [
           "accountId",
           "billMonth"
+        ]
+      },
+      "CustomValueListDto": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[1-9]\\d{0,18}$"
+            },
+            "groupId": {
+              "type": "string",
+              "pattern": "^[1-9]\\d{0,18}$"
+            },
+            "title": {
+              "type": "string"
+            },
+            "expression": {
+              "type": "string"
+            },
+            "resolvedExpression": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "groupId",
+            "title",
+            "expression",
+            "resolvedExpression"
+          ]
+        }
+      },
+      "SaveCustomValueDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16000
+          }
+        },
+        "required": [
+          "title",
+          "expression"
+        ]
+      },
+      "CustomValueOutputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,18}$"
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,18}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "expression": {
+            "type": "string"
+          },
+          "resolvedExpression": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "title",
+          "expression",
+          "resolvedExpression"
+        ]
+      },
+      "DeleteCustomValueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,18}$"
+          }
+        },
+        "required": [
+          "id"
         ]
       }
     }
