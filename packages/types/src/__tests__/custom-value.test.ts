@@ -102,4 +102,15 @@ describe("custom value formulas", () => {
         SaveCustomValueSchema.safeParse({ ...input, columnSpan }).success
       ).toBe(false);
   });
+  it("accepts an explicit unset color, without accepting empty or arbitrary colors", () => {
+    const input = { title: "Color fixture", expression: "2 * 3" };
+    for (const color of [undefined, null, "teal"])
+      expect(SaveCustomValueSchema.safeParse({ ...input, color }).success).toBe(
+        true
+      );
+    for (const color of ["", "none", "#ffffff", 0])
+      expect(SaveCustomValueSchema.safeParse({ ...input, color }).success).toBe(
+        false
+      );
+  });
 });

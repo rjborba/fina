@@ -44,6 +44,7 @@ import { TransactionFlags1792503000000 } from '../src/database/migrations/179250
 import { WorkspaceCustomValues1792620000000 } from '../src/database/migrations/1792620000000-WorkspaceCustomValues';
 import { CustomValueColors1792668625989 } from '../src/database/migrations/1792668625989-CustomValueColors';
 import { CustomValueWidth1792669875893 } from '../src/database/migrations/1792669875893-CustomValueWidth';
+import { OptionalCustomValueColor1792702564234 } from '../src/database/migrations/1792702564234-OptionalCustomValueColor';
 import { CustomValue, evaluateCustomValues } from '@fina/types';
 
 const migrations = [
@@ -71,6 +72,7 @@ const migrations = [
   WorkspaceCustomValues1792620000000,
   CustomValueColors1792668625989,
   CustomValueWidth1792669875893,
+  OptionalCustomValueColor1792702564234,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -127,6 +129,7 @@ describe('backend-only PostgreSQL boundary', () => {
     resolved_expression: string;
   };
   let legacyWidthValue: typeof legacyCustomValue & { color: string };
+  let optionalColorsBefore: Array<Record<string, unknown>>;
 
   beforeAll(async () => {
     const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -299,7 +302,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -2),
+      migrations: migrations.slice(0, 22),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -316,7 +319,7 @@ describe('backend-only PostgreSQL boundary', () => {
     await dataSource.destroy();
     dataSource = new DataSource({
       ...dataSourceOptions,
-      migrations: migrations.slice(0, -1),
+      migrations: migrations.slice(0, 23),
     });
     await dataSource.initialize();
     await dataSource.runMigrations();
@@ -324,6 +327,20 @@ describe('backend-only PostgreSQL boundary', () => {
       'SELECT * FROM public.custom_values WHERE id = $1',
       [legacyCustomValue.id],
     );
+    await dataSource.destroy();
+    dataSource = new DataSource({
+      ...dataSourceOptions,
+      migrations: migrations.slice(0, 24),
+    });
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+    await dataSource.query(
+      "INSERT INTO public.custom_values (group_id, title, resolved_expression, color) VALUES ($1, 'Existing teal fixture', '3 * 2', 'teal'), ($1, 'Existing sky fixture', '4 * 2', 'sky')",
+      [legacyGroup.id],
+    );
+    optionalColorsBefore = await dataSource.query<
+      Array<Record<string, unknown>>
+    >('SELECT * FROM public.custom_values ORDER BY id');
     await dataSource.destroy();
     dataSource = new DataSource({ ...dataSourceOptions, migrations });
     await dataSource.initialize();
@@ -5531,7 +5548,94 @@ describe('backend-only PostgreSQL boundary', () => {
         .send({ title: 'Default fixture', expression: '0' })
         .expect(201),
     );
-    expect(fallback.color).toBe('violet');
+    expect(fallback.color).toBeNull();
+    const cleared = responseBody<CustomValue>(
+      await request(httpServer)
+        .patch(`${path}/${create.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ ...input, color: null })
+        .expect(200),
+    );
+    expect(cleared).toEqual({ ...updated, color: null });
+    const omitted = responseBody<CustomValue>(
+      await request(httpServer)
+        .patch(`${path}/${create.id}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send(input)
+        .expect(200),
+    );
+    expect(omitted).toEqual(cleared);
+    const refreshed = responseBody<CustomValue[]>(
+      await request(httpServer)
+        .get(path)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200),
+    );
+    expect(refreshed.find((tile) => tile.id === create.id)).toEqual(cleared);
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ ...input, color: null })
+      .expect(404);
+    const explicit = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Explicit no color fixture',
+          expression: '1',
+          color: null,
+        })
+        .expect(201),
+    );
+    expect(explicit.color).toBeNull();
+  });
+
+  it('preserves existing tile colors, defaults new rows to no color, and supports the preceding schema on rollback', async () => {
+    const existing = await dataSource.query<Array<Record<string, unknown>>>(
+      'SELECT * FROM public.custom_values WHERE id = ANY($1::bigint[]) ORDER BY id',
+      [optionalColorsBefore.map((tile) => tile.id)],
+    );
+    expect(existing).toEqual(optionalColorsBefore);
+    const [column] = await dataSource.query<
+      Array<{ is_nullable: string; column_default: string | null }>
+    >(
+      "SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'custom_values' AND column_name = 'color'",
+    );
+    expect(column).toEqual({ is_nullable: 'YES', column_default: null });
+    const [created] = await dataSource.query<
+      Array<{ id: string; color: string | null }>
+    >(
+      "INSERT INTO public.custom_values (group_id, title, resolved_expression) VALUES ($1, 'No color database fixture', '1') RETURNING id, color",
+      [legacyCustomValue.group_id],
+    );
+    expect(created.color).toBeNull();
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      await new OptionalCustomValueColor1792702564234().down(runner);
+      const [restored] = await runner.manager.query<Array<{ color: string }>>(
+        'SELECT color FROM public.custom_values WHERE id = $1',
+        [created.id],
+      );
+      expect(restored.color).toBe('violet');
+      const [constraint] = await runner.manager.query<
+        Array<{ is_nullable: string; column_default: string }>
+      >(
+        "SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'custom_values' AND column_name = 'color'",
+      );
+      expect(constraint.is_nullable).toBe('NO');
+      expect(constraint.column_default).toContain('violet');
+    } finally {
+      await runner.rollbackTransaction();
+      await runner.release();
+    }
+    const [retained] = await dataSource.query<Array<{ color: string | null }>>(
+      'SELECT color FROM public.custom_values WHERE id = $1',
+      [created.id],
+    );
+    expect(retained.color).toBeNull();
   });
 
   it('backfills single-width tiles without changing definitions and constrains persisted widths', async () => {

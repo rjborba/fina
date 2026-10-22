@@ -4960,7 +4960,8 @@
                 "fuchsia",
                 "indigo",
                 "teal"
-              ]
+              ],
+              "nullable": true
             },
             "columnSpan": {
               "oneOf": [
@@ -5022,7 +5023,8 @@
               "fuchsia",
               "indigo",
               "teal"
-            ]
+            ],
+            "nullable": true
           },
           "columnSpan": {
             "oneOf": [
@@ -5073,7 +5075,8 @@
               "fuchsia",
               "indigo",
               "teal"
-            ]
+            ],
+            "nullable": true
           },
           "columnSpan": {
             "oneOf": [

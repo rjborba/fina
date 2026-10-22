@@ -30,7 +30,7 @@ export const SaveCustomValueSchema = z
         "Title cannot contain braces or control characters"
       ),
     expression: z.string().trim().min(1).max(16000),
-    color: CategoryColorSchema.optional(),
+    color: CategoryColorSchema.nullable().optional(),
     columnSpan: CustomValueColumnSpanSchema.optional()
   })
   .strict();
@@ -38,7 +38,7 @@ export const CustomValueOutputSchema = z.object({
   id,
   groupId: id,
   title: z.string(),
-  color: CategoryColorSchema,
+  color: CategoryColorSchema.nullable(),
   columnSpan: CustomValueColumnSpanSchema,
   expression: z.string(),
   resolvedExpression: z.string()

@@ -1,5 +1,11 @@
 import { useId, useMemo, useState } from "react"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import {
+  Columns2,
+  Pencil,
+  Plus,
+  RectangleHorizontal,
+  Trash2
+} from "lucide-react"
 import { ApiError } from "@/api/generated"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,8 +22,9 @@ import {
   type CustomValueColumnSpan
 } from "@fina/types"
 import { FormulaInput, type FormulaOption } from "./FormulaInput"
+import { FormulaText } from "./FormulaText"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
-import { CategoryAppearancePicker } from "@/components/categories/CategoryAppearancePicker"
+import { CustomValueColorSelect } from "./CustomValueColorSelect"
 import type { CategoryColor } from "@fina/types"
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -56,7 +63,7 @@ export function CustomValuesSection({
     id?: string
     title: string
     expression: string
-    color: CategoryColor
+    color: CategoryColor | null
     columnSpan: CustomValueColumnSpan
   } | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -183,7 +190,7 @@ export function CustomValuesSection({
             setEditing({
               title: "",
               expression: "",
-              color: "violet",
+              color: null,
               columnSpan: 1
             })
           }}
@@ -235,12 +242,44 @@ export function CustomValuesSection({
           }}
         >
           <div>
-            <label
-              htmlFor={`${formId}-title`}
-              className="mb-1.5 block text-xs font-medium"
-            >
-              Title
-            </label>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <label
+                htmlFor={`${formId}-title`}
+                className="text-xs font-medium"
+              >
+                Title
+              </label>
+              <div
+                role="radiogroup"
+                aria-label="Tile width"
+                className="flex gap-1"
+              >
+                {([1, 2] as const).map((columnSpan) => {
+                  const label =
+                    columnSpan === 1 ? "One tile" : "Two tiles (full width)"
+                  const Icon = columnSpan === 1 ? Columns2 : RectangleHorizontal
+                  return (
+                    <label
+                      key={columnSpan}
+                      title={label}
+                      className="relative flex size-7 items-center justify-center rounded-md border border-transparent text-foreground/55 hover:bg-foreground/5 has-[:checked]:border-fina-violet has-[:checked]:bg-fina-violet/10 has-[:checked]:text-fina-violet has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet has-[:disabled]:opacity-50"
+                    >
+                      <input
+                        type="radio"
+                        name={`${formId}-width`}
+                        value={columnSpan}
+                        aria-label={label}
+                        checked={editing.columnSpan === columnSpan}
+                        disabled={pending}
+                        onChange={() => setEditing({ ...editing, columnSpan })}
+                        className="absolute inset-0 m-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
+                      />
+                      <Icon className="size-4" aria-hidden="true" />
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
             <Input
               autoFocus
               id={`${formId}-title`}
@@ -252,41 +291,25 @@ export function CustomValuesSection({
               }
             />
           </div>
-          <CategoryAppearancePicker
+          <CustomValueColorSelect
+            id={`${formId}-color`}
             color={editing.color}
             onColorChange={(color) => setEditing({ ...editing, color })}
-            label="Tile color"
             disabled={pending}
           />
-          <fieldset disabled={pending}>
-            <legend className="mb-1.5 text-xs font-medium">Tile width</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {([1, 2] as const).map((columnSpan) => (
-                <label
-                  key={columnSpan}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-fina-grid px-3 py-2 text-xs has-[:checked]:border-fina-violet has-[:checked]:bg-fina-violet/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet has-[:disabled]:cursor-default has-[:disabled]:opacity-50"
-                >
-                  <input
-                    type="radio"
-                    name={`${formId}-width`}
-                    value={columnSpan}
-                    checked={editing.columnSpan === columnSpan}
-                    onChange={() => setEditing({ ...editing, columnSpan })}
-                    className="accent-current"
-                  />
-                  {columnSpan === 1 ? "One tile" : "Two tiles (full width)"}
-                </label>
-              ))}
-            </div>
-          </fieldset>
           <div>
             <label
+              id={`${formId}-logic-label`}
               htmlFor={`${formId}-logic`}
+              onClick={() =>
+                document.getElementById(`${formId}-logic`)?.focus()
+              }
               className="mb-1.5 block text-xs font-medium"
             >
               Logic
             </label>
             <FormulaInput
+              key={editing.id ?? "new"}
               id={`${formId}-logic`}
               value={editing.expression}
               disabled={pending}
@@ -299,7 +322,7 @@ export function CustomValuesSection({
               id={`${formId}-logic-help`}
               className="mt-2 text-[11px] leading-relaxed text-foreground/55"
             >
-              Type {"{{"} to mention categories or custom tiles. Use + − * / and
+              Type {"{{"} to add category or custom-tile chips. Use + − * / and
               parentheses; decimals use a dot. Values keep the category totals’
               signs.
             </p>
@@ -357,11 +380,13 @@ export function CustomValuesSection({
           >
             <div className="flex items-start justify-between gap-1">
               <div className="flex min-w-0 items-start gap-2">
-                <CategoryAppearance
-                  color={tile.color}
-                  label={`Tile color: ${tile.color}`}
-                  className="mt-1"
-                />
+                {tile.color ? (
+                  <CategoryAppearance
+                    color={tile.color}
+                    label={`Tile color: ${tile.color}`}
+                    className="mt-1"
+                  />
+                ) : null}
                 <h4 className="min-w-0 break-words text-xs font-medium">
                   {tile.title}
                 </h4>
@@ -416,8 +441,8 @@ export function CustomValuesSection({
                   : results[tile.id]?.error}
               </p>
             ) : null}
-            <p className="mt-2 break-words font-mono text-[10px] text-foreground/45">
-              {tile.expression}
+            <p className="mt-2 break-words font-mono text-[10px] text-foreground [font-feature-settings:normal] [font-variant-ligatures:none]">
+              <FormulaText value={tile.expression} options={options} />
             </p>
             {deleting === tile.id ? (
               <div className="mt-3 space-y-2">

@@ -3757,11 +3757,34 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     exact: true,
   });
   const section = summary.getByRole("region", { name: "Customizable Values" });
+  const colorControl = section.getByRole("combobox", {
+    name: "Tile color",
+    exact: true,
+  });
+  const chooseTileColor = async (name: string) => {
+    await colorControl.click();
+    await page.getByRole("option", { name, exact: true }).click();
+  };
   await section.getByRole("button", { name: "Add tile", exact: true }).click();
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("My Custom Tile");
-  await section.getByRole("radio", { name: "Teal", exact: true }).click();
+  await expect(colorControl).toHaveText("No color");
+  await colorControl.click();
+  await expect(
+    page.getByRole("option", { name: "No color", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(
+    section.getByRole("form", { name: "New custom tile", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await colorControl.click();
+  await page.getByRole("option", { name: "Teal", exact: true }).hover();
+  await page.screenshot({
+    path: "test-results/custom-values-color-dropdown.png",
+  });
+  await page.getByRole("option", { name: "Teal", exact: true }).click();
   await expect(
     section.getByRole("radio", { name: "One tile", exact: true }),
   ).toBeChecked();
@@ -3769,24 +3792,93 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     .getByRole("radio", { name: "Two tiles (full width)", exact: true })
     .click();
   const logic = section.getByRole("combobox", { name: "Logic", exact: true });
+  await expect(logic).toHaveCSS("font-variant-ligatures", "none");
+  await expect(logic).toHaveCSS("font-feature-settings", "normal");
+  for (const method of ["click", "Enter", "Tab"]) {
+    await logic.fill("{{Dividido");
+    if (method === "click")
+      await section
+        .getByRole("option", { name: /^Dividido Proporcionalmente/ })
+        .click();
+    else await logic.press(method);
+    await expect(
+      logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+    ).toHaveAttribute("contenteditable", "false");
+    await expect(logic).not.toContainText("{{");
+    await logic.press("Backspace");
+    await expect(logic).toBeEmpty();
+    await logic.press("ControlOrMeta+Z");
+    await expect(
+      logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+    ).toBeVisible();
+    await logic.pressSequentially(" * 0.3");
+    await expect(logic).toHaveText("Dividido Proporcionalmente * 0.3");
+  }
+  await logic.fill("");
+  await logic.pressSequentially("{{Dividido Proporcionalmente}} * 0.3");
+  await expect(logic).toHaveText("Dividido Proporcionalmente * 0.3");
   await logic.fill("({{Dividido");
   await section
     .getByRole("option", { name: /^Dividido Proporcionalmente/ })
     .click();
   await logic.press("ArrowLeft");
-  await logic.press("ArrowLeft");
-  await section
-    .getByRole("option", { name: /^Dividido Proporcionalmente/ })
-    .click();
+  await logic.press("ArrowRight");
   await logic.pressSequentially(") * 0.3");
-  await expect(logic).toHaveValue("({{Dividido Proporcionalmente}}) * 0.3");
+  await expect(logic).toHaveText("(Dividido Proporcionalmente) * 0.3");
+  await logic.press("ControlOrMeta+A");
+  const copiedFormula = await logic.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    element.dispatchEvent(
+      new ClipboardEvent("copy", {
+        clipboardData,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    return clipboardData.getData("text/plain");
+  });
+  expect(copiedFormula).toBe("({{Dividido Proporcionalmente}}) * 0.3");
+  await logic.fill("");
+  await logic.evaluate((element, text) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", text);
+    element.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, copiedFormula);
+  await expect(
+    logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+  ).toBeVisible();
   await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*30,00/);
+  const savedFirst = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname.endsWith("/custom-values"),
+  );
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  expect((await savedFirst).postDataJSON().expression).toBe(copiedFormula);
   const first = section.getByRole("article", {
     name: "My Custom Tile",
     exact: true,
   });
   await expect(first).toContainText(/-R\$\s*30,00/);
+  const firstTitleColor = await first
+    .getByRole("heading", { name: "My Custom Tile", exact: true })
+    .evaluate((element) => getComputedStyle(element).color);
+  await expect(first.getByText(") * 0.3", { exact: true })).toHaveCSS(
+    "color",
+    firstTitleColor,
+  );
+  await expect(
+    first.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+  ).toHaveCSS("border-top-width", "0px");
+  await expect(
+    first.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+  ).toHaveCSS("font-weight", "400");
   await expect(
     first.getByRole("img", { name: "Tile color: teal" }),
   ).toBeVisible();
@@ -3799,17 +3891,42 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await logic.press("End");
   await logic.pressSequentially(" + {{Va");
   await expect(section.getByRole("option", { name: /^Vale/ })).toBeVisible();
+  await expect(logic).toHaveText("My Custom Tile + {{Va");
   await page.screenshot({
     path: "test-results/custom-values-autocomplete.png",
   });
   await logic.press("ArrowDown");
   await logic.press("Enter");
+  await expect(
+    logic.getByLabel("Custom tile: My Custom Tile", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    logic.getByLabel("Category: Vale", { exact: true }),
+  ).toBeVisible();
+  await expect(logic).not.toContainText("{{");
+  await page.screenshot({
+    path: "test-results/custom-values-chips-editor.png",
+  });
+  const savedCombined = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname.endsWith("/custom-values"),
+  );
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  const combinedInput = (await savedCombined).postDataJSON();
+  expect(combinedInput.color).toBeNull();
+  expect(combinedInput.expression).toBe("{{My Custom Tile}} + {{Vale}}");
   const combined = section.getByRole("article", {
     name: "Combined tile",
     exact: true,
   });
   await expect(combined).toContainText(/R\$\s*10,00/);
+  await expect(combined.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
+    0,
+  );
+  await expect(
+    combined.getByLabel("Custom tile: My Custom Tile", { exact: true }),
+  ).toBeVisible();
   await expectFiniteAnimationsSettled(page);
   const tileWidth = async (tile: typeof first) => {
     const bounds = await tile.boundingBox();
@@ -3822,6 +3939,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   );
   await page.reload();
   await expect(combined).toContainText(/R\$\s*10,00/);
+  await expect(combined.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
+    0,
+  );
   await expectFiniteAnimationsSettled(page);
   expect(await tileWidth(first)).toBeCloseTo(
     2 * (await tileWidth(combined)),
@@ -3833,10 +3953,8 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await first
     .getByRole("button", { name: "Edit My Custom Tile", exact: true })
     .click();
-  await expect(
-    section.getByRole("radio", { name: "Teal", exact: true }),
-  ).toBeChecked();
-  await section.getByRole("radio", { name: "Sky", exact: true }).click();
+  await expect(colorControl).toHaveText("Teal");
+  await chooseTileColor("Sky");
   await expect(
     section.getByRole("radio", { name: "Two tiles (full width)", exact: true }),
   ).toBeChecked();
@@ -3847,7 +3965,12 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await logic.fill("{{Dividido Proporcionalmente}}*0.5");
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
   await expect(combined).toContainText(/-R\$\s*10,00/);
-  await expect(combined).toContainText("{{Renamed tile}} + {{Vale}}");
+  await expect(
+    combined.getByLabel("Custom tile: Renamed tile", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    combined.getByLabel("Category: Vale", { exact: true }),
+  ).toBeVisible();
   const renamed = section.getByRole("article", {
     name: "Renamed tile",
     exact: true,
@@ -3881,6 +4004,16 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await page.screenshot({ path: "test-results/custom-values-light.png" });
   await page.evaluate(() => document.documentElement.classList.add("dark"));
   await page.screenshot({ path: "test-results/custom-values-dark.png" });
+  const darkTitleColor = await renamed
+    .getByRole("heading", { name: "Renamed tile", exact: true })
+    .evaluate((element) => getComputedStyle(element).color);
+  await expect(renamed.getByText("*0.5", { exact: true })).toHaveCSS(
+    "color",
+    darkTitleColor,
+  );
+  await expect(
+    renamed.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+  ).toHaveCSS("color", darkTitleColor);
   await page.setViewportSize({ width: 390, height: 844 });
   await section.scrollIntoViewIfNeeded();
   await expect(combined).toBeInViewport();
@@ -3894,6 +4027,44 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     ),
   ).toBe(true);
   await page.screenshot({ path: "test-results/custom-values-mobile.png" });
+  await renamed
+    .getByRole("button", { name: "Edit Renamed tile", exact: true })
+    .click();
+  await expect(colorControl).toHaveText("Sky");
+  await chooseTileColor("No color");
+  await expect(
+    logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
+  ).toBeVisible();
+  await logic.press("End");
+  await logic.pressSequentially("+ 1");
+  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*49,00/);
+  expect(
+    await logic.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await logic.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "test-results/custom-values-chips-mobile-editor.png",
+  });
+  const savedMobile = page.waitForRequest(
+    (request) =>
+      request.method() === "PATCH" &&
+      new URL(request.url()).pathname.includes("/custom-values/"),
+  );
+  await section.getByRole("button", { name: "Save tile", exact: true }).click();
+  const mobileInput = (await savedMobile).postDataJSON();
+  expect(mobileInput.color).toBeNull();
+  expect(mobileInput.expression).toBe("{{Dividido Proporcionalmente}}*0.5+ 1");
+  await expect(renamed).toContainText(/-R\$\s*49,00/);
+  await expect(renamed.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
+    0,
+  );
+  await page.reload();
+  await expect(renamed).toContainText(/-R\$\s*49,00/);
+  await expect(renamed.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
+    0,
+  );
   for (const tile of [combined, renamed]) {
     await tile.getByRole("button", { name: /^Delete .+/ }).click();
     await tile

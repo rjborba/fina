@@ -509,15 +509,21 @@ have no exclusive editing capability. Definitions are persisted in the workspace
 not browser storage. The client refreshes shared definitions on focus and every
 15 seconds while the panel is open. Closing the panel discards unsaved drafts.
 
-Tiles have a workspace-shared color from the existing category palette, shown
-as a dot beside the title. The editor allows choosing/changing this color;
-new and existing tiles default to violet. Colors are validated by the shared
-contract and a PostgreSQL constraint. Older clients that omit color preserve
-an existing tile's color when editing instead of resetting it.
+Tiles have an optional workspace-shared color from the existing category
+palette, chosen with a compact dropdown that starts at **No color** for new
+tiles. Members can assign, change or clear the color. A dot appears beside the
+title only when a color is set; no dot or empty placeholder appears otherwise.
+Existing colors are preserved. Shared contracts and the PostgreSQL constraint
+accept only palette colors or `null`; omitting color preserves an existing
+choice on edit and defaults new tiles to no color. Category color controls are
+unchanged.
 
 Each tile has a shared width setting: **One tile** (one column, the default) or
 **Two tiles (full width)** (both columns of the summary grid). Members can choose
-it on creation and change it in the editor. Grid order stays unchanged; a wide
+it on creation and change it using two compact icon-only controls beside the
+editor's Title label, with tooltips, accessible names, native keyboard selection
+and a visible selected state; there is no separate Tile width section.
+Grid order stays unchanged; a wide
 tile starts on a new row if needed. The setting persists across reloads and is
 shared with workspace members, including on mobile. Older clients that omit
 `columnSpan` preserve an existing width; only numeric 1 or 2 are accepted by the
@@ -531,9 +537,22 @@ are bound to workspace-scoped IDs on save, so tile renames do not break dependen
 formulas. Duplicate or reserved category names use explicit `{{category:ID}}`
 tokens; archived category references retain their attribution. New titles cannot
 collide with existing category or tile names (case/Unicode-normalized).
-Autocomplete always moves the caret past both closing braces, including when
-reselecting an unchanged reference, so closing a surrounding parenthesis or
-continuing an expression cannot split the reference's braces.
+Selecting a reference turns it into an inline, non-editable chip showing its
+name, with a subtle neutral background, no colored outline and an accessible
+type/name label. Operators and other plain logic text use normal foreground
+contrast instead of a muted color, in both light and dark themes.
+Existing, fully typed or pasted known references also become chips, including
+explicit ID tokens; unresolved or ambiguous references stay editable as text so
+validation cannot silently reinterpret them. Saved tiles display the same chips.
+Operators, numbers and parentheses remain ordinary text and long expressions
+wrap inside the editor. The caret lands after a selected chip; arrow navigation
+skips it as a unit, and Backspace/Delete remove the whole reference. Undo/redo,
+selection, IME composition and plain-text copy/cut/paste are supported. Clipboard
+text and the saved/API expression retain the original `{{...}}` syntax; rich HTML
+is never interpreted. History is bounded and discarded with the editor, and
+switching tile/workspace resets it. This is a UI-only representation change,
+requiring no migration or formula rewrite. Remaining formula text disables font
+ligatures and inherited stylistic features so literal braces remain distinct.
 
 Tiles calculate from the same signed category totals used in the displayed
 period summary, including its period and filters, not from bill payments or an
@@ -572,6 +591,14 @@ deployment. The migration defaults existing tiles to one column without
 changing definitions, colors or financial records. Verification uses disposable
 local PostgreSQL databases. It is also applied to the verified local development
 database; production remains unchanged.
+
+Optional tile colors require `1792702564234-OptionalCustomValueColor` before
+the matching API/web deployment. It removes the color column's default and
+non-null restriction without rewriting any existing row or changing the palette
+constraint. Rolling back substitutes violet for unset colors because the older
+schema cannot represent no color. Migration and authorization tests use only
+disposable local PostgreSQL databases. It is also applied to the verified local
+development database; production remains unchanged.
 
 ### Transaction notes
 

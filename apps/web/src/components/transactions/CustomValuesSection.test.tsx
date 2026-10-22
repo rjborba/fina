@@ -2,7 +2,6 @@
 import "@testing-library/jest-dom/vitest"
 import {
   cleanup,
-  fireEvent,
   render,
   screen,
   waitFor,
@@ -48,6 +47,13 @@ const categories = [
 let records: CustomValue[]
 const clients: QueryClient[] = []
 const totals = { 8: -100, 9: 40 }
+async function chooseColor(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string
+) {
+  await user.click(screen.getByRole("combobox", { name: "Tile color" }))
+  await user.click(screen.getByRole("option", { name }))
+}
 function mount() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
@@ -65,6 +71,18 @@ function mount() {
 }
 describe("workspace custom tiles", () => {
   beforeEach(() => {
+    Element.prototype.hasPointerCapture = () => false
+    Element.prototype.setPointerCapture = () => undefined
+    Element.prototype.releasePointerCapture = () => undefined
+    Element.prototype.scrollIntoView = () => undefined
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    )
     vi.clearAllMocks()
     records = [
       {
@@ -86,7 +104,7 @@ describe("workspace custom tiles", () => {
           id: "2",
           groupId: "1",
           ...requestBody,
-          color: requestBody.color ?? ("violet" as const),
+          color: requestBody.color ?? null,
           columnSpan: requestBody.columnSpan ?? 1,
           resolvedExpression: requestBody.expression
             .replace("{{My Custom Tile}}", "{{tile:1}}")
@@ -109,9 +127,9 @@ describe("workspace custom tiles", () => {
           groupId: "1",
           ...requestBody,
           color:
-            requestBody.color ??
-            records.find((tile) => tile.id === id)?.color ??
-            ("violet" as const),
+            requestBody.color === undefined
+              ? (records.find((tile) => tile.id === id)?.color ?? null)
+              : requestBody.color,
           columnSpan:
             requestBody.columnSpan ??
             records.find((tile) => tile.id === id)?.columnSpan ??
@@ -129,6 +147,7 @@ describe("workspace custom tiles", () => {
   })
   afterEach(() => {
     cleanup()
+    vi.unstubAllGlobals()
     clients.splice(0).forEach((client) => client.clear())
   })
   it("autocompletes categories and custom tiles with keyboard, previews chained values, and persists create/edit/delete", async () => {
@@ -137,20 +156,35 @@ describe("workspace custom tiles", () => {
     await screen.findByRole("article", { name: "My Custom Tile" })
     await user.click(screen.getByRole("button", { name: "Add tile" }))
     await user.type(screen.getByRole("textbox", { name: "Title" }), "Combined")
-    await user.click(screen.getByRole("radio", { name: "Teal" }))
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent("No color")
+    await chooseColor(user, "Teal")
+    expect(screen.queryByText("Tile width")).not.toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole("radiogroup", { name: "Tile width" })
+      ).getAllByRole("radio")
+    ).toHaveLength(2)
     expect(screen.getByRole("radio", { name: "One tile" })).toBeChecked()
-    await user.click(
+    await user.click(screen.getByRole("radio", { name: "One tile" }))
+    await user.keyboard("{ArrowRight}")
+    expect(
       screen.getByRole("radio", { name: "Two tiles (full width)" })
-    )
+    ).toBeChecked()
     const logic = screen.getByRole("combobox", { name: "Logic" })
     await user.click(logic)
     await user.paste("{{")
     expect(screen.getAllByRole("option")).toHaveLength(3)
     await user.keyboard("My{Enter}")
-    expect(logic).toHaveValue("{{My Custom Tile}}")
+    expect(
+      within(logic).getByLabelText("Custom tile: My Custom Tile")
+    ).toBeVisible()
+    expect(logic).not.toHaveTextContent("{{")
     await user.paste(" + {{Va")
     await user.keyboard("{ArrowDown}{Enter}")
-    expect(logic).toHaveValue("{{My Custom Tile}} + {{Vale}}")
+    expect(within(logic).getByLabelText("Category: Vale")).toBeVisible()
+    expect(logic).toHaveTextContent("My Custom Tile + Vale")
     expect(screen.getByText(/Preview:/)).toHaveTextContent(/10,00/)
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     const tile = await screen.findByRole("article", { name: "Combined" })
@@ -170,15 +204,18 @@ describe("workspace custom tiles", () => {
     await user.click(
       within(tile).getByRole("button", { name: "Edit Combined" })
     )
-    expect(screen.getByRole("radio", { name: "Teal" })).toBeChecked()
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent("Teal")
     expect(
       screen.getByRole("radio", { name: "Two tiles (full width)" })
     ).toBeChecked()
     await user.click(screen.getByRole("radio", { name: "One tile" }))
-    await user.click(screen.getByRole("radio", { name: "Sky" }))
-    fireEvent.change(screen.getByRole("combobox", { name: "Logic" }), {
-      target: { value: "1 / 0" }
-    })
+    await chooseColor(user, "Sky")
+    const editLogic = screen.getByRole("combobox", { name: "Logic" })
+    await user.click(editLogic)
+    await user.keyboard("{Control>}a{/Control}")
+    await user.paste("1 / 0")
     expect(screen.getByText(/Unavailable: Cannot divide by zero/)).toBeVisible()
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     await waitFor(() =>
@@ -224,17 +261,88 @@ describe("workspace custom tiles", () => {
     await user.keyboard("{Escape}")
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     expect(screen.getByRole("form", { name: "New custom tile" })).toBeVisible()
-    fireEvent.change(logic, { target: { value: "1 +" } })
+    await user.keyboard("{Control>}a{/Control}")
+    await user.paste("1 +")
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     expect(api.create).not.toHaveBeenCalled()
     expect(screen.getByRole("alert")).toHaveTextContent("incomplete")
-    fireEvent.change(logic, { target: { value: "42" } })
+    await user.click(logic)
+    await user.keyboard("{Control>}a{/Control}")
+    await user.paste("42")
     api.create.mockRejectedValueOnce(new Error("Network failure"))
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save")
     expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue(
       "Keep draft"
     )
-    expect(logic).toHaveValue("42")
+    expect(logic).toHaveTextContent("42")
+  })
+  it("starts without color, persists that choice, and allows assigning and clearing a color from the dropdown", async () => {
+    const user = userEvent.setup()
+    mount()
+    await screen.findByRole("article")
+    await user.click(screen.getByRole("button", { name: "Add tile" }))
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent("No color")
+    await user.click(screen.getByRole("combobox", { name: "Tile color" }))
+    await user.keyboard("{Escape}")
+    expect(screen.getByRole("form", { name: "New custom tile" })).toBeVisible()
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    await user.type(
+      screen.getByRole("textbox", { name: "Title" }),
+      "No color fixture"
+    )
+    await user.click(screen.getByRole("combobox", { name: "Logic" }))
+    await user.paste("2 * 3")
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    const tile = await screen.findByRole("article", {
+      name: "No color fixture"
+    })
+    expect(
+      within(tile).queryByRole("img", { name: /Tile color:/ })
+    ).not.toBeInTheDocument()
+    expect(api.create).toHaveBeenCalledWith({
+      groupId: "1",
+      requestBody: {
+        title: "No color fixture",
+        color: null,
+        columnSpan: 1,
+        expression: "2 * 3"
+      }
+    })
+    await user.click(
+      within(tile).getByRole("button", { name: "Edit No color fixture" })
+    )
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent("No color")
+    await chooseColor(user, "Teal")
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    await waitFor(() =>
+      expect(
+        within(tile).getByRole("img", { name: "Tile color: teal" })
+      ).toBeVisible()
+    )
+    await user.click(
+      within(tile).getByRole("button", { name: "Edit No color fixture" })
+    )
+    await chooseColor(user, "No color")
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    await waitFor(() =>
+      expect(
+        within(tile).queryByRole("img", { name: /Tile color:/ })
+      ).not.toBeInTheDocument()
+    )
+    expect(api.update).toHaveBeenLastCalledWith({
+      groupId: "1",
+      id: "2",
+      requestBody: {
+        title: "No color fixture",
+        color: null,
+        columnSpan: 1,
+        expression: "2 * 3"
+      }
+    })
   })
 })

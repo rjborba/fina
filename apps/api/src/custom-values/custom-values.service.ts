@@ -186,7 +186,8 @@ export class CustomValuesService {
         };
         for (const key of graph.keys()) visit(key);
         tile.title = input.title;
-        tile.color = input.color ?? tile.color ?? 'violet';
+        tile.color =
+          input.color === undefined ? (tile.color ?? null) : input.color;
         tile.columnSpan = input.columnSpan ?? tile.columnSpan ?? 1;
         tile.resolvedExpression = resolvedExpression;
         tile = await manager.getRepository(CustomValues).save(tile);

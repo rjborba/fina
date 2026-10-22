@@ -441,7 +441,7 @@ export type CustomValueListDto = Array<{
     id: string;
     groupId: string;
     title: string;
-    color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    color: ('yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal') | null;
     columnSpan: (number);
     expression: string;
     resolvedExpression: string;
@@ -451,7 +451,7 @@ export type CustomValueOutputDto = {
     id: string;
     groupId: string;
     title: string;
-    color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    color: ('yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal') | null;
     columnSpan: (number);
     expression: string;
     resolvedExpression: string;
@@ -786,7 +786,7 @@ export type RenameGroupInputDto = {
 export type SaveCustomValueDto = {
     title: string;
     expression: string;
-    color?: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
+    color?: ('yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal') | null;
     columnSpan?: (number);
 };
 

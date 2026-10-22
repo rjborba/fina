@@ -16,8 +16,8 @@ export class CustomValues {
   @Column('text')
   title: string;
 
-  @Column('text', { default: 'violet' })
-  color: CategoryColor;
+  @Column('text', { nullable: true })
+  color: CategoryColor | null;
 
   @Column('smallint', { name: 'column_span', default: 1 })
   columnSpan: CustomValueColumnSpan;
