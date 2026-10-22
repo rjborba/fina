@@ -42,6 +42,7 @@ import {
 
 import { TransactionFlags1792503000000 } from '../src/database/migrations/1792503000000-TransactionFlags';
 import { WorkspaceCustomValues1792620000000 } from '../src/database/migrations/1792620000000-WorkspaceCustomValues';
+import { CustomValueColors1792668625989 } from '../src/database/migrations/1792668625989-CustomValueColors';
 import { CustomValue, evaluateCustomValues } from '@fina/types';
 
 const migrations = [
@@ -67,6 +68,7 @@ const migrations = [
   BackfillImportedCardMetadata1792501867419,
   TransactionFlags1792503000000,
   WorkspaceCustomValues1792620000000,
+  CustomValueColors1792668625989,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -116,6 +118,12 @@ describe('backend-only PostgreSQL boundary', () => {
   }>;
   let cardMigrationBefore: unknown[];
   let cardMigrationSourcesBefore: unknown[];
+  let legacyCustomValue: {
+    id: string;
+    group_id: string;
+    title: string;
+    resolved_expression: string;
+  };
 
   beforeAll(async () => {
     const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -284,6 +292,23 @@ describe('backend-only PostgreSQL boundary', () => {
       Array<{ data: unknown }>
     >(
       'SELECT to_jsonb(source) AS data FROM public.import_files source ORDER BY import_id',
+    );
+    await dataSource.destroy();
+    dataSource = new DataSource({
+      ...dataSourceOptions,
+      migrations: migrations.slice(0, -1),
+    });
+    await dataSource.initialize();
+    await dataSource.runMigrations();
+
+    const [legacyGroup] = await dataSource.query<Array<{ id: string }>>(
+      "INSERT INTO public.groups (name) VALUES ('Legacy custom value colors fixture') RETURNING id",
+    );
+    [legacyCustomValue] = await dataSource.query<
+      Array<typeof legacyCustomValue>
+    >(
+      "INSERT INTO public.custom_values (group_id, title, resolved_expression) VALUES ($1, 'Legacy custom tile', '2 * 3') RETURNING *",
+      [legacyGroup.id],
     );
     await dataSource.destroy();
     dataSource = new DataSource({ ...dataSourceOptions, migrations });
@@ -5421,6 +5446,74 @@ describe('backend-only PostgreSQL boundary', () => {
       ],
     ).toEqual({ error: 'Cannot divide by zero.' });
     expect(stored).toHaveLength(3);
+  });
+
+  it('backfills custom tile colors without rewriting definitions and constrains persisted colors', async () => {
+    const [tile] = await dataSource.query<
+      Array<typeof legacyCustomValue & { color: string }>
+    >('SELECT * FROM public.custom_values WHERE id = $1', [
+      legacyCustomValue.id,
+    ]);
+    expect(tile).toEqual({ ...legacyCustomValue, color: 'violet' });
+    await expect(
+      dataSource.query(
+        "UPDATE public.custom_values SET color = 'invalid' WHERE id = $1",
+        [tile.id],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('shares editable tile colors across members and preserves colors for older clients', async () => {
+    const { groupId, ownerToken, memberToken, outsiderToken } =
+      await reviewFixture();
+    const path = `/groups/${groupId}/custom-values`;
+    const create = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ title: 'Color fixture', expression: '2 * 3', color: 'teal' })
+        .expect(201),
+    );
+    expect(create.color).toBe('teal');
+    const input = { title: create.title, expression: create.expression };
+    const updated = responseBody<CustomValue>(
+      await request(httpServer)
+        .patch(`${path}/${create.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ ...input, color: 'sky' })
+        .expect(200),
+    );
+    expect(updated).toMatchObject({ ...create, color: 'sky' });
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(input)
+      .expect(200);
+    const listed = responseBody<CustomValue[]>(
+      await request(httpServer)
+        .get(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200),
+    );
+    expect(listed).toEqual([updated]);
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ ...input, color: '#abcdef' })
+      .expect(400);
+    await request(httpServer)
+      .patch(`${path}/${create.id}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ ...input, color: 'yellow' })
+      .expect(404);
+    const fallback = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ title: 'Default fixture', expression: '0' })
+        .expect(201),
+    );
+    expect(fallback.color).toBe('violet');
   });
 
   function tokenFor(userId: string, email: string): string {

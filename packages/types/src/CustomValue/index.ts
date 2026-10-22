@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { hasInvalidFormulaNameCharacters } from "./formula";
+import { CategoryColorSchema } from "../Category/CategoryApi.dto";
 
 const id = z
   .string()
@@ -24,13 +25,15 @@ export const SaveCustomValueSchema = z
         (value) => !hasInvalidFormulaNameCharacters(value),
         "Title cannot contain braces or control characters"
       ),
-    expression: z.string().trim().min(1).max(16000)
+    expression: z.string().trim().min(1).max(16000),
+    color: CategoryColorSchema.optional()
   })
   .strict();
 export const CustomValueOutputSchema = z.object({
   id,
   groupId: id,
   title: z.string(),
+  color: CategoryColorSchema,
   expression: z.string(),
   resolvedExpression: z.string()
 });

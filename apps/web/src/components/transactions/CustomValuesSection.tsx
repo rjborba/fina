@@ -15,6 +15,9 @@ import {
   type CustomValue
 } from "@fina/types"
 import { FormulaInput, type FormulaOption } from "./FormulaInput"
+import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { CategoryAppearancePicker } from "@/components/categories/CategoryAppearancePicker"
+import type { CategoryColor } from "@fina/types"
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -52,6 +55,7 @@ export function CustomValuesSection({
     id?: string
     title: string
     expression: string
+    color: CategoryColor
   } | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState("")
@@ -132,7 +136,8 @@ export function CustomValuesSection({
     if (!editing || pending) return
     const parsed = SaveCustomValueSchema.safeParse({
       title: editing.title,
-      expression: editing.expression
+      expression: editing.expression,
+      color: editing.color
     })
     if (!parsed.success) {
       setError(parsed.error.issues[0].message)
@@ -172,7 +177,7 @@ export function CustomValuesSection({
           onClick={() => {
             setError("")
             setDeleting(null)
-            setEditing({ title: "", expression: "" })
+            setEditing({ title: "", expression: "", color: "violet" })
           }}
         >
           <Plus className="size-3.5" /> Add tile
@@ -239,6 +244,12 @@ export function CustomValuesSection({
               }
             />
           </div>
+          <CategoryAppearancePicker
+            color={editing.color}
+            onColorChange={(color) => setEditing({ ...editing, color })}
+            label="Tile color"
+            disabled={pending}
+          />
           <div>
             <label
               htmlFor={`${formId}-logic`}
@@ -316,9 +327,16 @@ export function CustomValuesSection({
             className="min-w-0 border-b border-r border-fina-grid p-4"
           >
             <div className="flex items-start justify-between gap-1">
-              <h4 className="min-w-0 break-words text-xs font-medium">
-                {tile.title}
-              </h4>
+              <div className="flex min-w-0 items-start gap-2">
+                <CategoryAppearance
+                  color={tile.color}
+                  label={`Tile color: ${tile.color}`}
+                  className="mt-1"
+                />
+                <h4 className="min-w-0 break-words text-xs font-medium">
+                  {tile.title}
+                </h4>
+              </div>
               <div className="flex shrink-0">
                 <Button
                   type="button"
@@ -333,7 +351,8 @@ export function CustomValuesSection({
                     setEditing({
                       id: tile.id,
                       title: tile.title,
-                      expression: tile.expression
+                      expression: tile.expression,
+                      color: tile.color
                     })
                   }}
                 >

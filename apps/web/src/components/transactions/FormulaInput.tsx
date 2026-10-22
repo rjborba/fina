@@ -23,13 +23,14 @@ export function FormulaInput({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const pendingCaret = useRef<number | null>(null)
+  // A suggestion can leave the text unchanged; its caret move still needs committing.
   useLayoutEffect(() => {
     if (pendingCaret.current === null) return
     const position = pendingCaret.current
     pendingCaret.current = null
     input.current?.focus()
     input.current?.setSelectionRange(position, position)
-  }, [value])
+  })
   const [caret, setCaret] = useState(value.length)
   const [focused, setFocused] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -88,9 +89,11 @@ export function FormulaInput({
         placeholder="{{Category}} * 0.3"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onSelect={(event) =>
-          setCaret(event.currentTarget.selectionStart ?? value.length)
-        }
+        onSelect={(event) => {
+          const nextCaret = event.currentTarget.selectionStart ?? value.length
+          if (nextCaret !== caret) setDismissed(false)
+          setCaret(nextCaret)
+        }}
         onChange={(event) => {
           onChange(event.target.value)
           setCaret(event.target.selectionStart ?? event.target.value.length)

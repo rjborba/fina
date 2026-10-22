@@ -441,6 +441,7 @@ export type CustomValueListDto = Array<{
     id: string;
     groupId: string;
     title: string;
+    color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
     expression: string;
     resolvedExpression: string;
 }>;
@@ -449,9 +450,27 @@ export type CustomValueOutputDto = {
     id: string;
     groupId: string;
     title: string;
+    color: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
     expression: string;
     resolvedExpression: string;
 };
+
+export namespace CustomValueOutputDto {
+    export enum color {
+        YELLOW = 'yellow',
+        LIME = 'lime',
+        SKY = 'sky',
+        VIOLET = 'violet',
+        DANGER = 'danger',
+        AMBER = 'amber',
+        ORANGE = 'orange',
+        ROSE = 'rose',
+        PINK = 'pink',
+        FUCHSIA = 'fuchsia',
+        INDIGO = 'indigo',
+        TEAL = 'teal'
+    }
+}
 
 export type DeleteBankaccountOutputDto = {
     id: string;
@@ -765,7 +784,25 @@ export type RenameGroupInputDto = {
 export type SaveCustomValueDto = {
     title: string;
     expression: string;
+    color?: 'yellow' | 'lime' | 'sky' | 'violet' | 'danger' | 'amber' | 'orange' | 'rose' | 'pink' | 'fuchsia' | 'indigo' | 'teal';
 };
+
+export namespace SaveCustomValueDto {
+    export enum color {
+        YELLOW = 'yellow',
+        LIME = 'lime',
+        SKY = 'sky',
+        VIOLET = 'violet',
+        DANGER = 'danger',
+        AMBER = 'amber',
+        ORANGE = 'orange',
+        ROSE = 'rose',
+        PINK = 'pink',
+        FUCHSIA = 'fuchsia',
+        INDIGO = 'indigo',
+        TEAL = 'teal'
+    }
+}
 
 export type TransactionCardValuesOutputDto = Array<{
     cardName: (string) | null;

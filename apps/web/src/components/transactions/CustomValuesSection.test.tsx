@@ -71,6 +71,7 @@ describe("workspace custom tiles", () => {
         id: "1",
         groupId: "1",
         title: "My Custom Tile",
+        color: "violet",
         expression: "{{Shared costs}} * 0.3",
         resolvedExpression: "{{category:8}} * 0.3"
       }
@@ -84,6 +85,7 @@ describe("workspace custom tiles", () => {
           id: "2",
           groupId: "1",
           ...requestBody,
+          color: requestBody.color ?? ("violet" as const),
           resolvedExpression: requestBody.expression
             .replace("{{My Custom Tile}}", "{{tile:1}}")
             .replace("{{Vale}}", "{{category:9}}")
@@ -104,6 +106,10 @@ describe("workspace custom tiles", () => {
           id,
           groupId: "1",
           ...requestBody,
+          color:
+            requestBody.color ??
+            records.find((tile) => tile.id === id)?.color ??
+            ("violet" as const),
           resolvedExpression: requestBody.expression
         }
         records = records.map((current) => (current.id === id ? tile : current))
@@ -125,6 +131,7 @@ describe("workspace custom tiles", () => {
     await screen.findByRole("article", { name: "My Custom Tile" })
     await user.click(screen.getByRole("button", { name: "Add tile" }))
     await user.type(screen.getByRole("textbox", { name: "Title" }), "Combined")
+    await user.click(screen.getByRole("radio", { name: "Teal" }))
     const logic = screen.getByRole("combobox", { name: "Logic" })
     await user.click(logic)
     await user.paste("{{")
@@ -138,16 +145,22 @@ describe("workspace custom tiles", () => {
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     const tile = await screen.findByRole("article", { name: "Combined" })
     expect(tile).toHaveTextContent(/10,00/)
+    expect(
+      within(tile).getByRole("img", { name: "Tile color: teal" })
+    ).toBeVisible()
     expect(api.create).toHaveBeenCalledWith({
       groupId: "1",
       requestBody: {
         title: "Combined",
+        color: "teal",
         expression: "{{My Custom Tile}} + {{Vale}}"
       }
     })
     await user.click(
       within(tile).getByRole("button", { name: "Edit Combined" })
     )
+    expect(screen.getByRole("radio", { name: "Teal" })).toBeChecked()
+    await user.click(screen.getByRole("radio", { name: "Sky" }))
     fireEvent.change(screen.getByRole("combobox", { name: "Logic" }), {
       target: { value: "1 / 0" }
     })
@@ -157,6 +170,9 @@ describe("workspace custom tiles", () => {
       expect(tile).toHaveTextContent("Cannot divide by zero.")
     )
     expect(tile).not.toHaveTextContent(/Infinity|NaN/)
+    expect(
+      within(tile).getByRole("img", { name: "Tile color: sky" })
+    ).toBeVisible()
     await user.click(
       within(tile).getByRole("button", { name: "Delete Combined" })
     )

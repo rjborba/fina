@@ -7,22 +7,26 @@ import { categoryColorOptions } from "./categoryAppearanceOptions"
 
 export function CategoryAppearancePicker({
   color,
-  onColorChange
+  onColorChange,
+  label = "Category color",
+  disabled = false
 }: {
   color: CategoryColor
   onColorChange: (color: CategoryColor) => void
+  label?: string
+  disabled?: boolean
 }) {
   const colorGroupId = useId()
 
   return (
     <div className="space-y-4">
-      <fieldset>
+      <fieldset disabled={disabled}>
         <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
           Color
         </legend>
         <div
           role="radiogroup"
-          aria-label="Category color"
+          aria-label={label}
           className="grid grid-cols-6 gap-2"
         >
           {categoryColorOptions.map((option) => (

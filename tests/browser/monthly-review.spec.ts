@@ -3761,13 +3761,19 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("My Custom Tile");
+  await section.getByRole("radio", { name: "Teal", exact: true }).click();
   const logic = section.getByRole("combobox", { name: "Logic", exact: true });
-  await logic.fill("{{Dividido");
+  await logic.fill("({{Dividido");
   await section
     .getByRole("option", { name: /^Dividido Proporcionalmente/ })
     .click();
-  await logic.press("End");
-  await logic.pressSequentially("*0.3");
+  await logic.press("ArrowLeft");
+  await logic.press("ArrowLeft");
+  await section
+    .getByRole("option", { name: /^Dividido Proporcionalmente/ })
+    .click();
+  await logic.pressSequentially(") * 0.3");
+  await expect(logic).toHaveValue("({{Dividido Proporcionalmente}}) * 0.3");
   await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*30,00/);
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
   const first = section.getByRole("article", {
@@ -3775,6 +3781,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     exact: true,
   });
   await expect(first).toContainText(/-R\$\s*30,00/);
+  await expect(
+    first.getByRole("img", { name: "Tile color: teal" }),
+  ).toBeVisible();
   await section.getByRole("button", { name: "Add tile", exact: true }).click();
   await section
     .getByRole("textbox", { name: "Title", exact: true })
@@ -3797,9 +3806,16 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await expect(combined).toContainText(/R\$\s*10,00/);
   await page.reload();
   await expect(combined).toContainText(/R\$\s*10,00/);
+  await expect(
+    first.getByRole("img", { name: "Tile color: teal" }),
+  ).toBeVisible();
   await first
     .getByRole("button", { name: "Edit My Custom Tile", exact: true })
     .click();
+  await expect(
+    section.getByRole("radio", { name: "Teal", exact: true }),
+  ).toBeChecked();
+  await section.getByRole("radio", { name: "Sky", exact: true }).click();
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("Renamed tile");
@@ -3811,6 +3827,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     name: "Renamed tile",
     exact: true,
   });
+  await expect(
+    renamed.getByRole("img", { name: "Tile color: sky" }),
+  ).toBeVisible();
   await renamed
     .getByRole("button", { name: "Delete Renamed tile", exact: true })
     .click();

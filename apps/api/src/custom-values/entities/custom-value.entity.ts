@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Groups } from '../../groups/entities/group.entity';
+import type { CategoryColor } from '@fina/types';
 
 @Entity('custom_values', { schema: 'public' })
 export class CustomValues {
@@ -14,6 +15,9 @@ export class CustomValues {
 
   @Column('text')
   title: string;
+
+  @Column('text', { default: 'violet' })
+  color: CategoryColor;
 
   @Column('text', { name: 'resolved_expression' })
   resolvedExpression: string;

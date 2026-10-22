@@ -509,6 +509,12 @@ have no exclusive editing capability. Definitions are persisted in the workspace
 not browser storage. The client refreshes shared definitions on focus and every
 15 seconds while the panel is open. Closing the panel discards unsaved drafts.
 
+Tiles have a workspace-shared color from the existing category palette, shown
+as a dot beside the title. The editor allows choosing/changing this color;
+new and existing tiles default to violet. Colors are validated by the shared
+contract and a PostgreSQL constraint. Older clients that omit color preserve
+an existing tile's color when editing instead of resetting it.
+
 Each tile has a unique 1–120 character title and arithmetic logic using decimal
 numbers (dot separator), `+`, `-`, `*`, `/`, unary signs, parentheses and
 `{{Category name}}` / `{{Custom tile title}}` references. Typing `{{` opens a
@@ -517,6 +523,9 @@ are bound to workspace-scoped IDs on save, so tile renames do not break dependen
 formulas. Duplicate or reserved category names use explicit `{{category:ID}}`
 tokens; archived category references retain their attribution. New titles cannot
 collide with existing category or tile names (case/Unicode-normalized).
+Autocomplete always moves the caret past both closing braces, including when
+reselecting an unchanged reference, so closing a surrounding parenthesis or
+continuing an expression cannot split the reference's braces.
 
 Tiles calculate from the same signed category totals used in the displayed
 period summary, including its period and filters, not from bill payments or an
@@ -544,6 +553,11 @@ Deployment requires TypeORM migration `1792620000000-WorkspaceCustomValues`
 before the matching API/web deployment. Verification uses disposable local
 PostgreSQL databases. The migration is also applied to the verified local
 development database; production is unchanged.
+
+Tile colors additionally require `1792668625989-CustomValueColors` before the
+matching API deployment. It adds only the constrained color/default and leaves
+existing formulas, titles, ownership and financial records unchanged. It is
+PostgreSQL-tested and applied locally; production remains unchanged.
 
 ### Transaction notes
 

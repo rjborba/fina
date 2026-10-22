@@ -69,6 +69,20 @@ describe("custom value formulas", () => {
       SaveCustomValueSchema.safeParse({
         title: "Example",
         expression: "1",
+        color: "teal"
+      }).success
+    ).toBe(true);
+    expect(
+      SaveCustomValueSchema.safeParse({
+        title: "Example",
+        expression: "1",
+        color: "#bad"
+      }).success
+    ).toBe(false);
+    expect(
+      SaveCustomValueSchema.safeParse({
+        title: "Example",
+        expression: "1",
         groupId: "2"
       }).success
     ).toBe(false);

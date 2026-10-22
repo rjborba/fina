@@ -60,6 +60,7 @@ export class CustomValuesService {
       id: tile.id,
       groupId,
       title: tile.title,
+      color: tile.color,
       resolvedExpression: tile.resolvedExpression,
       expression: rewriteCustomFormula(tile.resolvedExpression, (key) => {
         const reference = byKey.get(key);
@@ -184,6 +185,7 @@ export class CustomValuesService {
         };
         for (const key of graph.keys()) visit(key);
         tile.title = input.title;
+        tile.color = input.color ?? tile.color ?? 'violet';
         tile.resolvedExpression = resolvedExpression;
         tile = await manager.getRepository(CustomValues).save(tile);
         const latest = await this.records(manager, groupId);
