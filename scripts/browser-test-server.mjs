@@ -12,7 +12,13 @@ const requireWeb = createRequire(join(root, "apps/web/package.json"));
 const { Client } = requireApi("pg");
 const { DataSource } = requireApi("typeorm");
 const jwt = requireApi("jsonwebtoken");
-const webOrigin = "http://127.0.0.1:4180";
+const webPort = Number(process.env.FINA_BROWSER_TEST_PORT ?? 4180);
+if (!Number.isInteger(webPort) || webPort < 1024 || webPort > 65535) {
+  throw new Error(
+    "FINA_BROWSER_TEST_PORT must be a port between 1024 and 65535.",
+  );
+}
+const webOrigin = `http://127.0.0.1:${webPort}`;
 const databaseName = `fina_browser_test_${process.pid}_${Date.now()}`;
 const signingSecret = randomBytes(32).toString("hex");
 const fixtureUser = {
@@ -247,7 +253,7 @@ async function start() {
     cacheDir: viteCacheDirectory,
     mode: "test",
     logLevel: "error",
-    server: { host: "127.0.0.1", port: 4180, strictPort: true },
+    server: { host: "127.0.0.1", port: webPort, strictPort: true },
   });
   await vite.listen();
   console.log(`Isolated browser-test application ready at ${webOrigin}`);

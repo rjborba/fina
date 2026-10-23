@@ -10,7 +10,11 @@ import {
 import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { CustomValue, SaveCustomValue } from "@fina/types"
+import {
+  rewriteCustomFormula,
+  type CustomValue,
+  type SaveCustomValue
+} from "@fina/types"
 import { CustomValuesSection } from "./CustomValuesSection"
 
 const api = vi.hoisted(() => ({
@@ -107,9 +111,15 @@ describe("workspace custom tiles", () => {
           ...requestBody,
           color: requestBody.color ?? null,
           columnSpan: requestBody.columnSpan ?? 1,
-          resolvedExpression: requestBody.expression
-            .replace("{{My Custom Tile}}", "{{tile:1}}")
-            .replace("{{Vale}}", "{{category:9}}")
+          resolvedExpression: rewriteCustomFormula(
+            requestBody.expression,
+            (name) =>
+              name === "My Custom Tile"
+                ? "tile:1"
+                : name === "Vale"
+                  ? "category:9"
+                  : name
+          )
         }
         records = [...records, tile]
         return tile
@@ -151,6 +161,60 @@ describe("workspace custom tiles", () => {
     vi.unstubAllGlobals()
     clients.splice(0).forEach((client) => client.clear())
   })
+  it("keeps both mode drafts, validates every return path, and saves/reopens highlighted code", async () => {
+    const user = userEvent.setup()
+    mount()
+    await screen.findByRole("article")
+    await user.click(screen.getByRole("button", { name: "Add tile" }))
+    await user.type(
+      screen.getByRole("textbox", { name: "Title" }),
+      "Conditional"
+    )
+    await user.click(screen.getByRole("combobox", { name: "Logic" }))
+    await user.paste("2 * 3")
+    await user.click(screen.getByRole("radio", { name: "Code" }))
+    let logic = screen.getByRole("combobox", { name: "Logic" })
+    expect(logic).toHaveTextContent("return 2 * 3;")
+    await user.click(logic)
+    await user.keyboard("{Control>}a{/Control}")
+    await user.paste("if (#Vale > 0) { return 1 }")
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Return a number on every path"
+    )
+    expect(api.create).not.toHaveBeenCalled()
+    await user.click(logic)
+    await user.keyboard("{Control>}a{/Control}")
+    const expression = "if (#Vale > 0) {\n  return 1\n} else {\n  return 0\n}"
+    await user.paste(expression)
+    expect(screen.getByText(/Preview:/)).toHaveTextContent(/1,00/)
+    await user.click(screen.getByRole("radio", { name: "Simple" }))
+    expect(screen.getByRole("combobox", { name: "Logic" })).toHaveTextContent(
+      "2×3"
+    )
+    await user.click(screen.getByRole("radio", { name: "Code" }))
+    logic = screen.getByRole("combobox", { name: "Logic" })
+    expect(logic.textContent).toBe(expression)
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    const tile = await screen.findByRole("article", { name: "Conditional" })
+    expect(tile).toHaveTextContent(/1,00/)
+    expect(api.create).toHaveBeenCalledWith({
+      groupId: "1",
+      requestBody: {
+        title: "Conditional",
+        expression,
+        color: null,
+        columnSpan: 1
+      }
+    })
+    await user.click(
+      within(tile).getByRole("button", { name: "Edit Conditional" })
+    )
+    expect(screen.getByRole("radio", { name: "Code" })).toBeChecked()
+    expect(screen.getByRole("combobox", { name: "Logic" }).textContent).toBe(
+      expression
+    )
+  })
   it("autocompletes categories and custom tiles with keyboard, previews chained values, and persists create/edit/delete", async () => {
     const user = userEvent.setup()
     mount()
@@ -188,7 +252,7 @@ describe("workspace custom tiles", () => {
     await user.paste(" + @Va")
     await user.keyboard("{ArrowDown}{Enter}")
     expect(within(logic).getByLabelText("Category: Vale")).toBeVisible()
-    expect(logic).toHaveTextContent("My Custom Tile + Vale")
+    expect(logic).toHaveTextContent("My Custom Tile+Vale")
     expect(screen.getByText(/Preview:/)).toHaveTextContent(/10,00/)
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     const tile = await screen.findByRole("article", { name: "Combined" })

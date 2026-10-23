@@ -2284,7 +2284,7 @@ test("combines account, import, amount, and date filters with matching totals an
   const touchContext =
     await test.step("open a touch-capable mobile browser", () =>
       browser.newContext({
-        baseURL: "http://127.0.0.1:4180",
+        baseURL: new URL(page.url()).origin,
         viewport: { width: 390, height: 844 },
         hasTouch: true,
       }));
@@ -3214,7 +3214,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await expect(bar).toHaveCount(0);
 
   const touchContext = await browser.newContext({
-    baseURL: "http://127.0.0.1:4180",
+    baseURL: new URL(page.url()).origin,
     viewport: { width: 390, height: 844 },
     hasTouch: true,
   });
@@ -4312,11 +4312,11 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
       logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
     ).toBeVisible();
     await logic.pressSequentially(" * 0.3");
-    await expect(logic).toHaveText("Dividido Proporcionalmente * 0.3");
+    await expect(logic).toHaveText("Dividido Proporcionalmente×0.3");
   }
   await logic.fill("");
   await logic.pressSequentially("{{Dividido Proporcionalmente}} * 0.3");
-  await expect(logic).toHaveText("Dividido Proporcionalmente * 0.3");
+  await expect(logic).toHaveText("Dividido Proporcionalmente×0.3");
   await logic.fill("(@Dividido");
   await section
     .getByRole("option", { name: /^Dividido Proporcionalmente/ })
@@ -4324,7 +4324,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await logic.press("ArrowLeft");
   await logic.press("ArrowRight");
   await logic.pressSequentially(") * 0.3");
-  await expect(logic).toHaveText("(Dividido Proporcionalmente) * 0.3");
+  await expect(logic).toHaveText("(Dividido Proporcionalmente)×0.3");
   await logic.press("ControlOrMeta+A");
   const copiedFormula = await logic.evaluate((element) => {
     const clipboardData = new DataTransfer();
@@ -4369,7 +4369,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   const firstTitleColor = await first
     .getByRole("heading", { name: "My Custom Tile", exact: true })
     .evaluate((element) => getComputedStyle(element).color);
-  await expect(first.getByText(") * 0.3", { exact: true })).toHaveCSS(
+  await expect(first.getByText("×", { exact: true })).toHaveCSS(
     "color",
     firstTitleColor,
   );
@@ -4391,7 +4391,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await logic.press("End");
   await logic.pressSequentially(" + @Va");
   await expect(section.getByRole("option", { name: /^Vale/ })).toBeVisible();
-  await expect(logic).toHaveText("My Custom Tile + @Va");
+  await expect(logic).toHaveText("My Custom Tile+@Va");
   await page.screenshot({
     path: "test-results/custom-values-autocomplete.png",
   });
@@ -4525,7 +4525,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   const darkTitleColor = await renamed
     .getByRole("heading", { name: "Renamed tile", exact: true })
     .evaluate((element) => getComputedStyle(element).color);
-  await expect(renamed.getByText("*0.5", { exact: true })).toHaveCSS(
+  await expect(renamed.getByText("×", { exact: true })).toHaveCSS(
     "color",
     darkTitleColor,
   );
@@ -4586,7 +4586,85 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await expect(renamed.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );
-  for (const tile of [combined, renamed]) {
+  await section.getByRole("button", { name: "Add tile", exact: true }).click();
+  await section
+    .getByRole("textbox", { name: "Title", exact: true })
+    .fill("Conditional tile");
+  await section.getByRole("radio", { name: "Code", exact: true }).click();
+  await expect(logic).toHaveAttribute("aria-multiline", "true");
+  await logic.fill("if (#Va");
+  await logic.press("Enter");
+  await expect(logic).toHaveText("if (#Vale");
+  await logic.pressSequentially(" > 0) {");
+  await logic.press("Enter");
+  expect(await logic.textContent()).toBe("if (#Vale > 0) {\n  ");
+  await logic.pressSequentially("return 1");
+  const code = "if (#Vale > 0) {\n  return 1\n} else {\n  return 0\n}";
+  await logic.fill(code);
+  await expect(section.getByText(/^Preview:/)).toHaveText(/R\$\s*1,00/);
+  await section.getByRole("radio", { name: "Simple", exact: true }).click();
+  await logic.fill("3 * 2 / 1 - 0");
+  await expect(logic).toHaveText("3×2÷1−0");
+  await section.getByRole("radio", { name: "Code", exact: true }).click();
+  expect(await logic.textContent()).toBe(code);
+  await logic.press("ControlOrMeta+A");
+  const copiedCode = await logic.evaluate((element) => {
+    const clipboardData = new DataTransfer();
+    element.dispatchEvent(
+      new ClipboardEvent("copy", {
+        clipboardData,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    return clipboardData.getData("text/plain");
+  });
+  expect(copiedCode).toBe(code);
+  await logic.press("ArrowRight");
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expect(logic.getByText("if", { exact: true })).not.toHaveCSS(
+    "color",
+    await logic
+      .getByText("1", { exact: true })
+      .evaluate((element) => getComputedStyle(element).color),
+  );
+  expect(
+    await logic.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/custom-values-code-mobile-dark.png",
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await logic.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "test-results/custom-values-code-desktop-light.png",
+  });
+  await logic.press("ControlOrMeta+Enter");
+  const conditional = section.getByRole("article", {
+    name: "Conditional tile",
+    exact: true,
+  });
+  await expect(conditional).toContainText(/R\$\s*1,00/);
+  await page.reload();
+  await expect(conditional).toContainText(/R\$\s*1,00/);
+  await conditional
+    .getByRole("button", { name: "Edit Conditional tile", exact: true })
+    .click();
+  await expect(
+    section.getByRole("radio", { name: "Code", exact: true }),
+  ).toBeChecked();
+  expect(await logic.textContent()).toBe(code);
+  await expect(logic.getByText("if", { exact: true })).not.toHaveCSS(
+    "color",
+    await logic
+      .getByText("1", { exact: true })
+      .evaluate((element) => getComputedStyle(element).color),
+  );
+  await section.getByRole("button", { name: "Cancel", exact: true }).click();
+  for (const tile of [conditional, combined, renamed]) {
     await tile.getByRole("button", { name: /^Delete .+/ }).click();
     await tile
       .getByRole("button", { name: "Delete tile", exact: true })
