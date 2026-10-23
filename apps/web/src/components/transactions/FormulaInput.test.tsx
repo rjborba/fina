@@ -11,7 +11,7 @@ import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { afterEach, describe, expect, it } from "vitest"
 import { FormulaInput } from "./FormulaInput"
-import { formulaParts, selectFormula } from "./formulaEditor"
+import { formulaParts, selectFormula, type FormulaMode } from "./formulaEditor"
 
 const options = [
   {
@@ -29,10 +29,12 @@ const options = [
 ]
 function Editor({
   initial = "",
-  disabled = false
+  disabled = false,
+  mode = "simple"
 }: {
   initial?: string
   disabled?: boolean
+  mode?: FormulaMode
 }) {
   const [value, setValue] = useState(initial)
   return (
@@ -44,6 +46,7 @@ function Editor({
         onChange={setValue}
         options={options}
         disabled={disabled}
+        mode={mode}
       />
       <output data-testid="source">{value}</output>
     </>
@@ -52,6 +55,81 @@ function Editor({
 const source = () => screen.getByTestId("source").textContent
 describe("inline formula references", () => {
   afterEach(cleanup)
+  it("renders compact arithmetic tokens while preserving spaces, selection and clipboard source", async () => {
+    const user = userEvent.setup()
+    const initial = "{{Category}}   *   2 / 4 - 1 + - 2"
+    render(<Editor initial={initial} />)
+    const editor = screen.getByRole("combobox", { name: "Logic" })
+    expect(editor).toHaveTextContent("Category×2÷4−1+−2")
+    await user.click(editor)
+    selectFormula(editor, 0, initial.length)
+    const copied = await user.copy()
+    expect(copied?.getData("text/plain")).toBe(initial)
+    expect(
+      formulaParts(initial, options)
+        .map((part) => part.text)
+        .join("")
+    ).toBe(initial)
+    selectFormula(editor, initial.length - 1)
+    await user.keyboard("{Backspace}")
+    expect(source()).toBe("{{Category}}   *   2 / 4 - 1 + 2")
+    await user.keyboard("{Control>}z{/Control}")
+    expect(source()).toBe(initial)
+  })
+  it("highlights multiline code, autocompletes hash references, indents, and copies source verbatim", async () => {
+    const user = userEvent.setup()
+    render(<Editor mode="code" />)
+    const editor = screen.getByRole("combobox", { name: "Logic" })
+    expect(editor).toHaveAttribute("aria-multiline", "true")
+    await user.click(editor)
+    await user.paste("if (#Cat")
+    await user.keyboard("{Enter}")
+    expect(source()).toBe("if (#Category")
+    await user.paste(" > 0) {")
+    await user.keyboard("{Enter}")
+    expect(source()).toBe("if (#Category > 0) {\n  ")
+    await user.paste("return 1")
+    await user.keyboard("{Enter}{Tab}")
+    expect(source()).toBe("if (#Category > 0) {\n  return 1\n    ")
+    selectFormula(editor, 0, source()!.length)
+    const program =
+      "if (#Category > 0) {\n  return 1\n} else {\n  return #{Custom tile}\n}"
+    await user.paste(program)
+    expect(source()).toBe(program)
+    expect(within(editor).getByText("if")).toHaveClass("text-violet-700")
+    expect(within(editor).getByText("1")).toHaveClass("text-emerald-700")
+    expect(
+      within(editor).getByLabelText("Category: Category")
+    ).toHaveTextContent("#Category")
+    selectFormula(editor, 0, program.length)
+    const copied = await user.copy()
+    expect(copied?.getData("text/plain")).toBe(program)
+    await user.keyboard("{Shift>}{Tab}{/Shift}")
+    expect(editor).not.toHaveFocus()
+  })
+  it("preserves native browser block line breaks when highlighting code and mapping the caret", async () => {
+    const user = userEvent.setup()
+    render(<Editor mode="code" />)
+    const editor = screen.getByRole("combobox", { name: "Logic" })
+    await user.click(editor)
+    editor.replaceChildren(document.createTextNode("if (true) {"))
+    for (const line of ["  return 1", "}", ""]) {
+      const block = document.createElement("div")
+      if (line) block.textContent = line
+      else block.append(document.createElement("br"))
+      editor.append(block)
+    }
+    const selection = window.getSelection()!
+    const range = document.createRange()
+    range.selectNodeContents(editor.lastChild!)
+    range.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(range)
+    fireEvent.input(editor)
+    expect(source()).toBe("if (true) {\n  return 1\n}\n")
+    await user.paste("return 2")
+    expect(source()).toBe("if (true) {\n  return 1\n}\nreturn 2")
+  })
   it.each(["click", "Enter", "Tab"])(
     "inserts a reference chip with %s and types immediately after it without changing saved syntax",
     async (method) => {
