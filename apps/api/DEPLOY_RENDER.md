@@ -187,3 +187,47 @@ Supabase's security advisor also reports separate follow-ups for
 and [leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 This deployment does not change the database version, Auth policy, or billing
 plan.
+
+## Custom-summary migration receipt
+
+On 2026-10-22 (America/Recife), the following four TypeORM migrations from
+verified commit `0f53891` were applied to production in one transaction:
+
+- `WorkspaceCustomValues1792620000000`
+- `CustomValueColors1792668625989`
+- `CustomValueWidth1792669875893`
+- `OptionalCustomValueColor1792702564234`
+
+Before application, `pnpm verify` passed, including all 64 disposable-PostgreSQL
+integration tests. `pnpm test:e2e` passed both API authentication tests and all
+nine browser journeys. The custom-summary journey creates its own workspace so
+categories from preceding journeys cannot contaminate its expectations.
+
+The controlled local administrative job parsed the ignored
+`apps/api/.env.production.local` without printing its values, checked that the
+Auth project and database connection identify the Fina production project, and
+passed the database URL to child processes through their environment, never
+command-line arguments. The checked-in migration data source was used without
+changes. Per-job overrides selected session-pooling port `5432`,
+`DATABASE_SCHEMA=public`, `DATABASE_SSL=true`, and
+`DOTENV_CONFIG_PATH=.env.production.local`. The public Supabase root CA was
+provided through `NODE_EXTRA_CA_CERTS` **before starting Node**, with certificate
+verification left enabled. Connection options set a 10-second lock timeout and
+60-second statement timeout. No production configuration file was rewritten.
+
+With that environment, the job invoked these repository commands from the root:
+
+```sh
+pnpm --filter @fina/api migration:show
+pnpm --filter @fina/api migration:run --transaction all
+pnpm --filter @fina/api migration:show
+```
+
+CLI output was captured privately and restricted to migration names/statuses;
+SQL and credentials were not logged. The preflight found 21 applied migrations
+and exactly the four expected pending migrations. The run exited successfully,
+and the final `migration:show` marked all 25 migrations applied with none pending.
+Read-only PostgreSQL checks confirmed the new table, workspace cascade,
+unique-title index, color/width constraints, nullable color without a default,
+and no table/sequence access for `anon` or `authenticated`. These additive
+migrations do not re-import files or alter existing transaction/category tables.

@@ -636,18 +636,18 @@ the existing Nest-only authorization boundary is preserved, without adding RLS.
 Deployment requires TypeORM migration `1792620000000-WorkspaceCustomValues`
 before the matching API/web deployment. Verification uses disposable local
 PostgreSQL databases. The migration is also applied to the verified local
-development database; production is unchanged.
+development database and was applied to production on 2026-10-22.
 
 Tile colors additionally require `1792668625989-CustomValueColors` before the
 matching API deployment. It adds only the constrained color/default and leaves
 existing formulas, titles, ownership and financial records unchanged. It is
-PostgreSQL-tested and applied locally; production remains unchanged.
+PostgreSQL-tested, applied locally, and applied to production on 2026-10-22.
 
 Tile widths require `1792669875893-CustomValueWidth` before the matching API
 deployment. The migration defaults existing tiles to one column without
 changing definitions, colors or financial records. Verification uses disposable
 local PostgreSQL databases. It is also applied to the verified local development
-database; production remains unchanged.
+database and was applied to production on 2026-10-22.
 
 Optional tile colors require `1792702564234-OptionalCustomValueColor` before
 the matching API/web deployment. It removes the color column's default and
@@ -655,7 +655,14 @@ non-null restriction without rewriting any existing row or changing the palette
 constraint. Rolling back substitutes violet for unset colors because the older
 schema cannot represent no color. Migration and authorization tests use only
 disposable local PostgreSQL databases. It is also applied to the verified local
-development database; production remains unchanged.
+development database and was applied to production on 2026-10-22. All four
+custom-value migrations ran from verified commit `0f53891` in one TypeORM
+transaction over verified TLS using the session pooler. Production migration
+history now contains all 25 committed migrations with none pending. Read-only
+checks confirmed nullable/no-default color, constrained widths, the workspace
+cascade, and denied table/sequence access for browser roles. See
+[the release receipt](apps/api/DEPLOY_RENDER.md#custom-summary-migration-receipt)
+for the administrative commands and connection setup.
 
 ### Transaction notes
 
