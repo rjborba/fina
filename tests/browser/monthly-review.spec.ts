@@ -4094,20 +4094,83 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     exact: true,
   });
   await expect(shortcutHelp).toBeVisible();
+  await expect(
+    shortcutHelp.getByText("Toggle period summary", { exact: true }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(shortcutHelp).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Period totals", exact: true })
-    .click();
+  await page.keyboard.press("s");
   const summary = page.getByRole("dialog", {
     name: "Period totals",
     exact: true,
   });
   const section = summary.getByRole("region", { name: "Customizable Values" });
-  await expect(summary).toHaveCSS("width", "640px");
+  await expect(summary).toHaveCSS("width", "800px");
+  await page.keyboard.press("s");
+  await expect(summary).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Period totals", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("s");
+  await expect(summary).toBeVisible();
   await expect(
     summary.getByRole("button", { name: "Close totals panel", exact: true }),
   ).toBeInViewport();
+  const summaryContent = summary.getByRole("region", {
+    name: "Period summary content",
+    exact: true,
+  });
+  await expect(summaryContent).toHaveCSS("overscroll-behavior", "contain");
+  await expect(summaryContent).toHaveCSS("scrollbar-gutter", "stable");
+  expect(
+    await summaryContent.evaluate(
+      (element) => getComputedStyle(element, "::-webkit-scrollbar").width,
+    ),
+  ).toBe("8px");
+  expect(
+    await summaryContent.evaluate(
+      (element) =>
+        getComputedStyle(element, "::-webkit-scrollbar-thumb").borderRadius,
+    ),
+  ).toBe("999px");
+  await page.setViewportSize({ width: 1280, height: 360 });
+  await expectFiniteAnimationsSettled(page);
+  await summaryContent.hover();
+  await page.mouse.wheel(0, 300);
+  await expect
+    .poll(() => summaryContent.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  await expect(
+    summary.getByRole("heading", { name: "Period summary", exact: true }),
+  ).toBeInViewport();
+  await expect(
+    summary.getByRole("button", { name: "Close totals panel", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: "test-results/period-summary-scroll-light.png",
+  });
+  const lightThumb = await summaryContent.evaluate(
+    (element) =>
+      getComputedStyle(element, "::-webkit-scrollbar-thumb").backgroundColor,
+  );
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expect
+    .poll(() =>
+      summaryContent.evaluate(
+        (element) =>
+          getComputedStyle(element, "::-webkit-scrollbar-thumb")
+            .backgroundColor,
+      ),
+    )
+    .not.toBe(lightThumb);
+  await page.screenshot({
+    path: "test-results/period-summary-scroll-dark.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await summaryContent.evaluate((element) => {
+    element.scrollTop = 0;
+  });
   const categoryToggle = summary.getByRole("button", {
     name: /^(Category breakdown|Purchase categories)$/,
   });
@@ -4178,6 +4241,15 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("My Custom Tile");
+  const titleInput = section.getByRole("textbox", {
+    name: "Title",
+    exact: true,
+  });
+  await titleInput.press("End");
+  await titleInput.press("s");
+  await expect(titleInput).toHaveValue("My Custom Tiles");
+  await expect(summary).toBeVisible();
+  await titleInput.fill("My Custom Tile");
   await expect(colorControl).toHaveAccessibleDescription("No color");
   await expectColorBesideTitle();
   await section
@@ -4215,6 +4287,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     "data-placeholder",
     "Type @ to add a category or custom tile",
   );
+  await logic.press("s");
+  await expect(logic).toHaveText("s");
+  await expect(summary).toBeVisible();
   await logic.fill("{{Dividido");
   await expect(section.getByRole("listbox")).toHaveCount(0);
   await expect(logic).toHaveCSS("font-variant-ligatures", "none");

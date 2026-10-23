@@ -10,6 +10,7 @@ const shortcuts = [
   ["Filter", "F"],
   ["Find in view", "⌘ / Ctrl F"],
   ["Display options", "Shift V"],
+  ["Toggle period summary", "S"],
   ["Move through entries", "↑ / ↓ · J / K"],
   ["Open an entry", "Enter"],
   ["Toggle selection", "X"],

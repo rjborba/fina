@@ -265,6 +265,13 @@ const TransactionsView: FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchFocusRequest, setSearchFocusRequest] = useState(0)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
+    "transactionsDrawerOpen",
+    false
+  )
+  const drawerRef = useRef<HTMLElement>(null)
+  const summaryButtonRef = useRef<HTMLButtonElement>(null)
+  const closeDrawerButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -277,14 +284,24 @@ const TransactionsView: FC = () => {
         )
       )
         return
+      const key = event.key.toLowerCase()
+      const isSummaryShortcut =
+        key === "s" && !event.shiftKey && !event.metaKey && !event.ctrlKey
+      const blockingDialog = isSummaryShortcut
+        ? '[role="dialog"]:not([aria-hidden="true"]):not(#transactions-summary-panel)'
+        : '[role="dialog"]:not([aria-hidden="true"])'
       if (
         document.querySelector(
-          '[role="dialog"]:not([aria-hidden="true"]), [role="alertdialog"]:not([aria-hidden="true"]), [role="menu"], [role="listbox"]'
+          `${blockingDialog}, [role="alertdialog"]:not([aria-hidden="true"]), [role="menu"], [role="listbox"]`
         )
       )
         return
-      const key = event.key.toLowerCase()
-      if ((event.metaKey || event.ctrlKey) && key === "f") {
+      if (isSummaryShortcut) {
+        if (event.repeat) return
+        event.preventDefault()
+        if (isDrawerOpen) summaryButtonRef.current?.focus()
+        setIsDrawerOpen(!isDrawerOpen)
+      } else if ((event.metaKey || event.ctrlKey) && key === "f") {
         event.preventDefault()
         setIsSearchOpen(true)
         setSearchFocusRequest((request) => request + 1)
@@ -303,14 +320,7 @@ const TransactionsView: FC = () => {
     }
     window.addEventListener("keydown", handleShortcut)
     return () => window.removeEventListener("keydown", handleShortcut)
-  }, [])
-
-  const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
-    "transactionsDrawerOpen",
-    false
-  )
-  const drawerRef = useRef<HTMLElement>(null)
-  const closeDrawerButtonRef = useRef<HTMLButtonElement>(null)
+  }, [isDrawerOpen, setIsDrawerOpen])
 
   useEffect(() => {
     drawerRef.current?.toggleAttribute("inert", !isDrawerOpen)
@@ -504,14 +514,16 @@ const TransactionsView: FC = () => {
               }
             />
             <Button
+              ref={summaryButtonRef}
               variant="ghost"
               size="icon"
-              onClick={() => setIsDrawerOpen(true)}
+              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
               aria-label="Period totals"
+              aria-keyshortcuts="S"
               aria-expanded={isDrawerOpen}
               aria-controls="transactions-summary-panel"
               className="size-7 text-muted-foreground"
-              title="Period totals"
+              title="Period summary (S)"
             >
               <Sigma className="size-3.5" />
             </Button>
@@ -597,7 +609,7 @@ const TransactionsView: FC = () => {
         aria-hidden={!isDrawerOpen}
         aria-label="Period totals"
         className={cn(
-          "fixed inset-y-0 right-0 z-[70] flex w-[min(640px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "fixed inset-y-0 right-0 z-[70] flex w-[min(800px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
           isDrawerOpen
             ? "pointer-events-auto translate-x-0"
             : "pointer-events-none translate-x-[calc(100%+10px)]"
@@ -620,7 +632,12 @@ const TransactionsView: FC = () => {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div
+          role="region"
+          aria-label="Period summary content"
+          tabIndex={isDrawerOpen ? 0 : -1}
+          className="fina-scrollbar min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+        >
           <div className="grid grid-cols-2 border-b border-fina-grid bg-fina-surface">
             <div className="border-b border-r border-fina-grid p-5">
               <div className="flex items-start justify-between gap-4">

@@ -1230,12 +1230,16 @@ describe("Transactions cash-flow ledger", () => {
     })
     expect(display).toBeVisible()
     fireEvent.keyDown(display, { key: "f" })
+    fireEvent.keyDown(display, { key: "s" })
     fireEvent.keyDown(display, { key: "?", shiftKey: true })
     expect(
       screen.queryByRole("dialog", { name: "Transaction filters" })
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole("dialog", { name: "Keyboard shortcuts" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("dialog", { name: "Period totals" })
     ).not.toBeInTheDocument()
     fireEvent.keyDown(display, { key: "Escape" })
     await waitFor(() =>
@@ -1258,7 +1262,68 @@ describe("Transactions cash-flow ledger", () => {
     })
     expect(within(help).getByText("Create an entry")).toBeVisible()
     expect(within(help).getByText("Move through entries")).toBeVisible()
+    expect(within(help).getByText("Toggle period summary")).toBeVisible()
   })
+
+  it("toggles period summary with S, ignores repeats and modifiers, and restores focus", () => {
+    render(
+      <MemoryRouter>
+        <Transactions />
+      </MemoryRouter>
+    )
+    const toggle = screen.getByRole("button", { name: "Period totals" })
+    expect(toggle).toHaveAttribute("aria-keyshortcuts", "S")
+    for (const event of [
+      { key: "s", ctrlKey: true },
+      { key: "s", metaKey: true },
+      { key: "s", altKey: true },
+      { key: "S", shiftKey: true },
+      { key: "s", isComposing: true },
+      { key: "s", repeat: true }
+    ]) {
+      fireEvent.keyDown(document.body, event)
+    }
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.keyDown(document.body, { key: "s" })
+    const summary = screen.getByRole("dialog", { name: "Period totals" })
+    const close = within(summary).getByRole("button", {
+      name: "Close totals panel"
+    })
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+    expect(close).toHaveFocus()
+    expect(
+      within(summary).getByRole("region", { name: "Period summary content" })
+    ).toHaveAttribute("tabindex", "0")
+    fireEvent.keyDown(close, { key: "s", repeat: true })
+    expect(summary).toBeVisible()
+    fireEvent.keyDown(close, { key: "s" })
+    expect(
+      screen.queryByRole("dialog", { name: "Period totals" })
+    ).not.toBeInTheDocument()
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    expect(toggle).toHaveFocus()
+    fireEvent.keyDown(toggle, { key: "s" })
+    expect(screen.getByRole("dialog", { name: "Period totals" })).toBeVisible()
+    fireEvent.keyDown(document.body, { key: "Escape" })
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it.each(["dialog", "alertdialog", "menu", "listbox"])(
+    "does not toggle the summary through another %s",
+    (role) => {
+      render(
+        <MemoryRouter>
+          <Transactions />
+          <div role={role} aria-label="Another overlay" />
+        </MemoryRouter>
+      )
+      fireEvent.keyDown(document.body, { key: "s" })
+      expect(
+        screen.getByRole("button", { name: "Period totals" })
+      ).toHaveAttribute("aria-expanded", "false")
+    }
+  )
 
   it("keeps toolbar shortcuts inactive while typing or while totals are open", () => {
     render(
@@ -1279,6 +1344,7 @@ describe("Transactions cash-flow ledger", () => {
     ]) {
       for (const event of [
         { key: "f" },
+        { key: "s" },
         { key: "V", shiftKey: true },
         { key: "f", ctrlKey: true },
         { key: "?", shiftKey: true }

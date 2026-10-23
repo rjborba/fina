@@ -535,9 +535,15 @@ failed saves preserve the entered name for retry. No schema change is required.
 ### Workspace customizable summary values
 
 Period summary includes **Customizable Values** below its category breakdown.
-The full-height drawer is up to 640px wide on desktop, while fitting within the
-viewport with a 16px gutter on smaller screens. Its scrolling, close controls
-and two-column custom-tile layout are unchanged.
+The full-height drawer is up to 800px wide on desktop, while fitting within the
+viewport with a 16px gutter on smaller screens. Its focusable content scrolls
+with the same slim, rounded, theme-aware scrollbar as transaction details,
+with a transparent track and stable scrollbar space. The header stays fixed.
+Pressing `S` toggles the summary; closing with that shortcut returns focus to
+its toolbar button. The shortcut ignores typing, composition, held-key repeats,
+modifier combinations and other open dialogs/menus. It is listed in `?` help
+and on the toolbar button. Existing close controls and the two-column custom-tile
+layout remain available.
 The category section starts expanded and can be collapsed from its header with
 a pointer or keyboard; its category count remains visible. Categories appear in
 a compact, single-column list with their color and name on the left and signed
