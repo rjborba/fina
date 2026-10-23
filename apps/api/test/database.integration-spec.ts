@@ -5435,6 +5435,97 @@ describe('backend-only PostgreSQL boundary', () => {
     expect(privileges).toEqual({ read: false, write: false });
   });
 
+  it('persists conditional programs, scopes every branch and protects the complete dependency graph', async () => {
+    const { groupId, otherGroupId, memberToken, outsiderToken } =
+      await reviewFixture();
+    const path = `/groups/${groupId}/custom-values`;
+    const create = (title: string, expression: string) =>
+      request(httpServer)
+        .post(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ title, expression });
+    const category = responseBody<{ id: string }>(
+      await request(httpServer)
+        .post('/categories')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ groupId, name: 'value' })
+        .expect(201),
+    );
+    const program =
+      'if (#value > 0) {\n  return 1\n} else if (#value < 0) {\n  return -1\n} else {\n  return 0\n}';
+    const first = responseBody<CustomValue>(
+      await create('Conditional fixture', program).expect(201),
+    );
+    expect(first.expression).toBe(program);
+    expect(first.resolvedExpression).toContain(`#category:${category.id}`);
+    const second = responseBody<CustomValue>(
+      await create(
+        'Dependent fixture',
+        `if (false) { return #tile:${first.id} } return 2`,
+      ).expect(201),
+    );
+    const read = async () =>
+      responseBody<CustomValue[]>(
+        await request(httpServer)
+          .get(path)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200),
+      );
+    for (const [amount, expected] of [
+      [10, 1],
+      [-10, -1],
+      [0, 0],
+    ])
+      expect(
+        evaluateCustomValues(await read(), { [category.id]: amount })[first.id],
+      ).toEqual({ value: expected });
+    const foreign = responseBody<CustomValue>(
+      await request(httpServer)
+        .post(`/groups/${otherGroupId}/custom-values`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ title: 'Foreign conditional fixture', expression: 'return 3' })
+        .expect(201),
+    );
+    for (const expression of [
+      'if (#value > 0) { return 1 }',
+      'if (true) { return 1 } else { return #Unknown }',
+      `if (true) { return 1 } else { return #tile:${foreign.id} }`,
+      'return globalThis',
+      'return true',
+      'while (true) { return 1 }',
+    ])
+      await create('Invalid program fixture', expression).expect(400);
+    await request(httpServer)
+      .patch(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({
+        title: first.title,
+        expression: `if (false) { return #tile:${second.id} } return 0`,
+      })
+      .expect(400);
+    expect(
+      (await read()).find((tile) => tile.id === first.id)?.expression,
+    ).toBe(program);
+    await request(httpServer)
+      .delete(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(409);
+    await request(httpServer)
+      .patch(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ title: first.title, expression: 'return 99' })
+      .expect(404);
+    await request(httpServer)
+      .patch(`${path}/${first.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ title: 'Renamed conditional fixture', expression: program })
+      .expect(200);
+    expect(
+      (await read()).find((tile) => tile.id === second.id)?.expression,
+    ).toContain('#{Renamed conditional fixture}');
+    expect(await read()).toHaveLength(2);
+  });
+
   it('rejects invalid formulas and cycles atomically, including concurrent workspace graph edits', async () => {
     const { groupId, otherGroupId, memberToken, outsiderToken } =
       await reviewFixture();

@@ -49,3 +49,4 @@ export type CustomValue = z.infer<typeof CustomValueOutputSchema>;
 export type SaveCustomValue = z.infer<typeof SaveCustomValueSchema>;
 export type CustomValueColumnSpan = z.infer<typeof CustomValueColumnSpanSchema>;
 export * from "./formula";
+export * from "./syntax";
