@@ -92,13 +92,16 @@ pnpm verify              # complete repository-health contract
 Before the first browser run, install its browser with
 `pnpm exec playwright install chromium` (CI uses `--with-deps`).
 `pnpm test:e2e` builds the API, runs its authentication checks, and then runs
-Playwright against a loopback-only application on port 4180. Each run creates a
+Playwright against a loopback-only application on port 4180 (override with
+`FINA_BROWSER_PORT=4181 pnpm test:e2e` when that port is occupied). Each run creates a
 unique `fina_browser_test_*` database, applies the committed TypeORM migrations,
 and uses an isolated identity fixture with locally signed tokens. It never
 touches development or production Auth/application records. The database is
 dropped when the harness exits; browser traces, videos, and saved sessions are
 disabled so tokens are not written to test artifacts.
-The integration-test runner requires `pnpm infra:start`. It creates a unique
+The test runners require running local Supabase. They read ignored local API
+configuration or privately obtain the local connection from Supabase CLI status
+when a new worktree has no generated configuration. The integration runner creates a unique
 `fina_test_*` database, runs the migration and API boundary suite with locally
 signed JWT fixtures, and drops that database even when the suite fails. CI uses
 the same local Supabase path.

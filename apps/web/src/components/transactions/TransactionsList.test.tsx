@@ -28,6 +28,7 @@ import TransactionsList, {
   type TransactionsListProps
 } from "./TransactionsList"
 import { DEFAULT_TRANSACTION_DISPLAY_PROPERTIES } from "./transactionDisplay"
+import { i18n } from "@/i18n"
 
 const virtualizerMock = vi.hoisted(() => {
   const state: {
@@ -230,6 +231,55 @@ describe("TransactionsList", () => {
         disconnect = vi.fn()
       }
     )
+  })
+
+  it("switches ledger labels, dates and BRL amounts while retaining selection and customer text", async () => {
+    const user = userEvent.setup()
+    render(
+      <TransactionsList
+        data={[
+          {
+            ...transaction("localized", "Customer description"),
+            value: -1234.56
+          }
+        ]}
+        sort="date-desc"
+        isLoading={false}
+        isError={false}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransactions={vi.fn()}
+      />
+    )
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select transaction" })
+    )
+    expect(screen.getByRole("gridcell")).toHaveTextContent(
+      "Flow date: 09/27/26"
+    )
+    expect(screen.getByRole("gridcell")).toHaveTextContent("Value: -R$1,234.56")
+    await act(async () => {
+      await i18n.changeLanguage("pt-BR")
+    })
+    expect(
+      screen.getByRole("checkbox", { name: "Selecionar transação" })
+    ).toBeChecked()
+    expect(screen.getByRole("gridcell")).toHaveTextContent(
+      "Data no fluxo: 27/09/26"
+    )
+    expect(screen.getByRole("gridcell")).toHaveTextContent(
+      /Valor: -R\$\s*1\.234,56/
+    )
+    expect(screen.getByText("Customer description")).toBeVisible()
+    expect(
+      screen.getByRole("toolbar", { name: "Ações das transações selecionadas" })
+    ).toHaveTextContent("1 selecionada")
+    await act(async () => {
+      await i18n.changeLanguage("en")
+    })
+    expect(
+      screen.getByRole("checkbox", { name: "Select transaction" })
+    ).toBeChecked()
+    expect(screen.getByRole("gridcell")).toHaveTextContent("Value: -R$1,234.56")
   })
 
   it("keeps ordered metadata icons and accessible card tooltips while toggling account names, masked numbers and category text independently", async () => {
@@ -1175,9 +1225,9 @@ describe("TransactionsList", () => {
       .closest("[role=row]")!
     expect(
       within(zero as HTMLElement).getByRole("gridcell", {
-        name: /Value: R\$\s*0,00/
+        name: /Value: R\$\s*0\.00/
       })
-    ).toHaveTextContent(/R\$\s*0,00/)
+    ).toHaveTextContent(/R\$\s*0\.00/)
   })
 
   it("bounds standalone ledgers and gives the virtualizer matching row and scroll-container geometry", () => {
@@ -1521,7 +1571,7 @@ describe("TransactionsList", () => {
 
     const selectionBar = screen.getByRole("status")
     expect(selectionBar).toHaveTextContent("4 selected")
-    expect(selectionBar).toHaveTextContent(/R\$\s*15,00/)
+    expect(selectionBar).toHaveTextContent(/R\$\s*15\.00/)
     expect(selectionBar).toHaveTextContent("1 without an amount")
     expect(screen.getByRole("button", { name: "Select all" })).toBeDisabled()
     for (const checkbox of screen.getAllByRole("checkbox")) {
@@ -1848,7 +1898,7 @@ describe("TransactionsList", () => {
     rerender(<TransactionsList {...props} data={[first]} />)
     expect(screen.getByRole("checkbox")).toBeChecked()
     expect(screen.getByRole("status")).toHaveTextContent("1 selected")
-    expect(screen.getByRole("status")).toHaveTextContent(/Net -R\$\s*10,00/)
+    expect(screen.getByRole("status")).toHaveTextContent(/Net -R\$\s*10\.00/)
 
     rerender(<TransactionsList {...props} data={undefined} isError />)
     expect(screen.queryByRole("toolbar")).not.toBeInTheDocument()

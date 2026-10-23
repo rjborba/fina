@@ -87,6 +87,33 @@ Production observability around authentication and import failures remains.
 
 ## Feature contracts
 
+### Interface languages
+
+The browser app supports English (`en`) and Brazilian Portuguese (`pt-BR`)
+through bundled react-i18next catalogs. The language control is available before
+sign-in, in the user menu, and in Settings. A choice applies immediately without
+remounting the application or discarding forms, filters, or selection, and saves
+only the language code under `fina-language` in browser storage. With no valid
+saved choice, the first supported browser language wins; unsupported languages
+fall back to English. Blocked storage leaves switching usable for the session.
+The document language, calendars, month names, and displayed numbers and money
+follow the choice. Money remains BRL; language switching performs no conversion.
+
+Application labels, accessibility text, validation, CSV guidance, bill statuses,
+shortcuts, and formula errors are translated. Customer-created names, notes,
+descriptions, filenames, and existing default workspace names remain verbatim.
+CSV mapping formats, formula decimal syntax, normalized previews, and API
+transport values remain independent of the interface locale. Supabase Auth errors
+are mapped by public codes; API errors retain their stable codes and request IDs
+and are localized at the browser boundary, with safe fallbacks for unknown
+messages. Auth-provider pages and email templates are managed by their providers.
+No database migration or account-level language setting is required.
+
+Catalog parity/interpolation, detection, storage failures, plurals, formatting,
+live form switching, and localized errors are covered by Vitest/React tests.
+The isolated browser journey verifies Portuguese sign-in, account creation,
+CSV import, navigation, and persistence alongside the English journeys.
+
 ### Group collaboration and membership
 
 1. **User outcome:** people collaborate inside a named financial group.
@@ -737,6 +764,10 @@ hosted or shared database.
 Browser verification also uses a unique temporary Vite dependency cache per
 run, removed at shutdown, so rebuilt shared contracts cannot reuse stale
 exports or invalidate an interactive development server's cache.
+Its default loopback port 4180 can be overridden with `FINA_BROWSER_PORT`.
+Test runners without generated worktree configuration privately read the local
+Supabase CLI connection; they still validate the loopback port and create
+uniquely named disposable databases before running any migrations or tests.
 The linked ESM `@fina/types` workspace is excluded from Vite dependency
 prebundling in both interactive and test development. Contract rebuilds must
 load current workspace exports rather than a cache created before new schemas

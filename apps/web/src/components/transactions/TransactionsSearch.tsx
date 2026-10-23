@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useEffect, useRef, useState } from "react"
 import { useAtom } from "jotai"
 import { Search, X } from "lucide-react"
@@ -13,6 +14,8 @@ export function TransactionsSearch({
   onOpenChange: (open: boolean) => void
   focusRequest?: number
 }) {
+  const { t } = useTranslation()
+
   const [filter, setFilter] = useAtom(transactionFilterAtom)
   const [draft, setDraft] = useState(filter.partialDescription)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -38,8 +41,8 @@ export function TransactionsSearch({
         variant="ghost"
         size="icon"
         className="size-7 text-muted-foreground"
-        aria-label="Find in view"
-        title="Find in view (⌘/Ctrl F)"
+        aria-label={t("Find in view")}
+        title={t("Find in view (⌘/Ctrl F)")}
         onClick={() => onOpenChange(true)}
       >
         <Search className="size-3.5" />
@@ -52,8 +55,8 @@ export function TransactionsSearch({
       <Search className="size-3.5 shrink-0 text-muted-foreground" />
       <input
         ref={inputRef}
-        aria-label="Find in view"
-        placeholder="Find in view…"
+        aria-label={t("Find in view")}
+        placeholder={t("Find in view…")}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
@@ -68,7 +71,7 @@ export function TransactionsSearch({
       />
       <button
         type="button"
-        aria-label="Clear search"
+        aria-label={t("Clear search")}
         className="text-muted-foreground hover:text-foreground"
         onClick={() => {
           setDraft("")

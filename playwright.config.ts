@@ -1,5 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const browserPort = Number(process.env.FINA_BROWSER_PORT ?? "4180");
+if (
+  !Number.isInteger(browserPort) ||
+  browserPort < 1024 ||
+  browserPort > 65535
+) {
+  throw new Error("FINA_BROWSER_PORT must be a port between 1024 and 65535");
+}
+const browserOrigin = `http://127.0.0.1:${browserPort}`;
+
 export default defineConfig({
   testDir: "./tests/browser",
   fullyParallel: false,
@@ -8,7 +18,7 @@ export default defineConfig({
   timeout: 90_000,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:4180",
+    baseURL: browserOrigin,
     ...devices["Desktop Chrome"],
     trace: "off",
     screenshot: "off",
@@ -16,7 +26,7 @@ export default defineConfig({
   },
   webServer: {
     command: "node scripts/browser-test-server.mjs",
-    url: "http://127.0.0.1:4180/login",
+    url: `${browserOrigin}/login`,
     reuseExistingServer: false,
     gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
     timeout: 120_000,

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useEffect, useId, useState, type ReactNode } from "react"
 import dayjs from "dayjs"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
@@ -36,6 +37,8 @@ type EditorProps = Pick<
   autoFocus?: boolean
 }
 export function TransactionFilterEditor(props: EditorProps) {
+  const { t } = useTranslation()
+
   switch (props.property) {
     case "category":
       return <CategoryEditor {...props} />
@@ -52,11 +55,11 @@ export function TransactionFilterEditor(props: EditorProps) {
     case "description":
       return (
         <label className={`block p-3 text-xs ${filterMutedClass}`}>
-          Search description
+          {t("Search description")}
           <Input
             autoFocus={props.autoFocus}
-            aria-label="Search description"
-            placeholder="Find transactions…"
+            aria-label={t("Search description")}
+            placeholder={t("Find transactions…")}
             value={props.description}
             onChange={(event) => props.onDescriptionChange(event.target.value)}
             className={`${filterInputClass} mt-1.5`}
@@ -124,6 +127,8 @@ function SearchHeader({
 }
 
 function CategoryEditor({ value, onChange, autoFocus }: EditorProps) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data, isLoading, isError } = useCategories({
     groupId: selectedGroup?.id
@@ -136,17 +141,17 @@ function CategoryEditor({ value, onChange, autoFocus }: EditorProps) {
   return (
     <div>
       <SearchHeader
-        label="Search categories"
+        label={t("Search categories")}
         autoFocus={autoFocus}
-        placeholder="Search categories…"
+        placeholder={t("Search categories…")}
         value={search}
         onChange={setSearch}
       />
       <div className="p-1">
         {isLoading ? (
-          <Status>Loading categories…</Status>
+          <Status>{t("Loading categories…")}</Status>
         ) : isError ? (
-          <Status>Could not load categories.</Status>
+          <Status>{t("Could not load categories.")}</Status>
         ) : (
           matching.map((item) => (
             <Choice
@@ -165,7 +170,7 @@ function CategoryEditor({ value, onChange, autoFocus }: EditorProps) {
           ))
         )}
         {!isLoading && !isError && !matching.length ? (
-          <Status>No matching categories.</Status>
+          <Status>{t("No matching categories.")}</Status>
         ) : null}
       </div>
     </div>
@@ -173,6 +178,8 @@ function CategoryEditor({ value, onChange, autoFocus }: EditorProps) {
 }
 
 function AccountEditor({ value, onChange, autoFocus }: EditorProps) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data, isLoading, isError } = useBankAccounts({
     groupId: selectedGroup?.id
@@ -184,17 +191,17 @@ function AccountEditor({ value, onChange, autoFocus }: EditorProps) {
   return (
     <div>
       <SearchHeader
-        label="Search bank accounts"
+        label={t("Search bank accounts")}
         autoFocus={autoFocus}
-        placeholder="Search accounts…"
+        placeholder={t("Search accounts…")}
         value={search}
         onChange={setSearch}
       />
       <div className="p-1">
         {isLoading ? (
-          <Status>Loading accounts…</Status>
+          <Status>{t("Loading accounts…")}</Status>
         ) : isError ? (
-          <Status>Could not load accounts.</Status>
+          <Status>{t("Could not load accounts.")}</Status>
         ) : (
           matching.map((item) => (
             <Choice
@@ -223,7 +230,7 @@ function AccountEditor({ value, onChange, autoFocus }: EditorProps) {
           ))
         )}
         {!isLoading && !isError && !matching.length ? (
-          <Status>No matching accounts.</Status>
+          <Status>{t("No matching accounts.")}</Status>
         ) : null}
       </div>
     </div>
@@ -236,6 +243,8 @@ function CardEditor({
   autoFocus,
   cardAccountId
 }: EditorProps) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data, isLoading, isError } = useTransactionCardValues({
     groupId: selectedGroup?.id,
@@ -254,17 +263,17 @@ function CardEditor({
   return (
     <div>
       <SearchHeader
-        label="Search cards"
-        placeholder="Search cards…"
+        label={t("Search cards")}
+        placeholder={t("Search cards…")}
         value={search}
         onChange={setSearch}
         autoFocus={autoFocus}
       />
       <div className="p-1">
         {isLoading ? (
-          <Status>Loading cards…</Status>
+          <Status>{t("Loading cards…")}</Status>
         ) : isError ? (
-          <Status>Could not load cards.</Status>
+          <Status>{t("Could not load cards.")}</Status>
         ) : (
           options.map((card) => (
             <Choice
@@ -283,7 +292,7 @@ function CardEditor({
           ))
         )}
         {!isLoading && !isError && !options.length ? (
-          <Status>No matching cards.</Status>
+          <Status>{t("No matching cards.")}</Status>
         ) : null}
       </div>
     </div>
@@ -291,6 +300,8 @@ function CardEditor({
 }
 
 function ImportEditor({ value, onChange }: EditorProps) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data, isLoading, isError } = useImports({
     groupId: selectedGroup?.id
@@ -303,12 +314,12 @@ function ImportEditor({ value, onChange }: EditorProps) {
   )
   return (
     <div>
-      <div className="p-1" role="group" aria-label="Transaction source">
+      <div className="p-1" role="group" aria-label={t("Transaction source")}>
         {(
           [
-            [undefined, "Any source"],
-            ["imported", "Imported"],
-            ["manual", "Manual"]
+            [undefined, t("Any source")],
+            ["imported", t("Imported")],
+            ["manual", t("Manual")]
           ] as const
         ).map(([source, label]) => (
           <Button
@@ -341,19 +352,19 @@ function ImportEditor({ value, onChange }: EditorProps) {
           <p
             className={`border-t border-[#e7e7eb] px-3 pb-1 pt-2 text-xs dark:border-white/[0.07] ${filterMutedClass}`}
           >
-            Or choose specific imports
+            {t("Or choose specific imports")}
           </p>
           <SearchHeader
-            label="Search imports"
-            placeholder="Search files or accounts…"
+            label={t("Search imports")}
+            placeholder={t("Search files or accounts…")}
             value={search}
             onChange={setSearch}
           />
           <div className="p-1">
             {isLoading ? (
-              <Status>Loading imports…</Status>
+              <Status>{t("Loading imports…")}</Status>
             ) : isError ? (
-              <Status>Could not load imports.</Status>
+              <Status>{t("Could not load imports.")}</Status>
             ) : (
               matching.map((item) => (
                 <div key={item.id}>
@@ -380,12 +391,12 @@ function ImportEditor({ value, onChange }: EditorProps) {
               ))
             )}
             {!isLoading && !isError && !matching.length ? (
-              <Status>No matching imports.</Status>
+              <Status>{t("No matching imports.")}</Status>
             ) : null}
           </div>
         </>
       ) : (
-        <Status>Transactions created without an import.</Status>
+        <Status>{t("Transactions created without an import.")}</Status>
       )}
     </div>
   )
@@ -412,6 +423,8 @@ function amountOperator(min?: number, max?: number): AmountOperator {
         : "exact"
 }
 function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
+  const { t } = useTranslation()
+
   const [operator, setOperator] = useState<AmountOperator>(() =>
     amountOperator(value.minValue, value.maxValue)
   )
@@ -452,9 +465,9 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
       }}
     >
       <label className={`block text-xs ${filterMutedClass}`}>
-        Condition
+        {t("Condition")}
         <select
-          aria-label="Amount condition"
+          aria-label={t("Amount condition")}
           value={operator}
           onChange={(event) => {
             setOperator(event.target.value as AmountOperator)
@@ -462,10 +475,10 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
           }}
           className={`${filterInputClass} mt-1.5 w-full border`}
         >
-          <option value="exact">Exact amount</option>
-          <option value="between">Between</option>
-          <option value="min">At least</option>
-          <option value="max">At most</option>
+          <option value="exact">{t("Exact amount")}</option>
+          <option value="between">{t("Between")}</option>
+          <option value="min">{t("At least")}</option>
+          <option value="max">{t("At most")}</option>
         </select>
       </label>
       <div className={operator === "between" ? "grid grid-cols-2 gap-2" : ""}>
@@ -473,13 +486,13 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
           htmlFor={`${id}-amount`}
           className={`text-xs font-normal ${filterMutedClass}`}
         >
-          {operator === "between" ? "Minimum amount" : "Amount"}
+          {operator === "between" ? t("Minimum amount") : t("Amount")}
           <Input
             id={`${id}-amount`}
             autoFocus={autoFocus}
             type="number"
             step="any"
-            placeholder="e.g. -100"
+            placeholder={t("e.g. -100")}
             value={first}
             onChange={(event) => setFirst(event.target.value)}
             className={`${filterInputClass} mt-1.5`}
@@ -491,12 +504,12 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
             htmlFor={`${id}-maximum`}
             className={`text-xs font-normal ${filterMutedClass}`}
           >
-            Maximum amount
+            {t("Maximum amount")}
             <Input
               id={`${id}-maximum`}
               type="number"
               step="any"
-              placeholder="e.g. -50"
+              placeholder={t("e.g. -50")}
               value={second}
               onChange={(event) => setSecond(event.target.value)}
               className={`${filterInputClass} mt-1.5`}
@@ -508,12 +521,13 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
         id={`${id}-hint`}
         className={`text-xs leading-relaxed ${filterMutedClass}`}
       >
-        Use negative values for expenses and positive values for income. Range
-        includes both limits.
+        {t(
+          "Use negative values for expenses and positive values for income. Range includes both limits."
+        )}
       </p>
       {submitted && !valid ? (
         <p role="alert" className="text-xs text-destructive">
-          Enter a valid amount. The minimum cannot exceed the maximum.
+          {t("Enter a valid amount. The minimum cannot exceed the maximum.")}
         </p>
       ) : null}
       <Button
@@ -521,13 +535,15 @@ function AmountEditor({ value, onChange, autoFocus }: EditorProps) {
         variant="fina-secondary"
         className={`${filterInputClass} w-full bg-[#eeeef0] hover:bg-[#e4e4e9] dark:bg-[#2a2a2e] dark:hover:bg-[#333338]`}
       >
-        Apply amount
+        {t("Apply amount")}
       </Button>
     </form>
   )
 }
 
 function DateEditor({ value, onChange, dateBasis }: EditorProps) {
+  const { t } = useTranslation()
+
   const monthly = dateBasis === "monthly-review"
   const format = monthly ? "YYYY-MM" : "YYYY-MM-DD"
   const [start, setStart] = useState(dayjs(value.startDate).format(format))
@@ -566,7 +582,7 @@ function DateEditor({ value, onChange, dateBasis }: EditorProps) {
         htmlFor={`${id}-start`}
         className={`block text-xs font-normal ${filterMutedClass}`}
       >
-        {monthly ? "Start month" : "Start date"}
+        {monthly ? t("Start month") : t("Start date")}
         <Input
           id={`${id}-start`}
           type={monthly ? "month" : "date"}
@@ -579,7 +595,7 @@ function DateEditor({ value, onChange, dateBasis }: EditorProps) {
         htmlFor={`${id}-end`}
         className={`block text-xs font-normal ${filterMutedClass}`}
       >
-        {monthly ? "End month" : "End date"}
+        {monthly ? t("End month") : t("End date")}
         <Input
           id={`${id}-end`}
           type={monthly ? "month" : "date"}
@@ -590,13 +606,14 @@ function DateEditor({ value, onChange, dateBasis }: EditorProps) {
       </Label>
       {monthly ? (
         <p className={`text-xs leading-relaxed ${filterMutedClass}`}>
-          Includes every review month in this range. Choose individual months
-          from the toolbar.
+          {t(
+            "Includes every review month in this range. Choose individual months from the toolbar."
+          )}
         </p>
       ) : null}
       {invalid ? (
         <p role="alert" className="text-xs text-destructive">
-          Choose a valid range with the start before the end.
+          {t("Choose a valid range with the start before the end.")}
         </p>
       ) : null}
       <Button
@@ -604,7 +621,7 @@ function DateEditor({ value, onChange, dateBasis }: EditorProps) {
         variant="fina-secondary"
         className={`${filterInputClass} w-full bg-[#eeeef0] hover:bg-[#e4e4e9] dark:bg-[#2a2a2e] dark:hover:bg-[#333338]`}
       >
-        Apply range
+        {t("Apply range")}
       </Button>
     </form>
   )

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import type { CategoryOutputDto } from "@/api/generated"
 import type { CategoryColor } from "@fina/types"
 import { Palette } from "lucide-react"
@@ -22,6 +23,8 @@ export function EditCategoryAppearanceDialog({
 }: {
   category: CategoryOutputDto
 }) {
+  const { t } = useTranslation()
+
   const { updateCategoryAppearance } = useCategoriesMutation()
   const [open, setOpen] = useState(false)
   const [color, setColor] = useState<CategoryColor>(category.color)
@@ -53,7 +56,9 @@ export function EditCategoryAppearanceDialog({
         <Button
           variant="fina-ghost"
           size="icon"
-          aria-label={`Edit ${category.name} appearance`}
+          aria-label={t("Edit {{value0}} appearance", {
+            value0: category.name
+          })}
         >
           <Palette />
         </Button>
@@ -64,7 +69,9 @@ export function EditCategoryAppearanceDialog({
             <CategoryChip name={category.name} color={color} />
           </DialogTitle>
           <DialogDescription>
-            Choose the dot color for this category throughout your workspace.
+            {t(
+              "Choose the dot color for this category throughout your workspace."
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -77,7 +84,7 @@ export function EditCategoryAppearanceDialog({
             disabled={isSaving}
             onClick={handleSave}
           >
-            {isSaving ? "Saving…" : "Save appearance"}
+            {isSaving ? t("Saving…") : t("Save appearance")}
           </Button>
         </DialogFooter>
       </DialogContent>

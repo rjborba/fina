@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useId, useState } from "react"
 import { CardMetadataSchema, type CardMetadata } from "@fina/types"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,8 @@ export function CardMetadataEditor({
   disabled?: boolean
   onSave: (value: CardMetadata) => Promise<void>
 }) {
+  const { t } = useTranslation()
+
   const id = useId()
   const [name, setName] = useState(value.cardName ?? "")
   const [last4, setLast4] = useState(value.cardLast4 ?? "")
@@ -42,36 +45,37 @@ export function CardMetadataEditor({
   return (
     <div className="space-y-3 text-[13px] font-normal">
       <div className="space-y-1.5">
-        <Label htmlFor={`${id}-name`}>Card name</Label>
+        <Label htmlFor={`${id}-name`}>{t("Card name")}</Label>
         <Input
           id={`${id}-name`}
           value={name}
           maxLength={80}
           disabled={disabled || saving}
-          placeholder="Not identified"
+          placeholder={t("Not identified")}
           onChange={(event) => setName(event.target.value)}
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`${id}-last4`}>Last four digits</Label>
+        <Label htmlFor={`${id}-last4`}>{t("Last four digits")}</Label>
         <Input
           id={`${id}-last4`}
           value={last4}
           inputMode="numeric"
           maxLength={4}
           disabled={disabled || saving}
-          placeholder="Optional"
+          placeholder={t("Optional")}
           onChange={(event) => setLast4(event.target.value)}
           aria-describedby={`${id}-hint`}
         />
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">
-          Only the final four digits. Leave both fields blank for Not
-          identified.
+          {t(
+            "Only the final four digits. Leave both fields blank for Not identified."
+          )}
         </p>
       </div>
       {error ? (
         <p role="alert" className="text-xs text-destructive">
-          {error}
+          {t(error)}
         </p>
       ) : null}
       <Button
@@ -80,7 +84,7 @@ export function CardMetadataEditor({
         disabled={disabled || saving}
         onClick={() => void save()}
       >
-        {saving ? "Saving…" : "Save card details"}
+        {saving ? t("Saving…") : t("Save card details")}
       </Button>
     </div>
   )

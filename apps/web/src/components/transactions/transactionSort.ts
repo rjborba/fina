@@ -1,3 +1,4 @@
+import { getLocale, translate } from "@/i18n"
 import type { TransactionOutput as Transaction } from "@fina/types"
 import dayjs from "dayjs"
 
@@ -53,7 +54,7 @@ export const TRANSACTION_SORT_OPTIONS: ReadonlyArray<{
 ]
 
 export function getTransactionSortLabel(value: TransactionSortOption) {
-  return (
+  return translate(
     TRANSACTION_SORT_OPTIONS.find((option) => option.value === value)
       ?.shortLabel || "Date ↓"
   )
@@ -109,7 +110,7 @@ export function sortTransactions(
       case "description":
         comparison = (left.description || "").localeCompare(
           right.description || "",
-          "pt-BR",
+          getLocale(),
           {
             sensitivity: "base"
           }
@@ -118,7 +119,7 @@ export function sortTransactions(
       case "category":
         comparison = (left.category?.name || "").localeCompare(
           right.category?.name || "",
-          "pt-BR",
+          getLocale(),
           { sensitivity: "base" }
         )
         break

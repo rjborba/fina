@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import type { CategoryColor } from "@fina/types"
 import { CircleSlash2 } from "lucide-react"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
@@ -21,9 +22,12 @@ export function CustomValueColorSelect({
   onColorChange: (color: CategoryColor | null) => void
   disabled?: boolean
 }) {
-  const selectedLabel =
+  const { t } = useTranslation()
+
+  const selectedLabel = t(
     categoryColorOptions.find((option) => option.value === color)?.label ??
-    "No color"
+      "No color"
+  )
   return (
     <Select
       value={color ?? "none"}
@@ -43,9 +47,9 @@ export function CustomValueColorSelect({
       </span>
       <SelectTrigger
         id={id}
-        aria-label="Tile color"
+        aria-label={t("Tile color")}
         aria-describedby={`${id}-selection`}
-        title={`Tile color: ${selectedLabel}`}
+        title={t("Tile color: {{value0}}", { value0: selectedLabel })}
         className="w-14 shrink-0 gap-1.5 px-2 text-xs"
       >
         <SelectValue>
@@ -65,12 +69,12 @@ export function CustomValueColorSelect({
         className="z-[80]"
         onEscapeKeyDown={(event) => event.stopPropagation()}
       >
-        <SelectItem value="none">No color</SelectItem>
+        <SelectItem value="none">{t("No color")}</SelectItem>
         {categoryColorOptions.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             <span className="flex items-center gap-2">
               <CategoryAppearance color={option.value} />
-              {option.label}
+              {t(option.label)}
             </span>
           </SelectItem>
         ))}

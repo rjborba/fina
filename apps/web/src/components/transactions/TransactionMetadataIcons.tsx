@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import type { TransactionOutput } from "@fina/types"
 import { CreditCard, FileUp } from "lucide-react"
 import type { ReactNode } from "react"
@@ -64,9 +65,14 @@ export function TransactionAccountChip({
     "name" | "type" | "institutionId"
   >
 }) {
+  const { t } = useTranslation()
+
   return (
     <TransactionIconTooltip
-      ariaLabel={`${account.type === "credit" ? "Credit card" : "Checking"} account: ${account.name}`}
+      ariaLabel={t("{{value0}} account: {{value1}}", {
+        value0: account.type === "credit" ? t("Credit card") : t("Checking"),
+        value1: account.name
+      })}
       tooltip={account.name}
       role="group"
       testId="transaction-account"
@@ -91,10 +97,14 @@ export function ImportSourceIndicator({
 }: {
   sourceImport: NonNullable<TransactionOutput["import"]>
 }) {
+  const { t } = useTranslation()
+
   return (
     <TransactionIconTooltip
-      ariaLabel={`Imported from ${sourceImport.fileName}`}
-      tooltip={`Imported from ${sourceImport.fileName}`}
+      ariaLabel={t("Imported from {{value0}}", {
+        value0: sourceImport.fileName
+      })}
+      tooltip={t("Imported from {{value0}}", { value0: sourceImport.fileName })}
     >
       <FileUp className="size-3.5 shrink-0" aria-hidden="true" />
     </TransactionIconTooltip>
@@ -108,12 +118,17 @@ export function CreditCardIndicator({
   card?: CardOption | null
   billAccountName?: string
 }) {
+  const { t } = useTranslation()
+
   const label = billAccountName
-    ? `Combined bill for ${billAccountName}`
+    ? t("Combined bill for {{value0}}", { value0: billAccountName })
     : formatCardLabel(card)
 
   return (
-    <TransactionIconTooltip ariaLabel={`Credit card: ${label}`} tooltip={label}>
+    <TransactionIconTooltip
+      ariaLabel={t("Credit card: {{value0}}", { value0: label })}
+      tooltip={label}
+    >
       <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
     </TransactionIconTooltip>
   )

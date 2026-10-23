@@ -1,3 +1,5 @@
+import { translate } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import {
   formulaParts,
   FORMULA_REFERENCE_CLASS,
@@ -11,6 +13,7 @@ export function FormulaText({
   value: string
   options: FormulaOption[]
 }) {
+  useTranslation()
   return (
     <span className="[font-feature-settings:normal] [font-variant-ligatures:none]">
       {formulaParts(value, options).map((part) =>
@@ -18,8 +21,8 @@ export function FormulaText({
           <span
             key={part.start}
             className={FORMULA_REFERENCE_CLASS}
-            title={`${part.reference.kind}: ${part.reference.name}`}
-            aria-label={`${part.reference.kind}: ${part.reference.name}`}
+            title={`${translate(part.reference.kind)}: ${part.reference.name}`}
+            aria-label={`${translate(part.reference.kind)}: ${part.reference.name}`}
           >
             {part.reference.name}
           </span>

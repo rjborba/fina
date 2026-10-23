@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import {
@@ -30,10 +32,7 @@ import type { TransactionCategoryOption } from "./TransactionLedgerTransaction"
 import { BulkCardAssignment } from "./BulkCardAssignment"
 import type { CardMetadata } from "@fina/types"
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const currencyFormatter = { format: formatCurrency }
 
 const actionClass =
   "h-7 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] focus-visible:ring-1 dark:hover:bg-white/[0.05]"
@@ -73,6 +72,8 @@ export function TransactionBulkActions({
   isUpdatingCard = false,
   onAssignCard
 }: TransactionBulkActionsProps) {
+  const { t } = useTranslation()
+
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
@@ -113,7 +114,7 @@ export function TransactionBulkActions({
   return (
     <div
       role="toolbar"
-      aria-label="Selected transaction actions"
+      aria-label={t("Selected transaction actions")}
       aria-busy={busy}
       className="fixed bottom-5 left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-[#dedee3] bg-[#fcfcfd] p-2 text-[13px] text-[#303036] shadow-[0_4px_8px_-2px_rgba(0,0,0,0.08),0_8px_24px_-4px_rgba(0,0,0,0.12)] sm:rounded-full sm:py-[7px] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width)/2)] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width)-2rem)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width-icon)/2)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width-icon)-2rem)] dark:border-white/[0.12] dark:bg-[#1a1a1c] dark:text-[#e3e3e8] dark:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.35),0_8px_24px_-4px_rgba(0,0,0,0.4)]"
     >
@@ -127,13 +128,15 @@ export function TransactionBulkActions({
           className="size-3.5 shrink-0 opacity-65"
           aria-hidden="true"
         />
-        <span className="text-xs font-medium">{selectedCount} selected</span>
+        <span className="text-xs font-medium">
+          {t("selectedCount", { count: selectedCount })}
+        </span>
         <span className="tabular-nums text-[#71717c] dark:text-[#a0a0aa]">
-          Net {currencyFormatter.format(selectedTotal)}
+          {t("Net")} {currencyFormatter.format(selectedTotal)}
         </span>
         {unavailableValueCount > 0 ? (
           <span className="text-xs text-[#71717c] dark:text-[#a0a0aa]">
-            {unavailableValueCount} without an amount
+            {unavailableValueCount} {t("without an amount")}
           </span>
         ) : null}
       </div>
@@ -143,11 +146,13 @@ export function TransactionBulkActions({
         variant="fina-ghost"
         size="sm"
         className={actionClass}
-        title={`Select all ${selectableCount} loaded transactions in this view`}
+        title={t("Select all {{value0}} loaded transactions in this view", {
+          value0: selectableCount
+        })}
         disabled={allSelected || busy}
         onClick={onSelectAll}
       >
-        Select all
+        {t("Select all")}
       </Button>
       <Button
         type="button"
@@ -157,7 +162,7 @@ export function TransactionBulkActions({
         disabled={busy}
         onClick={onClearSelection}
       >
-        Unselect all
+        {t("Unselect all")}
       </Button>
       <span className="mx-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.12] sm:block" />
       <Popover
@@ -169,14 +174,16 @@ export function TransactionBulkActions({
         <PopoverTrigger asChild>
           <Button
             type="button"
-            aria-label="Category for selected transactions"
+            aria-label={t("Category for selected transactions")}
             variant="fina-ghost"
             size="sm"
             className={actionClass}
             disabled={busy}
           >
             <Tag className="size-3.5" aria-hidden="true" />
-            {isUpdatingCategory || isAssigning ? "Updating..." : "Category"}
+            {isUpdatingCategory || isAssigning
+              ? t("Updating...")
+              : t("Category")}
             <ChevronDown className="size-3" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
@@ -184,22 +191,22 @@ export function TransactionBulkActions({
           side="top"
           align="end"
           sideOffset={8}
-          aria-label="Category for selected transactions"
+          aria-label={t("Category for selected transactions")}
           className="w-64 rounded-xl border-[#dedee3] bg-[#fcfcfd] p-0 shadow-fina-md dark:border-white/[0.12] dark:bg-[#202023]"
         >
           <Command
-            label="Search categories"
+            label={t("Search categories")}
             className="bg-transparent text-[13px]"
           >
             <CommandInput
-              aria-label="Search categories"
-              placeholder="Search categories..."
+              aria-label={t("Search categories")}
+              placeholder={t("Search categories...")}
               disabled={busy}
               className="h-9 text-[13px]"
             />
-            <CommandList aria-label="Categories" className="max-h-64">
+            <CommandList aria-label={t("Categories")} className="max-h-64">
               <CommandEmpty className="py-4 text-[13px]">
-                No categories found.
+                {t("No categories found.")}
               </CommandEmpty>
               <CommandGroup>
                 <CommandItem
@@ -209,7 +216,7 @@ export function TransactionBulkActions({
                   className="h-8 text-[13px] data-[selected=true]:bg-black/[0.05] dark:data-[selected=true]:bg-white/[0.05]"
                 >
                   <Tag className="size-3.5 opacity-60" aria-hidden="true" />
-                  None
+                  {t("None")}
                 </CommandItem>
                 {categories.map((category) => (
                   <CommandItem
@@ -250,23 +257,22 @@ export function TransactionBulkActions({
             disabled={busy}
           >
             <Trash className="size-3.5" aria-hidden="true" />
-            {isDeleting || isConfirmingDelete ? "Deleting..." : "Delete"}
+            {isDeleting || isConfirmingDelete ? t("Deleting...") : t("Delete")}
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent className="rounded-xl border-fina-grid bg-fina-surface shadow-fina-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {selectedCount} transaction{selectedCount === 1 ? "" : "s"}
-              ?
+              {t("deleteTransactionsCount", { count: selectedCount })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Selected transactions will be removed from the ledger. Original
-              import files are retained; this does not permanently delete the
-              records.
+              {t(
+                "Selected transactions will be removed from the ledger. Original import files are retained; this does not permanently delete the records."
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={busy}
               className="border border-red-200 bg-fina-surface text-red-600 hover:bg-fina-danger dark:border-red-900/60 dark:text-red-300"
@@ -276,8 +282,8 @@ export function TransactionBulkActions({
               }}
             >
               {isDeleting || isConfirmingDelete
-                ? "Deleting..."
-                : "Delete selected"}
+                ? t("Deleting...")
+                : t("Delete selected")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

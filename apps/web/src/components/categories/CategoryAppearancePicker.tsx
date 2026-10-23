@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+import { translate } from "@/i18n"
 import type { CategoryColor } from "@fina/types"
 import { useId } from "react"
 
@@ -8,7 +10,7 @@ import { categoryColorOptions } from "./categoryAppearanceOptions"
 export function CategoryAppearancePicker({
   color,
   onColorChange,
-  label = "Category color",
+  label = translate("Category color"),
   disabled = false
 }: {
   color: CategoryColor
@@ -16,13 +18,15 @@ export function CategoryAppearancePicker({
   label?: string
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
+
   const colorGroupId = useId()
 
   return (
     <div className="space-y-4">
       <fieldset disabled={disabled}>
         <legend className="mb-2 font-mono text-[10px] font-semibold tracking-[0.16em]">
-          Color
+          {t("Color")}
         </legend>
         <div
           role="radiogroup"
@@ -32,7 +36,7 @@ export function CategoryAppearancePicker({
           {categoryColorOptions.map((option) => (
             <label
               key={option.value}
-              title={option.label}
+              title={t(option.label)}
               className={cn(
                 "relative flex h-9 items-center justify-center rounded-md border bg-transparent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet",
                 color === option.value
@@ -45,7 +49,7 @@ export function CategoryAppearancePicker({
                 name={colorGroupId}
                 value={option.value}
                 checked={color === option.value}
-                aria-label={option.label}
+                aria-label={t(option.label)}
                 onChange={() => onColorChange(option.value)}
                 className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
               />

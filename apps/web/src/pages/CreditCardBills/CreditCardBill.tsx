@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import {
   FinaPage,
   FinaPageHeader,
@@ -38,10 +40,7 @@ import { useCallback, useMemo, useState } from "react"
 import { Link, useParams } from "react-router"
 import { BillCardsBreakdown } from "./BillCardsBreakdown"
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const currencyFormatter = { format: formatCurrency }
 
 const statusDetails: Record<
   CreditCardBillStatus,
@@ -96,6 +95,8 @@ function CreditCardBillDetails({
   accountId: string | undefined
   billMonth: string | undefined
 }) {
+  const { t } = useTranslation()
+
   const { data, isLoading, isError } = useCreditCardBill(
     groupId,
     accountId,
@@ -177,7 +178,7 @@ function CreditCardBillDetails({
     return (
       <FinaPage>
         <div className="p-8 font-mono text-xs font-semibold">
-          Loading credit card bill...
+          {t("Loading credit card bill...")}
         </div>
       </FinaPage>
     )
@@ -188,13 +189,17 @@ function CreditCardBillDetails({
       <FinaPage>
         <div className="p-8">
           <FinaSurface tone="danger" className="p-6">
-            <h1 className="text-2xl font-semibold">Bill not available</h1>
+            <h1 className="text-2xl font-semibold">
+              {t("Bill not available")}
+            </h1>
             <p className="mt-2 font-semibold">
-              This bill does not exist or is not available in the active group.
+              {t(
+                "This bill does not exist or is not available in the active group."
+              )}
             </p>
             <Button asChild variant="fina-secondary" className="mt-5">
               <Link to="/transactions">
-                <ArrowLeft /> Back to transactions
+                <ArrowLeft /> {t("Back to transactions")}
               </Link>
             </Button>
           </FinaSurface>
@@ -215,10 +220,10 @@ function CreditCardBillDetails({
         billMonth,
         paymentTransactionId
       })
-      toast({ title: "Credit card bill reconciled" })
+      toast({ title: t("Credit card bill reconciled") })
     } catch {
       toast({
-        title: "Could not reconcile this bill",
+        title: t("Could not reconcile this bill"),
         variant: "destructive"
       })
     }
@@ -227,10 +232,10 @@ function CreditCardBillDetails({
   const unlink = async () => {
     try {
       await unlinkMutation.mutateAsync({ groupId, accountId, billMonth })
-      toast({ title: "Bill payment unlinked" })
+      toast({ title: t("Bill payment unlinked") })
     } catch {
       toast({
-        title: "Could not unlink this payment",
+        title: t("Could not unlink this payment"),
         variant: "destructive"
       })
     }
@@ -241,9 +246,9 @@ function CreditCardBillDetails({
       <div className="min-w-0 flex-1">
         <FinaPage>
           <FinaPageHeader
-            eyebrow="Credit card bill"
+            eyebrow={t("Credit card bill")}
             marker={dayjs(bill.dueDate).format("MM/YY")}
-            title={`${bill.accountName} bill`}
+            title={t("{{value0}} bill", { value0: bill.accountName })}
             description={
               <div className="flex flex-wrap items-center gap-3">
                 <FinancialInstitutionLogo
@@ -254,16 +259,16 @@ function CreditCardBillDetails({
                   decorative
                 />
                 <span>
-                  Due {dayjs(bill.dueDate).format("DD MMMM YYYY")} ·{" "}
-                  {bill.transactionCount} transactions
+                  {t("Due")} {dayjs(bill.dueDate).format("DD MMMM YYYY")} ·{" "}
+                  {t("transactionsCount", { count: bill.transactionCount })}
                 </span>
-                <FinaBadge tone={status.tone}>{status.label}</FinaBadge>
+                <FinaBadge tone={status.tone}>{t(status.label)}</FinaBadge>
               </div>
             }
             actions={
               <Button asChild variant="fina-secondary" lift>
                 <Link to="/transactions">
-                  <ArrowLeft /> Back to transactions
+                  <ArrowLeft /> {t("Back to transactions")}
                 </Link>
               </Button>
             }
@@ -271,7 +276,7 @@ function CreditCardBillDetails({
 
           <main className="space-y-8 px-4 py-6 md:px-8 md:py-8">
             <section
-              aria-label="Bill summary"
+              aria-label={t("Bill summary")}
               className="grid overflow-hidden rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm sm:grid-cols-2 xl:grid-cols-4"
             >
               <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
@@ -283,7 +288,7 @@ function CreditCardBillDetails({
                     className="size-4"
                     decorative
                   />
-                  Bill total
+                  {t("Bill total")}
                 </div>
                 <div className="mt-4 font-mono text-3xl font-semibold tracking-[-0.06em]">
                   {currencyFormatter.format(bill.total)}
@@ -291,7 +296,8 @@ function CreditCardBillDetails({
               </div>
               <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
-                  <CalendarDays className="size-4 text-fina-violet" /> Due date
+                  <CalendarDays className="size-4 text-fina-violet" />{" "}
+                  {t("Due date")}
                 </div>
                 <div className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
                   {dayjs(bill.dueDate).format("DD MMM YYYY")}
@@ -299,7 +305,8 @@ function CreditCardBillDetails({
               </div>
               <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
-                  <ReceiptText className="size-4 text-fina-violet" /> Entries
+                  <ReceiptText className="size-4 text-fina-violet" />{" "}
+                  {t("Entries")}
                 </div>
                 <div className="mt-4 text-3xl font-semibold tracking-[-0.06em]">
                   {bill.transactionCount}
@@ -312,30 +319,34 @@ function CreditCardBillDetails({
                   ) : (
                     <TriangleAlert className="size-4" />
                   )}
-                  {bill.status === "empty" ? "Bill status" : "Reconciliation"}
+                  {bill.status === "empty"
+                    ? t("Bill status")
+                    : t("Reconciliation")}
                 </div>
                 <div className="mt-4 text-lg font-semibold tracking-[-0.04em]">
-                  {status.label}
+                  {t(status.label)}
                 </div>
               </div>
             </section>
 
             <section aria-labelledby="reconciliation-title">
               <div className="mb-4">
-                <FinaSectionLabel>Payment / Reconciliation</FinaSectionLabel>
+                <FinaSectionLabel>
+                  {t("Payment / Reconciliation")}
+                </FinaSectionLabel>
                 <h2
                   id="reconciliation-title"
                   className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
                 >
                   {bill.status === "empty"
-                    ? "No payment required"
-                    : "Match the bill payment"}
+                    ? t("No payment required")
+                    : t("Match the bill payment")}
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm font-semibold text-foreground/65">
-                  {status.copy}
+                  {t(status.copy)}
                   {bill.status === "empty"
                     ? null
-                    : " Suggestions use the exact bill amount and a payment date within ten days of the due date."}
+                    : ` ${t("Suggestions use the exact bill amount and a payment date within ten days of the due date.")}`}
                 </p>
               </div>
 
@@ -344,10 +355,13 @@ function CreditCardBillDetails({
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
                     <div>
-                      <p className="font-semibold">Nothing to reconcile</p>
+                      <p className="font-semibold">
+                        {t("Nothing to reconcile")}
+                      </p>
                       <p className="mt-1 text-sm font-semibold text-foreground/65">
-                        This bill stays in the ledger on its due date with a
-                        zero total.
+                        {t(
+                          "This bill stays in the ledger on its due date with a zero total."
+                        )}
                       </p>
                     </div>
                   </div>
@@ -364,10 +378,10 @@ function CreditCardBillDetails({
                     </div>
                     <div className="min-w-0">
                       <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/55">
-                        Linked checking payment
+                        {t("Linked checking payment")}
                       </div>
                       <div className="mt-1 truncate text-lg font-semibold">
-                        {bill.payment.description || "Untitled payment"}
+                        {bill.payment.description || t("Untitled payment")}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] font-bold uppercase">
                         <span className="inline-flex items-center gap-1.5">
@@ -396,12 +410,14 @@ function CreditCardBillDetails({
                         variant="fina-danger"
                         disabled={isMutating}
                       >
-                        <Unlink2 /> Unlink payment
+                        <Unlink2 /> {t("Unlink payment")}
                       </Button>
                     }
-                    title="Unlink this bill payment?"
-                    description="The checking transaction will return to both ledger views. Cash flow will schedule this bill on its due date until you reconcile it again."
-                    confirmText="Unlink payment"
+                    title={t("Unlink this bill payment?")}
+                    description={t(
+                      "The checking transaction will return to both ledger views. Cash flow will schedule this bill on its due date until you reconcile it again."
+                    )}
+                    confirmText={t("Unlink payment")}
                     onConfirm={() => void unlink()}
                   />
                 </FinaSurface>
@@ -425,7 +441,7 @@ function CreditCardBillDetails({
                         </div>
                         <div className="min-w-0">
                           <div className="truncate font-semibold">
-                            {candidate.description || "Untitled payment"}
+                            {candidate.description || t("Untitled payment")}
                           </div>
                           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] font-bold uppercase text-foreground/60">
                             <span>{candidate.accountName}</span>
@@ -445,12 +461,14 @@ function CreditCardBillDetails({
                             variant="fina-primary"
                             disabled={isMutating}
                           >
-                            <Link2 /> Reconcile
+                            <Link2 /> {t("Reconcile")}
                           </Button>
                         }
-                        title="Reconcile this payment?"
-                        description="Cash flow will use this payment’s date. Its checking entry is excluded from both ledger views to count the payment once."
-                        confirmText="Reconcile payment"
+                        title={t("Reconcile this payment?")}
+                        description={t(
+                          "Cash flow will use this payment’s date. Its checking entry is excluded from both ledger views to count the payment once."
+                        )}
+                        confirmText={t("Reconcile payment")}
                         onConfirm={() =>
                           void reconcile(candidate.transactionId)
                         }
@@ -463,10 +481,13 @@ function CreditCardBillDetails({
                   <div className="flex items-start gap-3">
                     <TriangleAlert className="mt-0.5 size-5 shrink-0" />
                     <div>
-                      <p className="font-semibold">No matching payment</p>
+                      <p className="font-semibold">
+                        {t("No matching payment")}
+                      </p>
                       <p className="mt-1 text-sm font-semibold text-foreground/65">
-                        Add or correct the checking-account transaction, then
-                        return here to reconcile it.
+                        {t(
+                          "Add or correct the checking-account transaction, then return here to reconcile it."
+                        )}
                       </p>
                     </div>
                   </div>
@@ -490,12 +511,14 @@ function CreditCardBillDetails({
               />
               <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <FinaSectionLabel>Bill / Transactions</FinaSectionLabel>
+                  <FinaSectionLabel>
+                    {t("Bill / Transactions")}
+                  </FinaSectionLabel>
                   <h2
                     id="bill-transactions-title"
                     className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
                   >
-                    Purchases in this bill
+                    {t("Purchases in this bill")}
                   </h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -511,7 +534,7 @@ function CreditCardBillDetails({
                     aria-expanded={isFilterOpen}
                     onClick={() => setIsFilterOpen((open) => !open)}
                   >
-                    <Filter className="size-4" /> Filter
+                    <Filter className="size-4" /> {t("Filter")}
                   </Button>
                 </div>
               </div>
@@ -520,17 +543,20 @@ function CreditCardBillDetails({
                   className="font-mono text-xs font-semibold tracking-[0.08em]"
                   aria-live="polite"
                 >
-                  {filteredTransactions.length} of {bill.transactionCount}{" "}
-                  purchases
+                  {filteredTransactions.length} {t("of")}{" "}
+                  {bill.transactionCount} {t("purchases")}
                 </p>
                 {hasFilters ? (
                   <div className="flex flex-wrap items-center gap-3">
-                    <FinaBadge tone="sky" aria-label="Matching purchases total">
-                      Matching purchases total:{" "}
+                    <FinaBadge
+                      tone="sky"
+                      aria-label={t("Matching purchases total")}
+                    >
+                      {t("Matching purchases total:")}{" "}
                       {currencyFormatter.format(matchingTotal)}
                     </FinaBadge>
                     <Button variant="fina-ghost" onClick={clearFilters}>
-                      Clear filters
+                      {t("Clear filters")}
                     </Button>
                   </div>
                 ) : null}
@@ -540,10 +566,12 @@ function CreditCardBillDetails({
               bill.transactionCount > 0 ? (
                 <FinaSurface className="p-8 text-center">
                   <p className="font-semibold">
-                    No purchases match these filters
+                    {t("No purchases match these filters")}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-foreground/65">
-                    Adjust or clear the filters to see purchases in this bill.
+                    {t(
+                      "Adjust or clear the filters to see purchases in this bill."
+                    )}
                   </p>
                 </FinaSurface>
               ) : (

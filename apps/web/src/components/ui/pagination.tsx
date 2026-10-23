@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "./button"
 import {
   Select,
@@ -23,10 +24,12 @@ export function Pagination({
   onPageChange,
   onPageSizeChange
 }: PaginationProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <span className="text-sm">Rows per page:</span>
+        <span className="text-sm">{t("Rows per page:")}</span>
         <Select
           value={pageSize.toString()}
           onValueChange={(value) => onPageSizeChange(Number(value))}
@@ -52,7 +55,7 @@ export function Pagination({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm">
-          Page {currentPage} of {totalPages}
+          {t("Page")} {currentPage} {t("of")} {totalPages}
         </span>
         <Button
           variant="outline"

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { FinaBadge } from "@/components/ui/fina"
 import { CardLabel } from "@/components/creditCards/CardLabel"
 import { EditableSelect } from "@/data/transactions/EditableSelectCell"
@@ -37,6 +38,8 @@ const TransactionCategoryChip: FC<
     "transaction" | "categories" | "onUpdateTransaction" | "disabled"
   >
 > = ({ transaction, categories, onUpdateTransaction, disabled = false }) => {
+  const { t } = useTranslation()
+
   const [openSelectId, setOpenSelectId] = useAtom(openSelectIdAtom)
 
   return (
@@ -48,7 +51,9 @@ const TransactionCategoryChip: FC<
         disabled={disabled}
         value={transaction.category?.id || null}
         options={categories}
-        ariaLabel={`Change category for ${transaction.description}`}
+        ariaLabel={t("Change category for {{value0}}", {
+          value0: transaction.description
+        })}
         open={openSelectId === transaction.id}
         onOpenChange={(open) => setOpenSelectId(open ? transaction.id : null)}
         onChange={(value) => {
@@ -79,6 +84,8 @@ export const TransactionLedgerTransaction: FC<
   disabled = false,
   layout
 }) => {
+  const { t } = useTranslation()
+
   const installment =
     transaction.installmentCurrent && transaction.installmentTotal
       ? `${transaction.installmentCurrent}/${transaction.installmentTotal}`
@@ -93,12 +100,14 @@ export const TransactionLedgerTransaction: FC<
           disabled={disabled}
           tabIndex={-1}
           data-list-open="true"
-          aria-label={`Open transaction: ${transaction.description || "Untitled transaction"}`}
+          aria-label={t("Open transaction: {{value0}}", {
+            value0: transaction.description || t("Untitled transaction")
+          })}
           data-testid="transaction-description"
-          title={transaction.description || "Untitled transaction"}
+          title={transaction.description || t("Untitled transaction")}
           className="min-w-0 shrink cursor-pointer truncate border-0 bg-transparent p-0 text-left text-[13px] font-normal outline-none focus-visible:underline"
         >
-          {transaction.description || "Untitled transaction"}
+          {transaction.description || t("Untitled transaction")}
         </button>
       }
       icons={{
@@ -116,7 +125,7 @@ export const TransactionLedgerTransaction: FC<
             tone="lime"
             className="max-w-full truncate border-0 px-1.5 py-0.5 text-[10px]"
           >
-            Reconciled
+            {t("Reconciled")}
           </FinaBadge>
         ) : null,
         account: transaction.bankaccount ? (
@@ -141,7 +150,9 @@ export const TransactionLedgerTransaction: FC<
             <span
               data-testid="transaction-card-number"
               className="truncate text-xs tabular-nums text-foreground/45"
-              title={`Card ending ${transaction.cardLast4}`}
+              title={t("Card ending {{value0}}", {
+                value0: transaction.cardLast4
+              })}
             >
               {`••${transaction.cardLast4}`}
             </span>

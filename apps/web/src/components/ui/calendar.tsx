@@ -1,6 +1,8 @@
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
+import { enUS, ptBR } from "date-fns/locale"
+import { useTranslation } from "react-i18next"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -11,8 +13,19 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
+  const { t, i18n } = useTranslation()
   return (
     <DayPicker
+      locale={i18n.resolvedLanguage === "pt-BR" ? ptBR : enUS}
+      labels={{
+        labelPrevious: () => t("Previous month"),
+        labelNext: () => t("Next month"),
+        labelDay: (date) =>
+          date.toLocaleDateString(
+            i18n.resolvedLanguage === "pt-BR" ? "pt-BR" : "en-US",
+            { weekday: "long", day: "numeric", month: "long", year: "numeric" }
+          )
+      }}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{

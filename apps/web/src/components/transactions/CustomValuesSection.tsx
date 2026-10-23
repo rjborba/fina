@@ -1,3 +1,6 @@
+import { apiErrorKey } from "@/i18n/errors"
+import { useTranslation } from "react-i18next"
+import { formatCurrency, localizeMessage } from "@/i18n"
 import { useId, useMemo, useState } from "react"
 import {
   Columns2,
@@ -6,7 +9,6 @@ import {
   RectangleHorizontal,
   Trash2
 } from "lucide-react"
-import { ApiError } from "@/api/generated"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCustomValues } from "@/data/customValues/useCustomValues"
@@ -29,23 +31,11 @@ import { CustomValueColorSelect } from "./CustomValueColorSelect"
 import type { CategoryColor } from "@fina/types"
 import { cn } from "@/lib/utils"
 
-const money = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const money = { format: formatCurrency }
 const normalize = (name: string) => name.normalize("NFKC").trim().toLowerCase()
 const EMPTY_TILES: CustomValue[] = []
 function errorMessage(error: unknown) {
-  if (
-    error instanceof ApiError &&
-    [400, 409].includes(error.status) &&
-    typeof error.body === "object" &&
-    error.body &&
-    "message" in error.body &&
-    typeof error.body.message === "string"
-  )
-    return error.body.message
-  return "Could not save the change. Try again."
+  return apiErrorKey(error, "Could not save the change. Try again.")
 }
 
 export function CustomValuesSection({
@@ -59,6 +49,8 @@ export function CustomValuesSection({
   categoryTotals: Record<string, number>
   totalsUnavailable?: boolean
 }) {
+  const { t } = useTranslation()
+
   const query = useCustomValues(groupId)
   const tiles = query.data ?? EMPTY_TILES
   const [editing, setEditing] = useState<{
@@ -144,7 +136,9 @@ export function CustomValuesSection({
       )[editing.id ?? "preview"]
     } catch (failure) {
       syntaxError =
-        failure instanceof FormulaError ? failure.message : "Invalid formula."
+        failure instanceof FormulaError
+          ? failure.message
+          : t("Invalid formula.")
     }
   }
   const save = async () => {
@@ -179,10 +173,10 @@ export function CustomValuesSection({
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div>
           <h3 id={`${formId}-heading`} className="text-xs font-medium">
-            Customizable Values
+            {t("Customizable Values")}
           </h3>
           <p className="mt-1 text-[11px] text-foreground/50">
-            Shared with everyone in this workspace.
+            {t("Shared with everyone in this workspace.")}
           </p>
         </div>
         <Button
@@ -201,25 +195,25 @@ export function CustomValuesSection({
             })
           }}
         >
-          <Plus className="size-3.5" /> Add tile
+          <Plus className="size-3.5" /> {t("Add tile")}
         </Button>
       </div>
       {query.isPending ? (
         <p role="status" className="px-5 pb-4 text-xs text-foreground/60">
-          Loading custom tiles…
+          {t("Loading custom tiles…")}
         </p>
       ) : null}
       {query.isError ? (
         <div className="px-5 pb-4">
           <p role="alert" className="text-xs text-red-600">
-            Could not load custom tiles.
+            {t("Could not load custom tiles.")}
           </p>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => void query.refetch()}
           >
-            Retry
+            {t("Retry")}
           </Button>
         </div>
       ) : null}
@@ -228,13 +222,13 @@ export function CustomValuesSection({
           role="alert"
           className="px-5 pb-3 text-xs text-red-700 dark:text-red-300"
         >
-          {error}
+          {localizeMessage(error)}
         </p>
       ) : null}
       {editing ? (
         <form
           className="mx-4 mb-4 space-y-3 rounded-lg border border-fina-grid bg-fina-surface p-4"
-          aria-label={editing.id ? "Edit custom tile" : "New custom tile"}
+          aria-label={editing.id ? t("Edit custom tile") : t("New custom tile")}
           onSubmit={(event) => {
             event.preventDefault()
             void save()
@@ -253,16 +247,18 @@ export function CustomValuesSection({
                 htmlFor={`${formId}-title`}
                 className="text-xs font-medium"
               >
-                Title
+                {t("Title")}
               </label>
               <div
                 role="radiogroup"
-                aria-label="Tile width"
+                aria-label={t("Tile width")}
                 className="flex gap-1"
               >
                 {([1, 2] as const).map((columnSpan) => {
                   const label =
-                    columnSpan === 1 ? "One tile" : "Two tiles (full width)"
+                    columnSpan === 1
+                      ? t("One tile")
+                      : t("Two tiles (full width)")
                   const Icon = columnSpan === 1 ? Columns2 : RectangleHorizontal
                   return (
                     <label
@@ -315,7 +311,7 @@ export function CustomValuesSection({
               }
               className="mb-1.5 block text-xs font-medium"
             >
-              Logic
+              {t("Logic")}
             </label>
             <FormulaInput
               key={editing.id ?? "new"}
@@ -331,9 +327,9 @@ export function CustomValuesSection({
               id={`${formId}-logic-help`}
               className="mt-2 text-[11px] leading-relaxed text-foreground/55"
             >
-              Type @ to add category or custom-tile chips. Use + − * / and
-              parentheses; decimals use a dot. Values keep the category totals’
-              signs.
+              {t(
+                "Type @ to add category or custom-tile chips. Use + − * / and parentheses; decimals use a dot. Values keep the category totals’ signs."
+              )}
             </p>
           </div>
           <p
@@ -341,14 +337,18 @@ export function CustomValuesSection({
             aria-live="polite"
             className="text-xs text-foreground/65"
           >
-            {syntaxError ||
+            {(syntaxError ? localizeMessage(syntaxError) : "") ||
               (totalsUnavailable
-                ? "Period totals are unavailable."
+                ? t("Period totals are unavailable.")
                 : preview?.error
-                  ? `Unavailable: ${preview.error}`
+                  ? t("Unavailable: {{value0}}", {
+                      value0: localizeMessage(preview.error)
+                    })
                   : preview?.value !== undefined
-                    ? `Preview: ${money.format(preview.value)}`
-                    : "Enter a formula to preview its value.")}
+                    ? t("Preview: {{value0}}", {
+                        value0: money.format(preview.value)
+                      })
+                    : t("Enter a formula to preview its value."))}
           </p>
           <div className="flex gap-2">
             <Button
@@ -357,7 +357,7 @@ export function CustomValuesSection({
               size="sm"
               disabled={pending}
             >
-              {pending ? "Saving…" : "Save tile"}
+              {pending ? t("Saving…") : t("Save tile")}
             </Button>
             <Button
               type="button"
@@ -369,15 +369,16 @@ export function CustomValuesSection({
                 setError("")
               }}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
           </div>
         </form>
       ) : null}
       {!query.isPending && !query.isError && !tiles.length && !editing ? (
         <p className="px-5 pb-5 text-xs leading-relaxed text-foreground/55">
-          Create a tile to calculate values from categories and other tiles for
-          this period.
+          {t(
+            "Create a tile to calculate values from categories and other tiles for this period."
+          )}
         </p>
       ) : null}
       <div className="grid grid-cols-2 gap-3 px-4 pb-4">
@@ -406,7 +407,9 @@ export function CustomValuesSection({
                 {tile.color ? (
                   <CategoryAppearance
                     color={tile.color}
-                    label={`Tile color: ${tile.color}`}
+                    label={t("Tile color: {{value0}}", {
+                      value0: t(tile.color)
+                    })}
                     className="mt-1.5"
                   />
                 ) : null}
@@ -417,7 +420,7 @@ export function CustomValuesSection({
               <div className="mb-5 mt-3">
                 <div
                   role="group"
-                  aria-label="Calculated value"
+                  aria-label={t("Calculated value")}
                   tabIndex={
                     !unavailable && formattedValue.length > 16 ? 0 : undefined
                   }
@@ -433,20 +436,22 @@ export function CustomValuesSection({
                         }
                   }
                 >
-                  {unavailable ? "Unavailable" : formattedValue}
+                  {unavailable ? t("Unavailable") : formattedValue}
                 </div>
                 {unavailable ? (
                   <p className="mt-1 text-[11px] leading-relaxed text-red-700 dark:text-red-300">
                     {totalsUnavailable
-                      ? "Period totals are loading or incomplete."
-                      : results[tile.id]?.error}
+                      ? t("Period totals are loading or incomplete.")
+                      : localizeMessage(
+                          results[tile.id]?.error ?? "Unavailable"
+                        )}
                   </p>
                 ) : null}
               </div>
               <div className="mt-auto border-t border-fina-grid pt-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-foreground/50">
-                    Logic
+                    {t("Logic")}
                   </span>
                   <div className="flex shrink-0 gap-0.5">
                     <Button
@@ -455,7 +460,7 @@ export function CustomValuesSection({
                       size="icon"
                       className="size-7 text-foreground/60 hover:bg-fina-violet/10 hover:text-fina-violet"
                       disabled={pending}
-                      aria-label={`Edit ${tile.title}`}
+                      aria-label={t("Edit {{value0}}", { value0: tile.title })}
                       onClick={() => {
                         setError("")
                         setDeleting(null)
@@ -476,7 +481,9 @@ export function CustomValuesSection({
                       size="icon"
                       className="size-7 text-foreground/60 hover:bg-fina-danger hover:text-red-600 dark:hover:text-red-300"
                       disabled={pending}
-                      aria-label={`Delete ${tile.title}`}
+                      aria-label={t("Delete {{value0}}", {
+                        value0: tile.title
+                      })}
                       onClick={() => {
                         setDeleting(tile.id)
                         setError("")
@@ -492,7 +499,7 @@ export function CustomValuesSection({
               </div>
               {deleting === tile.id ? (
                 <div className="mt-3 space-y-2 rounded-md bg-fina-canvas p-3">
-                  <p className="text-xs">Delete this shared tile?</p>
+                  <p className="text-xs">{t("Delete this shared tile?")}</p>
                   <div className="flex flex-wrap gap-1">
                     <Button
                       type="button"
@@ -509,7 +516,7 @@ export function CustomValuesSection({
                         }
                       }}
                     >
-                      Delete tile
+                      {t("Delete tile")}
                     </Button>
                     <Button
                       type="button"
@@ -518,7 +525,7 @@ export function CustomValuesSection({
                       disabled={pending}
                       onClick={() => setDeleting(null)}
                     >
-                      Keep tile
+                      {t("Keep tile")}
                     </Button>
                   </div>
                 </div>

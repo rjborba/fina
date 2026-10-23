@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
+
 import { Command as CommandPrimitive, useCommandState } from "cmdk"
 import { X } from "lucide-react"
 import * as React from "react"
@@ -207,6 +209,7 @@ const MultipleSelector = React.forwardRef<
     }: MultipleSelectorProps,
     ref: React.Ref<MultipleSelectorRef>
   ) => {
+    const { t } = useTranslation()
     const inputRef = React.useRef<HTMLInputElement>(null)
     const [open, setOpen] = React.useState(false)
     const [onScrollbar, setOnScrollbar] = React.useState(false)
@@ -384,7 +387,7 @@ const MultipleSelector = React.forwardRef<
             onChange?.(newOptions)
           }}
         >
-          {`Create "${inputValue}"`}
+          {t('Create "{{value0}}"', { value0: inputValue })}
         </CommandItem>
       )
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   Tooltip,
   TooltipTrigger,
@@ -39,6 +40,8 @@ export function VirtualizedTransactionList({
   layout,
   children
 }: VirtualizedTransactionListProps) {
+  const { t } = useTranslation()
+
   const instructionsId = useId()
   const style: CSSProperties & { "--transaction-list-columns": string } = {
     height: totalSize + TRANSACTION_LIST_BOTTOM_PADDING,
@@ -66,12 +69,9 @@ export function VirtualizedTransactionList({
   return (
     <>
       <p id={instructionsId} className="sr-only">
-        Use up and down arrows or J and K to navigate. Enter or Space opens the
-        focused item. X selects a transaction; Shift and an arrow extends
-        selection. Command or Control A selects all transactions. Escape clears
-        selection. Bills open their details and cannot be selected. Tab reaches
-        the item's controls. Use the row checkbox to select multiple
-        transactions; Shift-click selects a range.
+        {t(
+          "Use up and down arrows or J and K to navigate. Enter or Space opens the focused item. X selects a transaction; Shift and an arrow extends selection. Command or Control A selects all transactions. Escape clears selection. Bills open their details and cannot be selected. Tab reaches the item's controls. Use the row checkbox to select multiple transactions; Shift-click selects a range."
+        )}
       </p>
       {/* A real outer box keeps the trailing gutter in horizontal overflow. */}
       <div
@@ -80,7 +80,7 @@ export function VirtualizedTransactionList({
       >
         <div
           role="grid"
-          aria-label="Transactions"
+          aria-label={t("Transactions")}
           aria-describedby={instructionsId}
           aria-rowcount={rowCount}
           aria-colcount={1}
@@ -125,6 +125,8 @@ export const VirtualizedTransactionRow = memo(
     children,
     ...props
   }: VirtualizedTransactionRowProps) {
+    const { t } = useTranslation()
+
     const row = (
       <div
         {...props}
@@ -164,7 +166,7 @@ export const VirtualizedTransactionRow = memo(
             <button
               type="button"
               role="checkbox"
-              aria-label="Select transaction"
+              aria-label={t("Select transaction")}
               aria-checked={Boolean(isSelected)}
               disabled={selectionDisabled}
               className={cn(

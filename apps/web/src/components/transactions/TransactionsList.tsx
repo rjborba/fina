@@ -1,3 +1,5 @@
+import { formatCurrency, formatDate } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { TransactionCommentButton } from "./TransactionCommentButton"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useCategories } from "@/data/categories/useCategories"
@@ -62,13 +64,6 @@ export interface TransactionsListProps {
   onDeleteTransactions: (ids: string[]) => Promise<void>
 }
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
-
-const formatCurrency = (value: number) => currencyFormatter.format(value)
-
 interface TransactionLedgerProps {
   transactions: readonly Transaction[]
   totalCount: number
@@ -105,6 +100,8 @@ const TransactionLedger = function TransactionLedger({
   onSelectionClick,
   selectionDisabled
 }: TransactionLedgerProps) {
+  const { t } = useTranslation()
+
   const layout = useMemo(
     () => buildTransactionRowLayout(transactions, displayProperties),
     [transactions, displayProperties]
@@ -129,9 +126,13 @@ const TransactionLedger = function TransactionLedger({
               ? transaction.date
               : (transaction.cashFlowDate ?? transaction.calculatedDate)
         const formattedDate = date
-          ? dayjs(date).format(
-              dateBasis === "monthly-review" ? "DD MMM YYYY" : "DD.MM.YY"
-            )
+          ? dateBasis === "monthly-review"
+            ? dayjs(date).format("DD MMM YYYY")
+            : formatDate(date, {
+                day: "2-digit",
+                month: "2-digit",
+                year: "2-digit"
+              })
           : "—"
 
         return (
@@ -168,10 +169,10 @@ const TransactionLedger = function TransactionLedger({
               >
                 <span className="sr-only">
                   {dateBasis === "cash-flow"
-                    ? "Flow date: "
+                    ? `${t("Flow date:")} `
                     : dateBasis === "purchase-date"
-                      ? "Purchase date: "
-                      : "Date: "}
+                      ? `${t("Purchase date:")} `
+                      : `${t("Date:")} `}
                 </span>
                 <span
                   data-field-value="true"
@@ -200,8 +201,8 @@ const TransactionLedger = function TransactionLedger({
               >
                 <span className="sr-only">
                   {transaction.value === null
-                    ? "Value: unavailable"
-                    : "Value: "}
+                    ? t("Value: unavailable")
+                    : `${t("Value:")} `}
                 </span>
                 <span
                   data-field-value="true"
@@ -226,14 +227,19 @@ const TransactionLedger = function TransactionLedger({
   )
 }
 
-const NoTransactions = () => (
-  <div className="flex min-h-56 flex-col items-center justify-center bg-fina-surface px-6 py-8 text-center dark:bg-fina-canvas">
-    <div className="flex size-10 items-center justify-center rounded-lg bg-fina-lime text-fina-violet">
-      <ArrowUpRight className="size-5" />
+const NoTransactions = () => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center bg-fina-surface px-6 py-8 text-center dark:bg-fina-canvas">
+      <div className="flex size-10 items-center justify-center rounded-lg bg-fina-lime text-fina-violet">
+        <ArrowUpRight className="size-5" />
+      </div>
+      <p className="mt-3 text-[13px] text-foreground/55">
+        {t("No transactions")}
+      </p>
     </div>
-    <p className="mt-3 text-[13px] text-foreground/55">No transactions</p>
-  </div>
-)
+  )
+}
 
 const TransactionsLoading = () => (
   <div className="bg-fina-surface px-6 py-2 dark:bg-fina-canvas">
@@ -247,11 +253,14 @@ const TransactionsLoading = () => (
   </div>
 )
 
-const TransactionsError = () => (
-  <div className="flex min-h-56 items-center justify-center bg-fina-surface p-6 text-[13px] text-red-700 dark:bg-fina-canvas dark:text-red-300">
-    We could not load the ledger. Try again in a moment.
-  </div>
-)
+const TransactionsError = () => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex min-h-56 items-center justify-center bg-fina-surface p-6 text-[13px] text-red-700 dark:bg-fina-canvas dark:text-red-300">
+      {t("We could not load the ledger. Try again in a moment.")}
+    </div>
+  )
+}
 
 const TransactionsList: FC<TransactionsListProps> = ({
   data,
@@ -265,6 +274,8 @@ const TransactionsList: FC<TransactionsListProps> = ({
   onUpdateTransaction,
   onDeleteTransactions
 }) => {
+  const { t } = useTranslation()
+
   const listContainerRef = useRef<HTMLDivElement>(null)
   const { selectedGroup } = useActiveGroup()
   const { toast } = useToast()
@@ -413,11 +424,11 @@ const TransactionsList: FC<TransactionsListProps> = ({
       await onDeleteTransactions(ids)
       clearSelection()
       toast({
-        title: `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted`
+        title: t("transactionsDeleted", { count: ids.length })
       })
     } catch {
       toast({
-        title: "Could not delete the selected transactions",
+        title: t("Could not delete the selected transactions"),
         variant: "destructive"
       })
       throw new Error("Could not delete the selected transactions")
@@ -425,6 +436,7 @@ const TransactionsList: FC<TransactionsListProps> = ({
       setIsDeletingSelected(false)
     }
   }, [
+    t,
     clearSelection,
     isSelectionBusy,
     onDeleteTransactions,
@@ -451,20 +463,24 @@ const TransactionsList: FC<TransactionsListProps> = ({
           )
         if (failedCount > 0) {
           toast({
-            title: "Could not update all selected transactions",
-            description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+            title: t("Could not update all selected transactions"),
+            description: t(
+              "{{value0}} updated; {{value1}} failed. You can retry the selection.",
+              { value0: updatedCount, value1: failedCount }
+            ),
             variant: "destructive"
           })
           throw new Error("Could not update all selected transactions")
         }
         toast({
-          title: `${updatedCount} transaction${updatedCount === 1 ? "" : "s"} updated`
+          title: t("transactionsUpdated", { count: updatedCount })
         })
       } finally {
         setIsUpdatingCategory(false)
       }
     },
     [
+      t,
       categories,
       isSelectionBusy,
       onUpdateTransaction,
@@ -487,14 +503,17 @@ const TransactionsList: FC<TransactionsListProps> = ({
         )
       if (failedCount > 0) {
         toast({
-          title: "Could not assign every selected purchase",
-          description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+          title: t("Could not assign every selected purchase"),
+          description: t(
+            "{{value0}} updated; {{value1}} failed. You can retry the selection.",
+            { value0: updatedCount, value1: failedCount }
+          ),
           variant: "destructive"
         })
         throw new Error("Could not assign every selected purchase")
       }
       toast({
-        title: `${updatedCount} purchase${updatedCount === 1 ? "" : "s"} updated`
+        title: t("purchasesUpdated", { count: updatedCount })
       })
     } finally {
       setIsUpdatingCard(false)
@@ -591,7 +610,7 @@ const TransactionsList: FC<TransactionsListProps> = ({
       ref={listContainerRef}
       tabIndex={-1}
       role="region"
-      aria-label="Transaction list"
+      aria-label={t("Transaction list")}
     >
       <div className={cn("min-w-0 flex-1 transition-all duration-300")}>
         {content}

@@ -362,7 +362,7 @@ describe("credit-card bill purchase filters", () => {
     expectPurchases(["Coffee purchase", "Coffee refund"])
     expect(screen.getByText("2 of 5 purchases")).toBeVisible()
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /[-−]R\$\s*75,00/
+      /[-−]R\$\s*75\.00/
     )
     await userEvent.click(
       cardFilter.getByRole("checkbox", { name: "Not identified" })
@@ -375,10 +375,10 @@ describe("credit-card bill purchase filters", () => {
     ])
     expect(screen.getByText("4 of 5 purchases")).toBeVisible()
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /[-−]R\$\s*150,00/
+      /[-−]R\$\s*150\.00/
     )
     expect(summary.textContent).toBe(summaryBefore)
-    expect(summary).toHaveTextContent(/[-−]R\$\s*200,00/)
+    expect(summary).toHaveTextContent(/[-−]R\$\s*200\.00/)
     expect(summary).toHaveTextContent("Reconciled")
     expect(linkedPayment.textContent).toBe(paymentBefore)
     expect(subtotals.textContent).toBe(subtotalsBefore)
@@ -413,7 +413,7 @@ describe("credit-card bill purchase filters", () => {
     await waitFor(() => expectPurchases(["Coffee purchase", "Coffee refund"]))
     expect(screen.getByText("2 of 5 purchases")).toBeVisible()
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /[-−]R\$\s*75,00/
+      /[-−]R\$\s*75\.00/
     )
     expect(
       getDefaultStore().get(transactionFilterAtom).partialDescription
@@ -527,7 +527,7 @@ describe("credit-card bill purchase filters", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apply amount" }))
     expectPurchases(["Coffee purchase"])
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /[-−]R\$\s*100,00/
+      /[-−]R\$\s*100\.00/
     )
     expect(
       screen.getByRole("region", { name: "Bill summary" }).textContent
@@ -581,7 +581,7 @@ describe("credit-card bill purchase filters", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apply amount" }))
     expectPurchases(["Zero amount purchase"])
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /R\$\s*0,00/
+      /R\$\s*0\.00/
     )
     await userEvent.click(
       screen.getAllByRole("button", { name: "Clear filters" })[0]
@@ -618,11 +618,11 @@ describe("credit-card bill purchase filters", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "None" }))
     expect(screen.getByText("2 of 2 purchases")).toBeVisible()
     expect(screen.getByLabelText("Matching purchases total")).toHaveTextContent(
-      /[-−]R\$\s*0,01/
+      /[-−]R\$\s*0\.01/
     )
     expect(
       screen.getByRole("region", { name: "Bill summary" })
-    ).toHaveTextContent(/[-−]R\$\s*0,01/)
+    ).toHaveTextContent(/[-−]R\$\s*0\.01/)
   })
 
   it("preserves the linked payment when no purchases match", async () => {

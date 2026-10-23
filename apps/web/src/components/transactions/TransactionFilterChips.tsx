@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import {
   useState,
   type Dispatch,
@@ -31,10 +33,7 @@ import {
 } from "./TransactionsFilter"
 import { filterPopupClass } from "./TransactionFilterStyles"
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-    value
-  )
+const formatMoney = formatCurrency
 const summarize = (names: string[]) =>
   names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]
 
@@ -48,18 +47,20 @@ export function TransactionFilterChips({
   dateBasis?: "cash-flow" | "monthly-review"
   linkedAccountId?: string | null
 }) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const groupId = selectedGroup?.id
   const { data: categories } = useCategories({ groupId })
   const { data: accounts } = useBankAccounts({ groupId })
   const { data: imports } = useImports({ groupId })
   const cardNames = (value.cards ?? []).map((id) => {
-    if (id === "-1") return "Not identified"
+    if (id === "-1") return t("Not identified")
     return formatCardLabel(parseCardMetadataKey(id))
   })
   const categoryNames = value.categoriesId.map((id) =>
     id === "-1"
-      ? "None"
+      ? t("None")
       : (categories?.find((item) => item.id === id)?.name ?? `#${id}`)
   )
   const accountNames = (value.accountsId ?? []).map(
@@ -74,8 +75,11 @@ export function TransactionFilterChips({
   const amount =
     value.minValue !== undefined && value.maxValue !== undefined
       ? value.minValue === value.maxValue
-        ? `is ${formatMoney(value.minValue)}`
-        : `between ${formatMoney(value.minValue)} and ${formatMoney(value.maxValue)}`
+        ? t("is {{value0}}", { value0: formatMoney(value.minValue) })
+        : t("between {{value0}} and {{value1}}", {
+            value0: formatMoney(value.minValue),
+            value1: formatMoney(value.maxValue)
+          })
       : value.minValue !== undefined
         ? `≥ ${formatMoney(value.minValue)}`
         : value.maxValue !== undefined
@@ -88,8 +92,11 @@ export function TransactionFilterChips({
         <FilterChip
           {...common}
           property="category"
-          label={`Category ${categoryNames.length > 1 ? "is either of" : "is"} ${summarize(categoryNames)}`}
-          clearLabel="Clear category filters"
+          label={t("Category {{value0}} {{value1}}", {
+            value0: categoryNames.length > 1 ? t("is either of") : t("is"),
+            value1: summarize(categoryNames)
+          })}
+          clearLabel={t("Clear category filters")}
           icon={Tag}
           onClear={() =>
             onChange((current) => ({ ...current, categoriesId: [] }))
@@ -100,8 +107,11 @@ export function TransactionFilterChips({
         <FilterChip
           {...common}
           property="account"
-          label={`Account ${accountNames.length > 1 ? "is either of" : "is"} ${summarize(accountNames)}`}
-          clearLabel="Clear account filters"
+          label={t("Account {{value0}} {{value1}}", {
+            value0: accountNames.length > 1 ? t("is either of") : t("is"),
+            value1: summarize(accountNames)
+          })}
+          clearLabel={t("Clear account filters")}
           icon={Landmark}
           leading={
             firstSelectedAccount ? (
@@ -123,8 +133,11 @@ export function TransactionFilterChips({
         <FilterChip
           {...common}
           property="card"
-          label={`Card ${cardNames.length > 1 ? "is either of" : "is"} ${summarize(cardNames)}`}
-          clearLabel="Clear card filters"
+          label={t("Card {{value0}} {{value1}}", {
+            value0: cardNames.length > 1 ? t("is either of") : t("is"),
+            value1: summarize(cardNames)
+          })}
+          clearLabel={t("Clear card filters")}
           icon={CreditCard}
           onClear={() =>
             onChange((current) => ({ ...current, cards: undefined }))
@@ -137,10 +150,15 @@ export function TransactionFilterChips({
           property="source"
           label={
             importNames.length
-              ? `Import is ${summarize(importNames)}`
-              : `Source is ${value.importSource === "imported" ? "imported" : "manual"}`
+              ? t("Import is {{value0}}", { value0: summarize(importNames) })
+              : t("Source is {{value0}}", {
+                  value0:
+                    value.importSource === "imported"
+                      ? t("imported")
+                      : t("manual")
+                })
           }
-          clearLabel="Clear import filters"
+          clearLabel={t("Clear import filters")}
           icon={ReceiptText}
           onClear={() =>
             onChange((current) => ({
@@ -155,8 +173,8 @@ export function TransactionFilterChips({
         <FilterChip
           {...common}
           property="amount"
-          label={`Amount ${amount}`}
-          clearLabel="Clear amount filter"
+          label={t("Amount {{value0}}", { value0: amount })}
+          clearLabel={t("Clear amount filter")}
           onClear={() =>
             onChange((current) => ({
               ...current,
@@ -191,6 +209,8 @@ function FilterChip({
   leading?: ReactNode
   onClear: () => void
 }) {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -198,7 +218,7 @@ function FilterChip({
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={`Edit ${label}`}
+            aria-label={t("Edit {{value0}}", { value0: label })}
             title={label}
             className="flex h-full min-w-0 items-center gap-1.5 rounded-l-md px-2 hover:bg-[#eeeef0] focus-visible:bg-[#eeeef0] focus-visible:outline-none dark:hover:bg-[#2a2a2e] dark:focus-visible:bg-[#2a2a2e]"
           >
@@ -217,7 +237,7 @@ function FilterChip({
       </div>
       <PopoverContent
         align="start"
-        aria-label="Edit transaction filter"
+        aria-label={t("Edit transaction filter")}
         sideOffset={6}
         className={`${filterPopupClass} w-72 overflow-hidden p-0`}
       >

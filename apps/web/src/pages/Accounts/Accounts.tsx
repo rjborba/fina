@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   FINANCIAL_INSTITUTIONS,
@@ -111,6 +112,8 @@ const accountInstitutionId = (account: BankaccountOutput) =>
 const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
   account
 }) => {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const [institutionId, setInstitutionId] =
     useState<FinancialInstitutionId | null>(accountInstitutionId(account))
@@ -121,11 +124,11 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
     setIsSaving(true)
     try {
       await updateInstitution({ id: account.id, institutionId })
-      toast({ title: "Financial institution updated" })
+      toast({ title: t("Financial institution updated") })
       setOpen(false)
     } catch {
       toast({
-        title: "Could not update the financial institution",
+        title: t("Could not update the financial institution"),
         variant: "destructive"
       })
     } finally {
@@ -146,9 +149,11 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
           type="button"
           size="sm"
           variant="fina-ghost"
-          aria-label={`Change institution for ${account.name}`}
+          aria-label={t("Change institution for {{value0}}", {
+            value0: account.name
+          })}
         >
-          <Pencil /> Change institution
+          <Pencil /> {t("Change institution")}
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -156,10 +161,12 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
         className="rounded-xl border-fina-grid bg-fina-surface shadow-fina-lg"
       >
         <DialogHeader>
-          <DialogTitle>Change financial institution</DialogTitle>
+          <DialogTitle>{t("Change financial institution")}</DialogTitle>
           <DialogDescription>
-            Choose the institution for {account.name}. The account name,
-            transactions, and card due day stay unchanged.
+            {t("Choose the institution for")} {account.name}
+            {t(
+              ". The account name, transactions, and card due day stay unchanged."
+            )}
           </DialogDescription>
         </DialogHeader>
         <FinancialInstitutionPicker
@@ -167,7 +174,7 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
           onChange={setInstitutionId}
           accountType={account.type}
           disabled={isSaving}
-          ariaLabel="Financial institution"
+          ariaLabel={t("Financial institution")}
         />
         <DialogFooter>
           <Button
@@ -176,7 +183,7 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
             disabled={isSaving}
             onClick={() => setOpen(false)}
           >
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             type="button"
@@ -184,7 +191,7 @@ const EditInstitutionDialog: FC<{ account: BankaccountOutput }> = ({
             disabled={isSaving}
             onClick={() => void save()}
           >
-            {isSaving ? "Saving..." : "Save institution"}
+            {isSaving ? t("Saving...") : t("Save institution")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -196,6 +203,8 @@ const RemoveConfirmDialog: FC<{ id: string; name: string }> = ({
   id,
   name
 }) => {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const { toast } = useToast()
   const { removeAccount } = useAccountsMutation()
@@ -205,10 +214,10 @@ const RemoveConfirmDialog: FC<{ id: string; name: string }> = ({
     setIsLoading(true)
     try {
       await removeAccount(id)
-      toast({ title: "Successfully removed" })
+      toast({ title: t("Successfully removed") })
       setOpen(false)
     } catch {
-      toast({ title: "Something went wrong" })
+      toast({ title: t("Something went wrong") })
     } finally {
       setIsLoading(false)
     }
@@ -221,35 +230,36 @@ const RemoveConfirmDialog: FC<{ id: string; name: string }> = ({
           type="button"
           size="sm"
           variant="fina-ghost"
-          aria-label={`Remove ${name}`}
+          aria-label={t("Remove {{value0}}", { value0: name })}
         >
           <Trash2 />
-          Remove
+          {t("Remove")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="rounded-md border border-fina-grid bg-fina-surface shadow-fina-lg">
         <AlertDialogHeader>
           <FinaBadge tone="danger" className="w-fit">
-            Archive account
+            {t("Archive account")}
           </FinaBadge>
           <AlertDialogTitle className="pt-3 text-2xl font-semibold tracking-[-0.04em]">
-            Remove {name}?
+            {t("Remove")} {name}?
           </AlertDialogTitle>
           <AlertDialogDescription className="font-medium text-foreground/65">
-            The account will be archived and hidden from future use. Existing
-            transaction history will be retained.
+            {t(
+              "The account will be archived and hidden from future use. Existing transaction history will be retained."
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading} className="rounded-md">
-            Cancel
+            {t("Cancel")}
           </AlertDialogCancel>
           <Button
             disabled={isLoading}
             onClick={handleRemove}
             variant="fina-danger"
           >
-            {isLoading ? "Removing…" : "Remove account"}
+            {isLoading ? t("Removing…") : t("Remove account")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -258,6 +268,8 @@ const RemoveConfirmDialog: FC<{ id: string; name: string }> = ({
 }
 
 export const Accounts: FC = () => {
+  const { t } = useTranslation()
+
   const { selectedGroup, isGroupsLoading } = useActiveGroup()
   const { data: bankAccountsData } = useBankAccounts({
     groupId: selectedGroup?.id?.toString()
@@ -280,8 +292,10 @@ export const Accounts: FC = () => {
   const onSubmit = async (data: FormData) => {
     if (!selectedGroup?.id) {
       toast({
-        title: "No active workspace",
-        description: "Create or select a workspace before adding an account.",
+        title: t("No active workspace"),
+        description: t(
+          "Create or select a workspace before adding an account."
+        ),
         variant: "destructive"
       })
       return
@@ -301,10 +315,10 @@ export const Accounts: FC = () => {
     setIsLoading(true)
     try {
       await addAccount(addAccountPayload)
-      toast({ title: "Successfully added" })
+      toast({ title: t("Successfully added") })
       form.reset()
     } catch {
-      toast({ title: "Something went wrong" })
+      toast({ title: t("Something went wrong") })
     } finally {
       setIsLoading(false)
     }
@@ -313,13 +327,15 @@ export const Accounts: FC = () => {
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Accounts"
+        eyebrow={t("Accounts")}
         marker="03"
-        title="Accounts"
-        description="Connect the places money moves through. Account history stays intact when an account is archived."
+        title={t("Accounts")}
+        description={t(
+          "Connect the places money moves through. Account history stays intact when an account is archived."
+        )}
         actions={
           <FinaBadge tone="sky">
-            {bankAccountsData?.length ?? 0} active
+            {t("activeAccountsCount", { count: bankAccountsData?.length ?? 0 })}
           </FinaBadge>
         }
       />
@@ -327,12 +343,12 @@ export const Accounts: FC = () => {
       <main className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-start md:p-8">
         <section aria-labelledby="existing-accounts-title">
           <div className="mb-4">
-            <FinaSectionLabel>Registry / Active</FinaSectionLabel>
+            <FinaSectionLabel>{t("Registry / Active")}</FinaSectionLabel>
             <h2
               id="existing-accounts-title"
               className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
             >
-              Existing accounts
+              {t("Existing accounts")}
             </h2>
           </div>
 
@@ -357,13 +373,16 @@ export const Accounts: FC = () => {
                           />
                           <div className="min-w-0">
                             <div className="font-mono text-[10px] font-semibold tracking-[0.16em] text-foreground/50">
-                              Account / {String(index + 1).padStart(2, "0")}
+                              {t("Account /")}{" "}
+                              {String(index + 1).padStart(2, "0")}
                             </div>
                             <div className="mt-1 truncate text-lg font-semibold tracking-[-0.025em]">
                               {account.name}
                             </div>
                             <div className="mt-1 text-xs font-bold uppercase tracking-[0.08em] text-foreground/55">
-                              {isCredit ? "Credit card" : "Checking account"}
+                              {isCredit
+                                ? t("Credit card")
+                                : t("Checking account")}
                               {institutionName ? ` · ${institutionName}` : ""}
                             </div>
                           </div>
@@ -383,9 +402,9 @@ export const Accounts: FC = () => {
             ) : (
               <div className="p-10 text-center">
                 <Landmark className="mx-auto size-9" />
-                <p className="mt-4 font-semibold">No accounts yet</p>
+                <p className="mt-4 font-semibold">{t("No accounts yet")}</p>
                 <p className="mt-2 text-sm font-medium text-foreground/60">
-                  Add the first account from the form beside this list.
+                  {t("Add the first account from the form beside this list.")}
                 </p>
               </div>
             )}
@@ -393,13 +412,14 @@ export const Accounts: FC = () => {
         </section>
 
         <FinaSurface elevation="sm" className="p-5 sm:p-6">
-          <FinaSectionLabel>New / Account</FinaSectionLabel>
+          <FinaSectionLabel>{t("New / Account")}</FinaSectionLabel>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-            Add account
+            {t("Add account")}
           </h2>
           <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
-            Choose your bank or card issuer so its logo appears with the account
-            and its transactions.
+            {t(
+              "Choose your bank or card issuer so its logo appears with the account and its transactions."
+            )}
           </p>
 
           <Form {...form}>
@@ -414,12 +434,12 @@ export const Accounts: FC = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
-                      Account name
+                      {t("Account name")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         className={fieldClassName}
-                        placeholder="e.g. Banco Inter"
+                        placeholder={t("e.g. Banco Inter")}
                         {...field}
                       />
                     </FormControl>
@@ -435,7 +455,7 @@ export const Accounts: FC = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
-                      Account type
+                      {t("Account type")}
                     </FormLabel>
                     <Select
                       value={field.value}
@@ -449,9 +469,11 @@ export const Accounts: FC = () => {
                       </FormControl>
                       <SelectContent className="rounded-md border border-fina-grid">
                         <SelectItem value="checkout">
-                          Checking account
+                          {t("Checking account")}
                         </SelectItem>
-                        <SelectItem value="credit">Credit card</SelectItem>
+                        <SelectItem value="credit">
+                          {t("Credit card")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -476,8 +498,8 @@ export const Accounts: FC = () => {
                     <FormItem>
                       <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
                         {accountType === "credit"
-                          ? "Card issuer"
-                          : "Financial institution"}
+                          ? t("Card issuer")
+                          : t("Financial institution")}
                       </FormLabel>
                       <FormControl>
                         <FinancialInstitutionPicker
@@ -486,8 +508,8 @@ export const Accounts: FC = () => {
                           accountType={accountType}
                           ariaLabel={
                             accountType === "credit"
-                              ? "Card issuer"
-                              : "Financial institution"
+                              ? t("Card issuer")
+                              : t("Financial institution")
                           }
                           disabled={isLoading}
                           onBlur={field.onBlur}
@@ -508,7 +530,7 @@ export const Accounts: FC = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
-                        Due day
+                        {t("Due day")}
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -519,11 +541,11 @@ export const Accounts: FC = () => {
                           min={1}
                           max={31}
                           step={1}
-                          placeholder="e.g. 5"
+                          placeholder={t("e.g. 5")}
                         />
                       </FormControl>
                       <p className="text-xs font-semibold text-foreground/55">
-                        Day of the month, from 1 to 31.
+                        {t("Day of the month, from 1 to 31.")}
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -540,12 +562,12 @@ export const Accounts: FC = () => {
               >
                 <Plus />
                 {isLoading
-                  ? "Adding…"
+                  ? t("Adding…")
                   : isGroupsLoading
-                    ? "Loading workspace…"
+                    ? t("Loading workspace…")
                     : !selectedGroup
-                      ? "No active workspace"
-                      : "Add account"}
+                      ? t("No active workspace")
+                      : t("Add account")}
               </Button>
             </form>
           </Form>

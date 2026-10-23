@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Check, Mail, Users } from "lucide-react"
 
 import {
@@ -12,6 +13,8 @@ import { useInvitesByUser } from "@/data/Invites/useInvitesByUser"
 import { useInvitesMutation } from "@/data/Invites/useInvitesMutation"
 
 function InviteItem({ invite }: { invite: Invite }) {
+  const { t } = useTranslation()
+
   const { acceptInvite } = useInvitesMutation()
 
   return (
@@ -21,12 +24,12 @@ function InviteItem({ invite }: { invite: Invite }) {
           <Mail className="size-5" strokeWidth={2.5} />
         </div>
         <div className="min-w-0">
-          <FinaSectionLabel>Workspace invitation</FinaSectionLabel>
+          <FinaSectionLabel>{t("Workspace invitation")}</FinaSectionLabel>
           <p className="mt-1 text-lg font-semibold tracking-[-0.025em]">
             {invite.groupName}
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground/60">
-            You have been invited to join this group.
+            {t("You have been invited to join this group.")}
           </p>
         </div>
       </div>
@@ -37,34 +40,40 @@ function InviteItem({ invite }: { invite: Invite }) {
         onClick={() => acceptInvite.mutate(invite.id)}
       >
         <Check />
-        {acceptInvite.isPending ? "Accepting…" : "Accept invite"}
+        {acceptInvite.isPending ? t("Accepting…") : t("Accept invite")}
       </Button>
     </li>
   )
 }
 
 const Invites = () => {
+  const { t } = useTranslation()
+
   const { data: invites, isLoading } = useInvitesByUser()
 
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Invitations"
+        eyebrow={t("Invitations")}
         marker="07"
-        title="Invitations"
-        description="Accept a workspace invitation to access the financial records shared with you."
+        title={t("Invitations")}
+        description={t(
+          "Accept a workspace invitation to access the financial records shared with you."
+        )}
         actions={
           <FinaBadge tone="yellow">
-            {isLoading ? "Loading" : `${invites?.length ?? 0} pending`}
+            {isLoading
+              ? t("Loading")
+              : t("{{value0}} pending", { value0: invites?.length ?? 0 })}
           </FinaBadge>
         }
       />
 
       <main className="p-5 md:p-8">
         <div className="mb-4">
-          <FinaSectionLabel>Inbox / Access</FinaSectionLabel>
+          <FinaSectionLabel>{t("Inbox / Access")}</FinaSectionLabel>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-            Pending invitations
+            {t("Pending invitations")}
           </h2>
         </div>
 
@@ -73,7 +82,7 @@ const Invites = () => {
             <div className="p-10 text-center">
               <div className="mx-auto size-8 animate-spin border border-fina-grid border-t-fina-lime" />
               <p className="mt-4 font-mono text-[10px] font-semibold tracking-[0.16em]">
-                Loading invitations
+                {t("Loading invitations")}
               </p>
             </div>
           ) : invites?.length ? (
@@ -85,9 +94,9 @@ const Invites = () => {
           ) : (
             <div className="p-10 text-center">
               <Users className="mx-auto size-10" />
-              <p className="mt-4 font-semibold">Inbox is clear</p>
+              <p className="mt-4 font-semibold">{t("Inbox is clear")}</p>
               <p className="mt-2 text-sm font-semibold text-foreground/60">
-                No workspace invitations are waiting for you.
+                {t("No workspace invitations are waiting for you.")}
               </p>
             </div>
           )}

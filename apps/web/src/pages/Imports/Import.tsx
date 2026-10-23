@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next"
+import { translate, getLocale, localizeMessage } from "@/i18n"
 import type {
   CreateImportInputDto,
   ImportMappingConfig,
   ImportProfile
 } from "@fina/types"
-import { ApiError } from "@/api/generated/core/ApiError"
+import { apiErrorKey } from "@/i18n/errors"
 import { FinaPage, FinaPageHeader } from "@/components/FinaPage"
 import { BillMonthPicker } from "@/components/BillMonthPicker"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -136,6 +138,8 @@ type ImportView = "upload" | "review"
 const pageSize = 100
 
 export const Import = () => {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const groupId = selectedGroup?.id?.toString()
   const { data: accounts = [] } = useBankAccounts({ groupId })
@@ -339,75 +343,79 @@ export const Import = () => {
     selectedAccount
   ])
 
-  const loadFile = useCallback(async (file: File) => {
-    setError(null)
-    setSuccess(null)
-    if (!file.name.toLocaleLowerCase().endsWith(".csv")) {
-      setError("Choose a file with a .csv extension.")
-      return
-    }
-    if (file.size === 0) {
-      setError("The selected file is empty.")
-      return
-    }
-    if (file.size > IMPORT_LIMITS.maxFileBytes) {
-      setError(
-        `The selected file exceeds the ${formatBytes(IMPORT_LIMITS.maxFileBytes)} limit.`
-      )
-      return
-    }
-    if (
-      file.type &&
-      !["text/csv", "text/plain", "application/vnd.ms-excel"].includes(
-        file.type
-      )
-    ) {
-      setError("The selected file type is not supported. Choose a CSV file.")
-      return
-    }
+  const loadFile = useCallback(
+    async (file: File) => {
+      setError(null)
+      setSuccess(null)
+      if (!file.name.toLocaleLowerCase().endsWith(".csv")) {
+        setError("Choose a file with a .csv extension.")
+        return
+      }
+      if (file.size === 0) {
+        setError("The selected file is empty.")
+        return
+      }
+      if (file.size > IMPORT_LIMITS.maxFileBytes) {
+        setError("The selected file exceeds the {{value0}} limit.")
+        return
+      }
+      if (
+        file.type &&
+        !["text/csv", "text/plain", "application/vnd.ms-excel"].includes(
+          file.type
+        )
+      ) {
+        setError("The selected file type is not supported. Choose a CSV file.")
+        return
+      }
 
-    try {
-      setProcessing("Reading, hashing, and detecting the statement…")
-      const bytes = new Uint8Array(await file.arrayBuffer())
-      const decoded = decodeCsv(bytes)
-      const detected = detectCsvStructure(decoded.text)
-      const suggestion = inferFieldMapping(detected.matrix, detected.structure)
-      const [hash, fingerprint] = await Promise.all([
-        sha256Hex(bytes),
-        structuralFingerprint(detected.matrix, detected.structure)
-      ])
-      setLoaded({
-        file,
-        bytes,
-        text: decoded.text,
-        hash,
-        fingerprint,
-        encoding: decoded.encoding,
-        matrix: detected.matrix,
-        structure: detected.structure,
-        suggestion
-      })
-      setDraft(
-        draftFromSuggestion(suggestion, detected.structure, decoded.encoding)
-      )
-      setSelectedAccountId("")
-      setBillMonth("")
-      setExcludedRows(new Set())
-      setServerPreview(null)
-      setReviewPage(0)
-      setImportView("review")
-      profileAppliedFor.current = null
-      accountSuggestedFor.current = null
-      mappingEdited.current = false
-      setAppliedProfile(null)
-    } catch {
-      setError(
-        "Fina could not decode this CSV. Try changing the encoding after reselecting it."
-      )
-    } finally {
-      setProcessing(null)
-    }
-  }, [])
+      try {
+        setProcessing(t("Reading, hashing, and detecting the statement…"))
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        const decoded = decodeCsv(bytes)
+        const detected = detectCsvStructure(decoded.text)
+        const suggestion = inferFieldMapping(
+          detected.matrix,
+          detected.structure
+        )
+        const [hash, fingerprint] = await Promise.all([
+          sha256Hex(bytes),
+          structuralFingerprint(detected.matrix, detected.structure)
+        ])
+        setLoaded({
+          file,
+          bytes,
+          text: decoded.text,
+          hash,
+          fingerprint,
+          encoding: decoded.encoding,
+          matrix: detected.matrix,
+          structure: detected.structure,
+          suggestion
+        })
+        setDraft(
+          draftFromSuggestion(suggestion, detected.structure, decoded.encoding)
+        )
+        setSelectedAccountId("")
+        setBillMonth("")
+        setExcludedRows(new Set())
+        setServerPreview(null)
+        setReviewPage(0)
+        setImportView("review")
+        profileAppliedFor.current = null
+        accountSuggestedFor.current = null
+        mappingEdited.current = false
+        setAppliedProfile(null)
+      } catch {
+        setError(
+          "Fina could not decode this CSV. Try changing the encoding after reselecting it."
+        )
+      } finally {
+        setProcessing(null)
+      }
+    },
+    [t]
+  )
 
   useEffect(() => {
     const openPendingImport = () => {
@@ -528,10 +536,12 @@ export const Import = () => {
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Imports"
+        eyebrow={t("Imports")}
         marker="05"
-        title="Imports"
-        description="Bring CSV statements into the active workspace, review every inferred field, and keep a clear import history."
+        title={t("Imports")}
+        description={t(
+          "Bring CSV statements into the active workspace, review every inferred field, and keep a clear import history."
+        )}
         actions={
           <Button
             type="button"
@@ -544,7 +554,7 @@ export const Import = () => {
             }}
           >
             <FileUp />
-            Import file
+            {t("Import file")}
           </Button>
         }
       />
@@ -554,12 +564,12 @@ export const Import = () => {
           <Alert className="rounded-md border border-emerald-200 bg-emerald-50 text-emerald-900 shadow-fina-sm dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription className="font-semibold text-foreground">
-              Imported {success.count} transactions.{" "}
+              {t("importedTransactionsCount", { count: success.count })}{" "}
               <Link
                 className="underline"
                 to={`/transactions?accountId=${encodeURIComponent(success.accountId)}`}
               >
-                Review this account&apos;s transactions
+                {t("Review this account's transactions")}
               </Link>
               .
             </AlertDescription>
@@ -573,12 +583,17 @@ export const Import = () => {
         <DialogContent className="left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-fina-canvas p-0 text-foreground sm:rounded-md">
           <DialogHeader className="shrink-0 border-b border-fina-grid bg-fina-surface px-6 py-5 pr-14">
             <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
-              {loaded ? "Review and import" : "Import a CSV file"}
+              {loaded ? t("Review and import") : t("Import a CSV file")}
             </DialogTitle>
             <DialogDescription className="text-foreground/60">
               {loaded
-                ? "Review the inferred configuration and normalized transactions before importing."
-                : `CSV only, up to ${formatBytes(IMPORT_LIMITS.maxFileBytes)}. The original file is retained securely with the import.`}
+                ? t(
+                    "Review the inferred configuration and normalized transactions before importing."
+                  )
+                : t(
+                    "CSV only, up to {{value0}}. The original file is retained securely with the import.",
+                    { value0: formatBytes(IMPORT_LIMITS.maxFileBytes) }
+                  )}
             </DialogDescription>
           </DialogHeader>
 
@@ -586,7 +601,11 @@ export const Import = () => {
             {error && (
               <Alert variant="destructive" className="mb-5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {t(error, {
+                    value0: formatBytes(IMPORT_LIMITS.maxFileBytes)
+                  })}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -595,14 +614,15 @@ export const Import = () => {
                 <div className="w-full space-y-5">
                   <div>
                     <div className="font-mono text-[10px] font-semibold tracking-[0.18em] text-foreground/55">
-                      Step / 01
+                      {t("Step / 01")}
                     </div>
                     <h2 className="mt-2 text-3xl font-semibold tracking-[-0.045em]">
-                      Choose a statement
+                      {t("Choose a statement")}
                     </h2>
                     <p className="mt-2 text-sm font-semibold text-foreground/60">
-                      Fina will infer the file structure and open the
-                      transaction preview automatically.
+                      {t(
+                        "Fina will infer the file structure and open the transaction preview automatically."
+                      )}
                     </p>
                   </div>
                   <label
@@ -620,7 +640,7 @@ export const Import = () => {
                       <FileUp className="h-7 w-7" />
                     )}
                     <span>
-                      {processing ?? "Drop a CSV here or choose a file"}
+                      {processing ?? t("Drop a CSV here or choose a file")}
                     </span>
                     <Input
                       className="sr-only"
@@ -647,11 +667,17 @@ export const Import = () => {
                       </CardTitle>
                       <CardDescription className="font-semibold text-foreground/60">
                         {formatBytes(loaded.file.size)} · {loaded.encoding} ·{" "}
-                        {delimiterName(loaded.structure.delimiter)} delimiter ·{" "}
+                        {delimiterName(loaded.structure.delimiter)}{" "}
+                        {t("delimiter ·")}{" "}
                         {loaded.structure.headerRecordIndex === null
-                          ? "No header"
-                          : `Header line ${loaded.matrix.rows[loaded.structure.headerRecordIndex]?.sourceLine}`}{" "}
-                        · Data lines{" "}
+                          ? t("No header")
+                          : t("Header line {{value0}}", {
+                              value0:
+                                loaded.matrix.rows[
+                                  loaded.structure.headerRecordIndex
+                                ]?.sourceLine
+                            })}{" "}
+                        {t("· Data lines")}{" "}
                         {
                           loaded.matrix.rows[
                             loaded.structure.dataStartRecordIndex
@@ -671,7 +697,7 @@ export const Import = () => {
                       onClick={() => setConfigurationOpen(true)}
                     >
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      Edit file configuration
+                      {t("Edit file configuration")}
                     </Button>
                   </div>
                 </CardHeader>
@@ -681,7 +707,7 @@ export const Import = () => {
                       className="text-sm font-medium"
                       htmlFor="destination-account"
                     >
-                      Destination account
+                      {t("Destination account")}
                     </label>
                     <Select
                       value={selectedAccountId}
@@ -717,7 +743,9 @@ export const Import = () => {
                         id="destination-account"
                         className="h-11 max-w-md rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm"
                       >
-                        <SelectValue placeholder="Select the account to confirm" />
+                        <SelectValue
+                          placeholder={t("Select the account to confirm")}
+                        />
                       </SelectTrigger>
                       <SelectContent className="rounded-md border border-fina-grid">
                         {accounts.map((account) => (
@@ -730,7 +758,13 @@ export const Import = () => {
                                 className="size-4"
                                 decorative
                               />
-                              {account.name} ({account.type})
+                              {account.name} (
+                              {t(
+                                account.type === "credit"
+                                  ? "Credit card"
+                                  : "Checking account"
+                              )}
+                              )
                             </span>
                           </SelectItem>
                         ))}
@@ -738,8 +772,9 @@ export const Import = () => {
                     </Select>
                     {profiles && profiles.length > 1 && !selectedAccountId && (
                       <p className="text-sm text-muted-foreground">
-                        This format has been used with several accounts. Choose
-                        the destination.
+                        {t(
+                          "This format has been used with several accounts. Choose the destination."
+                        )}
                       </p>
                     )}
                     {creditCardSelected ? (
@@ -759,15 +794,17 @@ export const Import = () => {
                   </div>
                   <div className="border-t border-fina-grid pt-5">
                     <h3 className="text-xl font-semibold tracking-[-0.03em]">
-                      Review and map
+                      {t("Review and map")}
                     </h3>
                     <p className="text-sm font-semibold text-foreground/60">
-                      Edit a column header to change its CSV source. The preview
-                      and validation state update immediately.
+                      {t(
+                        "Edit a column header to change its CSV source. The preview and validation state update immediately."
+                      )}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Mappings and formats are saved automatically after a
-                      successful import and reused for matching statements.
+                      {t(
+                        "Mappings and formats are saved automatically after a successful import and reused for matching statements."
+                      )}
                     </p>
                     {appliedProfile ? (
                       <p
@@ -775,7 +812,8 @@ export const Import = () => {
                         className="mt-2 text-sm text-foreground/80"
                       >
                         <CheckCircle2 className="mr-1.5 inline size-3.5 text-fina-violet" />
-                        Saved mapping applied from {appliedProfile.accountName}.
+                        {t("Saved mapping applied from")}{" "}
+                        {appliedProfile.accountName}.
                       </p>
                     ) : null}
                     {savedMapping &&
@@ -786,7 +824,7 @@ export const Import = () => {
                           htmlFor="saved-import-mapping"
                           className="text-sm font-medium"
                         >
-                          Saved mapping
+                          {t("Saved mapping")}
                         </label>
                         <Select
                           value={appliedProfile?.id ?? ""}
@@ -805,7 +843,9 @@ export const Import = () => {
                           }}
                         >
                           <SelectTrigger id="saved-import-mapping">
-                            <SelectValue placeholder="Choose a saved mapping" />
+                            <SelectValue
+                              placeholder={t("Choose a saved mapping")}
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {savedMapping.choices.map((profile) => (
@@ -816,8 +856,9 @@ export const Import = () => {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
-                          This institution has different mappings for these
-                          columns. Choose one or map the columns below.
+                          {t(
+                            "This institution has different mappings for these columns. Choose one or map the columns below."
+                          )}
                         </p>
                       </div>
                     ) : null}
@@ -826,8 +867,9 @@ export const Import = () => {
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        Complete the highlighted Date and Amount mappings before
-                        validation.
+                        {t(
+                          "Complete the highlighted Date and Amount mappings before validation."
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -847,7 +889,14 @@ export const Import = () => {
                               setReviewPage(0)
                             }}
                           >
-                            {filter[0].toUpperCase() + filter.slice(1)}
+                            {t(
+                              {
+                                all: "All",
+                                errors: "Errors",
+                                warnings: "Warnings",
+                                excluded: "Excluded"
+                              }[filter]
+                            )}
                           </Button>
                         )
                       )}
@@ -858,20 +907,20 @@ export const Import = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Line</TableHead>
+                          <TableHead>{t("Line")}</TableHead>
                           <TableHead>
                             <MappingHeader
-                              label="Date"
+                              label={t("Date")}
                               summary={columnName(loaded, draft.dateColumn)}
                               invalid={
                                 draft.dateColumn === null || !draft.dateFormat
                               }
                             >
                               <LabeledSelect
-                                label="Source column"
-                                ariaLabel="Date source column"
+                                label={t("Source column")}
+                                ariaLabel={t("Date source column")}
                                 value={draft.dateColumn?.toString() ?? ""}
-                                placeholder="Choose a date column"
+                                placeholder={t("Choose a date column")}
                                 onValueChange={(value) =>
                                   updateDraft((current) => ({
                                     ...current,
@@ -881,10 +930,10 @@ export const Import = () => {
                                 options={columnOptions(loaded)}
                               />
                               <LabeledSelect
-                                label="Date format"
-                                ariaLabel="Date format"
+                                label={t("Date format")}
+                                ariaLabel={t("Date format")}
                                 value={draft.dateFormat}
-                                placeholder="Choose a date format"
+                                placeholder={t("Choose a date format")}
                                 onValueChange={(value) =>
                                   updateDraft((current) => ({
                                     ...current,
@@ -892,17 +941,20 @@ export const Import = () => {
                                   }))
                                 }
                                 options={[
-                                  ["DD/MM/YYYY", "Day / month / year"],
-                                  ["MM/DD/YYYY", "Month / day / year"],
-                                  ["YYYY-MM-DD", "ISO year-month-day"],
-                                  ["YYYY-MM-DDTHH:mm:ss", "ISO date and time"]
+                                  ["DD/MM/YYYY", t("Day / month / year")],
+                                  ["MM/DD/YYYY", t("Month / day / year")],
+                                  ["YYYY-MM-DD", t("ISO year-month-day")],
+                                  [
+                                    "YYYY-MM-DDTHH:mm:ss",
+                                    t("ISO date and time")
+                                  ]
                                 ]}
                               />
                             </MappingHeader>
                           </TableHead>
                           <TableHead>
                             <MappingHeader
-                              label="Description"
+                              label={t("Description")}
                               summary={columnNames(
                                 loaded,
                                 draft.descriptionColumns
@@ -910,10 +962,12 @@ export const Import = () => {
                             >
                               <fieldset className="space-y-3">
                                 <legend className="text-sm font-medium">
-                                  Source columns
+                                  {t("Source columns")}
                                 </legend>
                                 <p className="text-xs text-muted-foreground">
-                                  Selected values are combined in file order.
+                                  {t(
+                                    "Selected values are combined in file order."
+                                  )}
                                 </p>
                                 <div className="max-h-64 space-y-2 overflow-auto pr-1">
                                   {columnOptions(loaded).map(
@@ -967,15 +1021,15 @@ export const Import = () => {
                           </TableHead>
                           <TableHead>
                             <MappingHeader
-                              label="Amount"
+                              label={t("Amount")}
                               summary={amountMappingName(loaded, draft)}
                               invalid={
                                 !draft.numberFormat || !hasAmountMapping(draft)
                               }
                             >
                               <LabeledSelect
-                                label="Amount layout"
-                                ariaLabel="Amount layout"
+                                label={t("Amount layout")}
+                                ariaLabel={t("Amount layout")}
                                 value={draft.amountMode}
                                 onValueChange={(value) =>
                                   updateDraft((current) => ({
@@ -986,19 +1040,19 @@ export const Import = () => {
                                   }))
                                 }
                                 options={[
-                                  ["signed", "One signed amount column"],
+                                  ["signed", t("One signed amount column")],
                                   [
                                     "debit-credit",
-                                    "Separate debit and credit columns"
+                                    t("Separate debit and credit columns")
                                   ]
                                 ]}
                               />
                               {draft.amountMode === "signed" ? (
                                 <LabeledSelect
-                                  label="Source column"
-                                  ariaLabel="Amount source column"
+                                  label={t("Source column")}
+                                  ariaLabel={t("Amount source column")}
                                   value={draft.amountColumn?.toString() ?? ""}
-                                  placeholder="Choose an amount column"
+                                  placeholder={t("Choose an amount column")}
                                   onValueChange={(value) =>
                                     updateDraft((current) => ({
                                       ...current,
@@ -1010,10 +1064,10 @@ export const Import = () => {
                               ) : (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                   <LabeledSelect
-                                    label="Debit column"
-                                    ariaLabel="Debit source column"
+                                    label={t("Debit column")}
+                                    ariaLabel={t("Debit source column")}
                                     value={draft.debitColumn?.toString() ?? ""}
-                                    placeholder="Choose debit"
+                                    placeholder={t("Choose debit")}
                                     onValueChange={(value) =>
                                       updateDraft((current) => ({
                                         ...current,
@@ -1023,10 +1077,10 @@ export const Import = () => {
                                     options={columnOptions(loaded)}
                                   />
                                   <LabeledSelect
-                                    label="Credit column"
-                                    ariaLabel="Credit source column"
+                                    label={t("Credit column")}
+                                    ariaLabel={t("Credit source column")}
                                     value={draft.creditColumn?.toString() ?? ""}
-                                    placeholder="Choose credit"
+                                    placeholder={t("Choose credit")}
                                     onValueChange={(value) =>
                                       updateDraft((current) => ({
                                         ...current,
@@ -1038,10 +1092,10 @@ export const Import = () => {
                                 </div>
                               )}
                               <LabeledSelect
-                                label="Number format"
-                                ariaLabel="Number format"
+                                label={t("Number format")}
+                                ariaLabel={t("Number format")}
                                 value={draft.numberFormat}
-                                placeholder="Choose a number format"
+                                placeholder={t("Choose a number format")}
                                 onValueChange={(value) =>
                                   updateDraft((current) => ({
                                     ...current,
@@ -1070,10 +1124,9 @@ export const Import = () => {
                                       htmlFor="charges-positive"
                                       className="text-sm font-normal"
                                     >
-                                      Invert amount signs. Positive amounts
-                                      become negative and negative amounts
-                                      become positive: 25.00 imports as −25.00,
-                                      and −25.00 imports as 25.00.
+                                      {t(
+                                        "Invert amount signs. Positive amounts become negative and negative amounts become positive: 25.00 imports as −25.00, and −25.00 imports as 25.00."
+                                      )}
                                     </label>
                                   </div>
                                 )}
@@ -1081,16 +1134,16 @@ export const Import = () => {
                           </TableHead>
                           <TableHead>
                             <MappingHeader
-                              label="Installment"
+                              label={t("Installment")}
                               summary={columnName(
                                 loaded,
                                 draft.installmentColumn,
-                                "Not mapped"
+                                t("Not mapped")
                               )}
                             >
                               <LabeledSelect
-                                label="Source column"
-                                ariaLabel="Installment source column"
+                                label={t("Source column")}
+                                ariaLabel={t("Installment source column")}
                                 value={
                                   draft.installmentColumn?.toString() ?? "none"
                                 }
@@ -1102,27 +1155,27 @@ export const Import = () => {
                                   }))
                                 }
                                 options={[
-                                  ["none", "Not mapped"],
+                                  ["none", t("Not mapped")],
                                   ...columnOptions(loaded)
                                 ]}
                               />
                             </MappingHeader>
                           </TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>{t("Status")}</TableHead>
                           {creditCardSelected ? (
                             <>
                               <TableHead>
                                 <MappingHeader
-                                  label="Card name"
+                                  label={t("Card name")}
                                   summary={columnName(
                                     loaded,
                                     draft.cardNameColumn ?? null,
-                                    "Not mapped"
+                                    t("Not mapped")
                                   )}
                                 >
                                   <LabeledSelect
-                                    label="Source column"
-                                    ariaLabel="Card name source column"
+                                    label={t("Source column")}
+                                    ariaLabel={t("Card name source column")}
                                     value={
                                       draft.cardNameColumn?.toString() ?? "none"
                                     }
@@ -1136,7 +1189,7 @@ export const Import = () => {
                                       }))
                                     }
                                     options={[
-                                      ["none", "Not mapped"],
+                                      ["none", t("Not mapped")],
                                       ...columnOptions(loaded)
                                     ]}
                                   />
@@ -1144,21 +1197,21 @@ export const Import = () => {
                               </TableHead>
                               <TableHead>
                                 <MappingHeader
-                                  label="Card number"
+                                  label={t("Card number")}
                                   summary={columnName(
                                     loaded,
                                     draft.cardLast4Column ?? null,
-                                    "Not mapped"
+                                    t("Not mapped")
                                   )}
                                 >
                                   <p className="text-xs text-muted-foreground">
-                                    Only the final four digits are stored.
-                                    Masked numbers are accepted; full numbers
-                                    are rejected.
+                                    {t(
+                                      "Only the final four digits are stored. Masked numbers are accepted; full numbers are rejected."
+                                    )}
                                   </p>
                                   <LabeledSelect
-                                    label="Source column"
-                                    ariaLabel="Card number source column"
+                                    label={t("Source column")}
+                                    ariaLabel={t("Card number source column")}
                                     value={
                                       draft.cardLast4Column?.toString() ??
                                       "none"
@@ -1173,7 +1226,7 @@ export const Import = () => {
                                       }))
                                     }
                                     options={[
-                                      ["none", "Not mapped"],
+                                      ["none", t("Not mapped")],
                                       ...columnOptions(loaded)
                                     ]}
                                   />
@@ -1181,7 +1234,7 @@ export const Import = () => {
                               </TableHead>
                             </>
                           ) : null}
-                          <TableHead>Exclude</TableHead>
+                          <TableHead>{t("Exclude")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1191,8 +1244,9 @@ export const Import = () => {
                               colSpan={creditCardSelected ? 9 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
-                              Complete the Date and Amount headers to preview
-                              rows.
+                              {t(
+                                "Complete the Date and Amount headers to preview rows."
+                              )}
                             </TableCell>
                           </TableRow>
                         ) : visibleRows.length === 0 ? (
@@ -1201,7 +1255,7 @@ export const Import = () => {
                               colSpan={creditCardSelected ? 9 : 7}
                               className="h-24 text-center text-muted-foreground"
                             >
-                              No rows match this filter.
+                              {t("No rows match this filter.")}
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -1218,12 +1272,18 @@ export const Import = () => {
                               <TableCell>{row.installment ?? "—"}</TableCell>
                               <TableCell>
                                 {row.excluded
-                                  ? `Excluded (${row.exclusionReason})`
+                                  ? t("Excluded ({{value0}})", {
+                                      value0: t(
+                                        row.exclusionReason ?? "Excluded"
+                                      )
+                                    })
                                   : row.issues.length
                                     ? row.issues
-                                        .map((issue) => issue.message)
+                                        .map((issue) =>
+                                          localizeMessage(issue.message)
+                                        )
                                         .join("; ")
-                                    : "Ready"}
+                                    : t("Ready")}
                               </TableCell>
                               {creditCardSelected ? (
                                 <>
@@ -1233,7 +1293,7 @@ export const Import = () => {
                                       : (row.cardName ??
                                         (row.cardLast4
                                           ? "—"
-                                          : "Not identified"))}
+                                          : t("Not identified")))}
                                   </TableCell>
                                   <TableCell>
                                     {row.excluded || !row.cardLast4
@@ -1246,10 +1306,13 @@ export const Import = () => {
                                 {row.exclusionReason === "empty" ||
                                 row.exclusionReason === "repeated-header" ||
                                 row.exclusionReason === "footer" ? (
-                                  "Automatic"
+                                  t("Automatic")
                                 ) : (
                                   <Checkbox
-                                    aria-label={`Exclude source line ${row.sourceRow}`}
+                                    aria-label={t(
+                                      "Exclude source line {{value0}}",
+                                      { value0: row.sourceRow }
+                                    )}
                                     checked={excludedRows.has(row.sourceRow)}
                                     onCheckedChange={(checked) => {
                                       setExcludedRows((current) => {
@@ -1272,7 +1335,7 @@ export const Import = () => {
                   </div>
                   {creditCardSelected && normalization ? (
                     <p
-                      aria-label="Card attribution summary"
+                      aria-label={t("Card attribution summary")}
                       className="text-[13px] text-muted-foreground"
                     >
                       {cardAttributionCounts(normalization.rows).join(" · ")}
@@ -1286,10 +1349,10 @@ export const Import = () => {
                         disabled={reviewPage === 0}
                         onClick={() => setReviewPage((page) => page - 1)}
                       >
-                        Previous
+                        {t("Previous")}
                       </Button>
                       <span className="text-sm">
-                        Page {reviewPage + 1} of{" "}
+                        {t("Page")} {reviewPage + 1} {t("of")}{" "}
                         {Math.ceil(filteredRows.length / pageSize)}
                       </span>
                       <Button
@@ -1300,7 +1363,7 @@ export const Import = () => {
                         }
                         onClick={() => setReviewPage((page) => page + 1)}
                       >
-                        Next
+                        {t("Next")}
                       </Button>
                     </div>
                   )}
@@ -1309,7 +1372,7 @@ export const Import = () => {
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          This exact file is already active as import #
+                          {t("This exact file is already active as import #")}
                           {currentServerPreview.duplicate.importId}.
                         </AlertDescription>
                       </Alert>
@@ -1317,10 +1380,9 @@ export const Import = () => {
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <p className="font-medium">
-                          {normalization?.summary.includedRowCount ?? 0}{" "}
-                          {(normalization?.summary.includedRowCount ?? 0) === 1
-                            ? "transaction"
-                            : "transactions"}
+                          {t("transactionsCount", {
+                            count: normalization?.summary.includedRowCount ?? 0
+                          })}
                           {selectedAccount ? (
                             <span className="inline-flex items-center gap-1.5">
                               {" "}
@@ -1339,16 +1401,26 @@ export const Import = () => {
                         <p className="text-sm text-muted-foreground">
                           {currentServerPreview?.valid &&
                           currentServerPreview.duplicate === null
-                            ? "Server validation complete. Ready to import."
+                            ? t("Server validation complete. Ready to import.")
                             : currentServerPreview?.duplicate
-                              ? "This file is already active and cannot be imported again."
+                              ? t(
+                                  "This file is already active and cannot be imported again."
+                                )
                               : payload
-                                ? "Validate after any file, mapping, exclusion, format, or account change."
+                                ? t(
+                                    "Validate after any file, mapping, exclusion, format, or account change."
+                                  )
                                 : creditCardSelected && !billMonth
-                                  ? "Choose the bill month before validation."
+                                  ? t(
+                                      "Choose the bill month before validation."
+                                    )
                                   : selectedAccount
-                                    ? "Resolve mapping or row errors before validation."
-                                    : "Choose a destination account before validation."}
+                                    ? t(
+                                        "Resolve mapping or row errors before validation."
+                                      )
+                                    : t(
+                                        "Choose a destination account before validation."
+                                      )}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1358,7 +1430,7 @@ export const Import = () => {
                           disabled={!payload || processing !== null}
                           onClick={async () => {
                             if (!payload || !loaded) return
-                            setProcessing("Validating with the server…")
+                            setProcessing(t("Validating with the server…"))
                             setError(null)
                             try {
                               const result = await previewImport(payload)
@@ -1373,7 +1445,7 @@ export const Import = () => {
                           {processing === "Validating with the server…" ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : null}
-                          Validate import
+                          {t("Validate import")}
                         </Button>
                         <Button
                           type="button"
@@ -1387,7 +1459,7 @@ export const Import = () => {
                           onClick={async () => {
                             if (!payload || !loaded) return
                             setProcessing(
-                              "Importing every transaction atomically…"
+                              t("Importing every transaction atomically…")
                             )
                             setError(null)
                             try {
@@ -1411,13 +1483,12 @@ export const Import = () => {
                         >
                           {normalization ? (
                             <>
-                              Import {normalization.summary.includedRowCount}{" "}
-                              {normalization.summary.includedRowCount === 1
-                                ? "transaction"
-                                : "transactions"}
+                              {t("importTransactionsCount", {
+                                count: normalization.summary.includedRowCount
+                              })}
                             </>
                           ) : (
-                            "Import transactions"
+                            t("Import transactions")
                           )}
                         </Button>
                       </div>
@@ -1436,30 +1507,31 @@ export const Import = () => {
               <DialogContent className="flex h-[92dvh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden rounded-md border border-fina-grid bg-fina-canvas p-0 shadow-fina-lg">
                 <DialogHeader className="shrink-0 border-b border-fina-grid bg-fina-surface px-6 py-5 pr-14">
                   <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
-                    Edit file configuration
+                    {t("Edit file configuration")}
                   </DialogTitle>
                   <DialogDescription className="text-foreground/60">
-                    Click a source line to mark it as the single header, the
-                    start of data, or the end of data.
+                    {t(
+                      "Click a source line to mark it as the single header, the start of data, or the end of data."
+                    )}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid shrink-0 gap-4 border-b border-fina-grid bg-fina-surface px-6 py-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <LabeledSelect
-                    label="Delimiter"
+                    label={t("Delimiter")}
                     value={draft.delimiter}
                     onValueChange={(value) =>
                       void redetect({ delimiter: value as ImportDelimiter })
                     }
                     options={[
-                      [";", "Semicolon"],
-                      [",", "Comma"],
-                      ["\t", "Tab"],
-                      ["|", "Pipe"]
+                      [";", t("Semicolon")],
+                      [",", t("Comma")],
+                      ["\t", t("Tab")],
+                      ["|", t("Pipe")]
                     ]}
                   />
                   <LabeledSelect
-                    label="Encoding"
+                    label={t("Encoding")}
                     value={draft.encoding}
                     onValueChange={(value) =>
                       void redetect({ encoding: value as ImportEncoding })
@@ -1474,13 +1546,13 @@ export const Import = () => {
                       variant="outline"
                       className="border-amber-500/30 bg-amber-500/10"
                     >
-                      Header
+                      {t("Header")}
                     </Badge>
                     <Badge
                       variant="outline"
                       className="border-sky-500/30 bg-sky-500/10"
                     >
-                      Data
+                      {t("Data")}
                     </Badge>
                   </div>
                 </div>
@@ -1496,7 +1568,7 @@ export const Import = () => {
                     variant="fina-primary"
                     onClick={() => setConfigurationOpen(false)}
                   >
-                    Done
+                    {t("Done")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1515,6 +1587,8 @@ function RawFileConfigurationEditor({
   loaded: LoadedFile
   onStructureChange: (structure: CsvStructure) => void
 }) {
+  const { t } = useTranslation()
+
   const lines = loaded.text.split(/\r\n|\n|\r/)
   const recordIndexByLine = new Map<number, number>()
   loaded.matrix.rows.forEach((row) => {
@@ -1602,7 +1676,7 @@ function RawFileConfigurationEditor({
                     variant="outline"
                     className="border-amber-500/30 bg-amber-500/10 text-[10px]"
                   >
-                    Header
+                    {t("Header")}
                   </Badge>
                 )}
                 {isDataStart && (
@@ -1610,7 +1684,7 @@ function RawFileConfigurationEditor({
                     variant="outline"
                     className="border-sky-500/30 bg-sky-500/10 text-[10px]"
                   >
-                    Data start
+                    {t("Data start")}
                   </Badge>
                 )}
                 {isDataEnd && (
@@ -1618,7 +1692,7 @@ function RawFileConfigurationEditor({
                     variant="outline"
                     className="border-sky-500/30 bg-sky-500/10 text-[10px]"
                   >
-                    Data end
+                    {t("Data end")}
                   </Badge>
                 )}
               </span>
@@ -1641,7 +1715,10 @@ function RawFileConfigurationEditor({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`Configure line ${lineNumber}: ${line || "blank line"}`}
+                  aria-label={t("Configure line {{value0}}: {{value1}}", {
+                    value0: lineNumber,
+                    value1: line || t("blank line")
+                  })}
                   className={`grid w-full grid-cols-[4rem_minmax(40rem,1fr)_auto] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${lineClass}`}
                 >
                   {content}
@@ -1652,7 +1729,7 @@ function RawFileConfigurationEditor({
                   disabled={recordIndex >= loaded.matrix.rows.length - 1}
                   onSelect={() => setBoundary(recordIndex, "header")}
                 >
-                  Header
+                  {t("Header")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={
@@ -1661,13 +1738,13 @@ function RawFileConfigurationEditor({
                   }
                   onSelect={() => setBoundary(recordIndex, "data-start")}
                 >
-                  Data start
+                  {t("Data start")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={recordIndex < loaded.structure.dataStartRecordIndex}
                   onSelect={() => setBoundary(recordIndex, "data-end")}
                 >
-                  Data end
+                  {t("Data end")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1725,13 +1802,13 @@ function cardAttributionCounts(rows: readonly RowPreview[]): string[] {
     const label = row.issues.some(
       (issue) => issue.field === "cardName" || issue.field === "cardLast4"
     )
-      ? "Invalid card details"
+      ? translate("Invalid card details")
       : formatCardLabel(row)
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
   return [...counts].map(
     ([label, count]) =>
-      `${label}: ${count} ${count === 1 ? "transaction" : "transactions"}`
+      `${label}: ${count} ${count === 1 ? translate("transaction") : translate("transactions")}`
   )
 }
 
@@ -1742,25 +1819,28 @@ function columnOptions(loaded: LoadedFile): Array<[string, string]> {
       : (loaded.matrix.rows[loaded.structure.headerRecordIndex]?.cells ?? [])
   return Array.from({ length: loaded.structure.columnCount }, (_, index) => [
     String(index),
-    `${index + 1}. ${headers[index]?.trim() || `Column ${index + 1}`}`
+    `${index + 1}. ${headers[index]?.trim() || translate("Column {{value0}}", { value0: index + 1 })}`
   ])
 }
 
 function columnName(
   loaded: LoadedFile,
   index: number | null,
-  emptyLabel = "Choose source"
+  emptyLabel = translate("Choose source")
 ): string {
   if (index === null) return emptyLabel
   const headers =
     loaded.structure.headerRecordIndex === null
       ? []
       : (loaded.matrix.rows[loaded.structure.headerRecordIndex]?.cells ?? [])
-  return headers[index]?.trim() || `Column ${index + 1}`
+  return (
+    headers[index]?.trim() ||
+    translate("Column {{value0}}", { value0: index + 1 })
+  )
 }
 
 function columnNames(loaded: LoadedFile, indexes: number[]): string {
-  if (indexes.length === 0) return "Not mapped"
+  if (indexes.length === 0) return translate("Not mapped")
   return indexes.map((index) => columnName(loaded, index)).join(" + ")
 }
 
@@ -1775,7 +1855,7 @@ function amountMappingName(loaded: LoadedFile, draft: DraftConfig): string {
     return columnName(loaded, draft.amountColumn)
   }
   if (draft.debitColumn === null || draft.creditColumn === null) {
-    return "Choose debit and credit"
+    return translate("Choose debit and credit")
   }
   return `${columnName(loaded, draft.debitColumn)} − ${columnName(loaded, draft.creditColumn)}`
 }
@@ -1791,13 +1871,18 @@ function MappingHeader({
   invalid?: boolean
   children: ReactNode
 }) {
+  const { t } = useTranslation()
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
-          aria-label={`Edit ${label} mapping. ${summary}`}
+          aria-label={t("Edit {{value0}} mapping. {{value1}}", {
+            value0: label,
+            value1: summary
+          })}
           className="h-auto min-w-32 justify-start gap-2 px-2 py-1 text-left"
         >
           <span className="min-w-0 flex-1">
@@ -1816,9 +1901,11 @@ function MappingHeader({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-96 space-y-4">
         <div>
-          <div className="font-medium">Map {label}</div>
+          <div className="font-medium">
+            {t("Map")} {label}
+          </div>
           <p className="text-xs text-muted-foreground">
-            Changes are applied to every preview row immediately.
+            {t("Changes are applied to every preview row immediately.")}
           </p>
         </div>
         {children}
@@ -1863,7 +1950,12 @@ function LabeledSelect({
 
 function delimiterName(delimiter: ImportDelimiter): string {
   return (
-    { ",": "Comma", ";": "Semicolon", "\t": "Tab", "|": "Pipe" } as const
+    {
+      ",": translate("Comma"),
+      ";": translate("Semicolon"),
+      "\t": translate("Tab"),
+      "|": translate("Pipe")
+    } as const
   )[delimiter]
 }
 
@@ -1874,19 +1966,15 @@ function formatBytes(bytes: number): string {
 }
 
 function formatAmount(value: number): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(getLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value)
 }
 
 function apiMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    const body = error.body as { message?: unknown; code?: unknown }
-    if (body?.code === "DUPLICATE_IMPORT") {
-      return "This exact file has already been imported into the selected account."
-    }
-    if (typeof body?.message === "string") return body.message
-  }
-  return "The import could not be completed. No transactions were saved."
+  return apiErrorKey(
+    error,
+    "The import could not be completed. No transactions were saved."
+  )
 }

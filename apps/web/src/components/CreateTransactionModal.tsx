@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { FC } from "react"
 import {
   Dialog,
@@ -51,6 +52,8 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
   open,
   onOpenChange = () => {}
 }) => {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data: bankAccounts } = useBankAccounts({
     groupId: selectedGroup?.id?.toString()
@@ -122,14 +125,14 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
 
       await addMutation.mutateAsync(transactionData)
       toast({
-        title: "Transaction created successfully"
+        title: t("Transaction created successfully")
       })
       form.reset()
       onOpenChange?.(false)
     } catch {
       toast({
-        title: "Failed to create transaction",
-        description: "Check the required fields and try again.",
+        title: t("Failed to create transaction"),
+        description: t("Check the required fields and try again."),
         variant: "destructive"
       })
     }
@@ -144,14 +147,14 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
     >
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Transaction</DialogTitle>
+          <DialogTitle>{t("Create New Transaction")}</DialogTitle>
           <DialogDescription>
-            Add a transaction to the selected account.
+            {t("Add a transaction to the selected account.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="bankaccount_id">Account</Label>
+            <Label htmlFor="bankaccount_id">{t("Account")}</Label>
             <Select
               onValueChange={(value) => {
                 form.setValue("bankaccount_id", value)
@@ -162,7 +165,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               value={selectedAccountId}
             >
               <SelectTrigger id="bankaccount_id">
-                <SelectValue placeholder="Select an account" />
+                <SelectValue placeholder={t("Select an account")} />
               </SelectTrigger>
               <SelectContent>
                 {bankAccounts?.map((account) => (
@@ -186,22 +189,22 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
           {creditCardSelected ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="card_name">Card name</Label>
+                <Label htmlFor="card_name">{t("Card name")}</Label>
                 <Input
                   id="card_name"
                   maxLength={80}
-                  placeholder="Optional"
+                  placeholder={t("Optional")}
                   {...form.register("card_name")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="card_last4">Last four digits</Label>
+                <Label htmlFor="card_last4">{t("Last four digits")}</Label>
                 <Input
                   id="card_last4"
                   inputMode="numeric"
                   maxLength={4}
                   pattern="[0-9]{4}"
-                  placeholder="Optional"
+                  placeholder={t("Optional")}
                   {...form.register("card_last4")}
                 />
               </div>
@@ -209,17 +212,17 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">{t("Date")}</Label>
             <Input id="date" type="date" {...form.register("date")} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t("Description")}</Label>
             <Input id="description" {...form.register("description")} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="value">Value</Label>
+            <Label htmlFor="value">{t("Value")}</Label>
             <Input
               id="value"
               type="number"
@@ -229,7 +232,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category_id">Category</Label>
+            <Label htmlFor="category_id">{t("Category")}</Label>
             <Select
               onValueChange={(value) =>
                 form.setValue("category_id", value === "-" ? "" : value)
@@ -237,7 +240,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               value={form.watch("category_id")}
             >
               <SelectTrigger id="category_id">
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder={t("Select a category")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="-">-</SelectItem>
@@ -254,7 +257,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="observation">Observation</Label>
+            <Label htmlFor="observation">{t("Observation")}</Label>
             <Input id="observation" {...form.register("observation")} />
           </div>
 
@@ -274,7 +277,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="installment_current">
-                    Current Installment
+                    {t("Current Installment")}
                   </Label>
                   <Input
                     id="installment_current"
@@ -283,7 +286,9 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="installment_total">Total Installments</Label>
+                  <Label htmlFor="installment_total">
+                    {t("Total Installments")}
+                  </Label>
                   <Input
                     id="installment_total"
                     type="number"
@@ -302,7 +307,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
               (creditCardSelected && !form.watch("bill_month"))
             }
           >
-            Create Transaction
+            {t("Create Transaction")}
           </Button>
         </form>
       </DialogContent>

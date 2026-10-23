@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
+
 import { ChevronsUpDown, LogOut, MonitorCog, Moon, Sun } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -20,8 +22,11 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/useAuth"
 import { useTheme } from "./ThemeProvider"
+import { LanguageSelector } from "./LanguageSelector"
 
 export function NavUser() {
+  const { t } = useTranslation()
+
   const { isMobile } = useSidebar()
   const { signOut, user } = useAuth()
   const { setTheme } = useTheme()
@@ -85,16 +90,20 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <div className="px-2 py-2">
+              <LanguageSelector />
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuGroup className="[&_div]:rounded-md [&_div]:font-medium [&_div]:focus:bg-fina-lime [&_div]:focus:text-foreground">
               <DropdownMenuItem onClick={() => setTheme("light")}>
-                <Sun /> Light
+                <Sun /> {t("Light")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme("dark")}>
-                <Moon /> Dark
+                <Moon /> {t("Dark")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme("system")}>
                 <MonitorCog />
-                System
+                {t("System")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -103,7 +112,7 @@ export function NavUser() {
               onClick={() => signOut()}
             >
               <LogOut />
-              Log out
+              {t("Log out")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
