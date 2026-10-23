@@ -48,7 +48,6 @@ export const useTransactionMutation = () => {
           installmentTotal: transaction.installmentTotal,
           installmentCurrent: transaction.installmentCurrent,
           creditDueDate: transaction.creditDueDate,
-          observation: transaction.observation,
           toBeConsideredAt: transaction.toBeConsideredAt,
           calculatedDate: transaction.calculatedDate,
           categoryId:

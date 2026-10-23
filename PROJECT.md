@@ -353,7 +353,7 @@ failed saves preserve the entered name for retry. No schema change is required.
    including clearing a category. Category tiles use a short 75ms color fade,
    suppressed by the existing reduced-motion preference.
    Category buttons, shortcuts, navigation,
-   and note editing stay available during category saves. Updates are queued in order
+   and transaction conversations stay available during category saves. Updates are queued in order
    per transaction across modal instances; different transactions save
    independently. Older responses, failures, and refetches cannot overwrite a
    newer pending choice. Failed changes restore the last confirmed values only
@@ -369,7 +369,7 @@ failed saves preserve the entered name for retry. No schema change is required.
    interactive target. The header sits above a large category-tile grid and a
    narrower sidebar.
    The sidebar shows labeled read-only transaction date, masked card attribution,
-   account, and editable note fields. Account issuer branding stays beside its
+   account, and a conversation control. Account issuer branding stays beside its
    name at a readable 24px size; generic icons use full foreground contrast.
    The C6 artwork's transparent frame is cropped so the mark remains legible at
    compact sizes, with its existing light/dark ink treatment and no background
@@ -670,25 +670,43 @@ cascade, and denied table/sequence access for browser roles. See
 [the release receipt](apps/api/DEPLOY_RENDER.md#custom-summary-migration-receipt)
 for the administrative commands and connection setup.
 
-### Transaction notes
+### Transaction conversations
 
-The existing nullable `observation` field is displayed as Note. A comment icon
-replaces the flag control on transaction rows, including grouped checking rows
-and bill purchases. Clicking it opens a text editor dialog with Save note and
-Cancel; Ctrl/Cmd+Enter saves and Escape cancels. Existing comments also offer
-a trash icon to remove the saved note directly. Nonblank notes highlight the
-comment icon and row yellow in light/dark mode. Clearing a note clears the
-highlight. Hovering a highlighted row or its comment icon shows the saved
-comment in a wrapped tooltip. Bill aggregates have no comment control. Details show the full note
-and allow editing using the same field. Failed saves retain the draft for retry;
-empty notes clear to null. Note controls do not open transaction details or
-trigger navigation/category shortcuts. Notes use the existing authenticated,
-group-scoped transaction PATCH and query cache; no new schema or API field is
-needed. The earlier `flagged` column remains backward-compatible but does not
-control the interface highlight. Migration
-`1792503000000-TransactionFlags` was applied to production on 2026-10-20;
-the non-null boolean/default and migration history were verified, with no
-pending migrations remaining.
+Each transaction has one chronological conversation shared by active workspace
+members. The comment icon opens the same conversation from inline transactions,
+grouped checking rows, bill purchases, and transaction details. Members can post
+comments and replies (1–4,000 trimmed characters), resolve the conversation, or
+reopen it. Sending a message always reopens it. Only a nonempty unresolved
+conversation highlights its row and icon yellow in light/dark mode. Resolved
+conversations retain their messages and remain accessible. Bill aggregates have
+no conversation control. Messages show their author and timestamp; unknown legacy
+authors are labeled explicitly. Messages are plain text and cannot be edited or
+deleted through this feature. Ctrl/Cmd+Enter sends; Escape closes the conversation
+without navigating/categorizing. Failed requests retain the draft and offer retry.
+
+The verified identity supplies authorship. Shared membership policy and scoped
+queries protect GET/PATCH `/transactions/:id/conversation` and POST
+`/transactions/:id/conversation/messages`; strict bodies reject client ownership
+identifiers. Inaccessible, nonexistent, and soft-deleted transactions return the
+same not-found response. Message insertion, count updates, and reopening are
+atomic, serialized against resolve/reopen through a transaction-row lock. Financial
+and category edits cannot overwrite conversation state. The generated API client
+and TanStack Query refresh transaction and bill caches; an open thread refreshes
+every 15 seconds and on focus. No messages are stored in browser persistence.
+
+Migration `1792704000000-TransactionConversations` must run before the matching
+API/web release. It preserves nonblank existing observations as the first message,
+including soft-deleted history, without inventing an author or changing financial
+records. The original observation column remains read-only legacy data; initial
+comments on manual creation are added atomically to the thread. Transaction PATCH
+rejects stale observation replacement. Indexed group/transaction foreign keys
+enforce tenant ownership and cascade hard aggregate deletion; ordinary soft
+deletion retains conversations. Anonymous and authenticated Data API roles have
+no direct table privileges, consistent with the application-only boundary and
+deferred RLS. The earlier `flagged` field remains compatible and does not control
+the interface highlight. This migration is forward-only to preserve messages.
+It is PostgreSQL-tested and applied to the verified local development database.
+Production migration/deployment remains pending.
 
 ### Transaction and import deletion
 

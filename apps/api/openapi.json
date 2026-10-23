@@ -15,6 +15,114 @@
         ]
       }
     },
+    "/transactions/{id}/conversation": {
+      "get": {
+        "operationId": "TransactionsController_conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionConversationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "patch": {
+        "operationId": "TransactionsController_resolveConversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveTransactionConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionConversationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/transactions/{id}/conversation/messages": {
+      "post": {
+        "operationId": "TransactionsController_addComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTransactionCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionConversationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
     "/transactions": {
       "post": {
         "operationId": "TransactionsController_create",
@@ -1629,6 +1737,88 @@
       }
     },
     "schemas": {
+      "TransactionConversationDto": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "author": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "body",
+                "createdAt",
+                "author"
+              ]
+            }
+          }
+        },
+        "required": [
+          "transactionId",
+          "resolved",
+          "messages"
+        ]
+      },
+      "AddTransactionCommentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "ResolveTransactionConversationDto": {
+        "type": "object",
+        "properties": {
+          "resolved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "resolved"
+        ]
+      },
       "CreateTransactionInputDto": {
         "type": "object",
         "properties": {
@@ -1664,6 +1854,8 @@
           },
           "observation": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
             "nullable": true
           },
           "bankaccountId": {
@@ -1751,6 +1943,14 @@
           "observation": {
             "type": "string",
             "nullable": true
+          },
+          "commentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "conversationResolved": {
+            "type": "boolean"
           },
           "toBeConsideredAt": {
             "type": "string",
@@ -1961,6 +2161,8 @@
           "installmentCurrent",
           "creditDueDate",
           "observation",
+          "commentCount",
+          "conversationResolved",
           "toBeConsideredAt",
           "calculatedDate",
           "reviewMonth",
@@ -2033,6 +2235,14 @@
                 "observation": {
                   "type": "string",
                   "nullable": true
+                },
+                "commentCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false
+                },
+                "conversationResolved": {
+                  "type": "boolean"
                 },
                 "toBeConsideredAt": {
                   "type": "string",
@@ -2243,6 +2453,8 @@
                 "installmentCurrent",
                 "creditDueDate",
                 "observation",
+                "commentCount",
+                "conversationResolved",
                 "toBeConsideredAt",
                 "calculatedDate",
                 "reviewMonth",
@@ -2319,10 +2531,6 @@
             "nullable": true
           },
           "creditDueDate": {
-            "nullable": true
-          },
-          "observation": {
-            "type": "string",
             "nullable": true
           },
           "toBeConsideredAt": {
@@ -4560,6 +4768,14 @@
                   "type": "string",
                   "nullable": true
                 },
+                "commentCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": false
+                },
+                "conversationResolved": {
+                  "type": "boolean"
+                },
                 "toBeConsideredAt": {
                   "type": "string",
                   "nullable": true
@@ -4769,6 +4985,8 @@
                 "installmentCurrent",
                 "creditDueDate",
                 "observation",
+                "commentCount",
+                "conversationResolved",
                 "toBeConsideredAt",
                 "calculatedDate",
                 "reviewMonth",

@@ -1,8 +1,3 @@
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent
-} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
 import {
@@ -101,7 +96,6 @@ interface VirtualizedTransactionRowProps
   index: number
   start: number
   isFocused: boolean
-  notePreview?: string | null
   flagged?: boolean
   isSelected?: boolean
   selectionDisabled?: boolean
@@ -117,7 +111,6 @@ export const VirtualizedTransactionRow = memo(
     isFocused,
     isSelected,
     flagged,
-    notePreview,
     selectionDisabled,
     onSelectionClick,
     tabIndex,
@@ -125,7 +118,7 @@ export const VirtualizedTransactionRow = memo(
     children,
     ...props
   }: VirtualizedTransactionRowProps) {
-    const row = (
+    return (
       <div
         {...props}
         role="row"
@@ -195,19 +188,6 @@ export const VirtualizedTransactionRow = memo(
           {children}
         </div>
       </div>
-    )
-    if (!notePreview?.trim()) return row
-    return (
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>{row}</TooltipTrigger>
-        <TooltipContent
-          side="top"
-          sideOffset={8}
-          className="max-w-[min(24rem,calc(100vw-2rem))] whitespace-pre-wrap break-words border border-fina-grid bg-fina-surface text-left text-xs leading-relaxed text-foreground shadow-fina-lg [overflow-wrap:anywhere]"
-        >
-          {notePreview}
-        </TooltipContent>
-      </Tooltip>
     )
   }
 )

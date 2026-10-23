@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { UserGroup } from '../user-groups/entities/user-group.entity';
 
 @Injectable()
@@ -14,8 +14,14 @@ export class AuthorizationService {
     private readonly memberships: Repository<UserGroup>,
   ) {}
 
-  async assertMember(userId: string, groupId: string): Promise<void> {
-    const membership = await this.memberships.exists({
+  async assertMember(
+    userId: string,
+    groupId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const membership = await (
+      manager?.getRepository(UserGroup) ?? this.memberships
+    ).exists({
       where: { user: { id: userId }, group: { id: groupId } },
     });
 

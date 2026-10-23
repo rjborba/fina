@@ -4,6 +4,10 @@ export type AcceptInviteOutputDto = {
     groupId: string;
 };
 
+export type AddTransactionCommentDto = {
+    body: string;
+};
+
 export type BankaccountListOutputDto = Array<{
     id: string;
     createdAt: string;
@@ -325,6 +329,8 @@ export type CreditCardBillDetailDto = {
         installmentCurrent: (string) | null;
         creditDueDate: (string) | null;
         observation: (string) | null;
+        commentCount: number;
+        conversationResolved: boolean;
         toBeConsideredAt: (string) | null;
         calculatedDate: (string) | null;
         /**
@@ -738,6 +744,8 @@ export type QueryTransactionOutputDto = {
         installmentCurrent: (string) | null;
         creditDueDate: (string) | null;
         observation: (string) | null;
+        commentCount: number;
+        conversationResolved: boolean;
         toBeConsideredAt: (string) | null;
         calculatedDate: (string) | null;
         /**
@@ -783,6 +791,10 @@ export type RenameGroupInputDto = {
     name: string;
 };
 
+export type ResolveTransactionConversationDto = {
+    resolved: boolean;
+};
+
 export type SaveCustomValueDto = {
     title: string;
     expression: string;
@@ -812,6 +824,20 @@ export type TransactionCardValuesOutputDto = Array<{
     cardLast4: (string) | null;
 }>;
 
+export type TransactionConversationDto = {
+    transactionId: string;
+    resolved: boolean;
+    messages: Array<{
+        id: string;
+        body: string;
+        createdAt: string;
+        author: {
+            id: string;
+            name: (string) | null;
+        } | null;
+    }>;
+};
+
 export type TransactionOutputDto = {
     id: string;
     createdAt: string;
@@ -825,6 +851,8 @@ export type TransactionOutputDto = {
     installmentCurrent: (string) | null;
     creditDueDate: (string) | null;
     observation: (string) | null;
+    commentCount: number;
+    conversationResolved: boolean;
     toBeConsideredAt: (string) | null;
     calculatedDate: (string) | null;
     /**
@@ -1022,7 +1050,6 @@ export type UpdateTransactionInputDto = {
     installmentTotal?: (number) | null;
     installmentCurrent?: (string) | null;
     creditDueDate?: unknown;
-    observation?: (string) | null;
     toBeConsideredAt?: unknown;
     calculatedDate?: unknown;
     flagged?: boolean;
@@ -1031,6 +1058,26 @@ export type UpdateTransactionInputDto = {
 };
 
 export type AppControllerGetHelloResponse = (unknown);
+
+export type TransactionsControllerConversationData = {
+    id: string;
+};
+
+export type TransactionsControllerConversationResponse = (TransactionConversationDto);
+
+export type TransactionsControllerResolveConversationData = {
+    id: string;
+    requestBody: ResolveTransactionConversationDto;
+};
+
+export type TransactionsControllerResolveConversationResponse = (TransactionConversationDto);
+
+export type TransactionsControllerAddCommentData = {
+    id: string;
+    requestBody: AddTransactionCommentDto;
+};
+
+export type TransactionsControllerAddCommentResponse = (TransactionConversationDto);
 
 export type TransactionsControllerCreateData = {
     requestBody: CreateTransactionInputDto;

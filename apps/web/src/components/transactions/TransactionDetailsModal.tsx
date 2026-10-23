@@ -1,4 +1,4 @@
-import { TransactionNote } from "./TransactionNote"
+import { TransactionCommentButton } from "./TransactionCommentButton"
 import type { BankaccountOutputDto, CategoryOutputDto } from "@/api/generated"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
@@ -399,19 +399,8 @@ export function TransactionDetailsModal({
             {transaction ? (
               <DetailCell
                 icon={<ReceiptText className="size-3.5" />}
-                label="Note"
-                value={
-                  <TransactionNote
-                    key={transaction.id}
-                    value={transaction.observation}
-                    onSave={(observation) =>
-                      updateTransaction({
-                        id: transaction.id,
-                        transaction: { observation }
-                      })
-                    }
-                  />
-                }
+                label="Conversation"
+                value={<TransactionCommentButton transaction={transaction} />}
               />
             ) : null}
             <div className="mt-2 border-t border-fina-grid">

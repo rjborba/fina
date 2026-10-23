@@ -21,6 +21,8 @@ export const TransactionOutputSchema = z.object({
   installmentCurrent: z.string().nullable(),
   creditDueDate: z.string().date().nullable(),
   observation: z.string().nullable(),
+  commentCount: z.number().int().nonnegative(),
+  conversationResolved: z.boolean(),
   toBeConsideredAt: z.string().date().nullable(),
   calculatedDate: z.string().date().nullable(),
   reviewMonth: BillMonthSchema.nullable().describe(
