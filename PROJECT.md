@@ -348,14 +348,45 @@ failed saves preserve the entered name for retry. No schema change is required.
    values. Rows removed from the filtered ledger are skipped; new rows join the
    navigation sequence when the dialog is reopened. This applies to inline
    transactions, grouped checking transactions, and bill-detail purchases.
-   Changing the active group ends the open details session. The dialog uses a
-   compact description/amount header, read-only transaction date, account and
-   masked card attribution, due date, installment, source, workspace, and notes.
+   Changing the active group ends the open details session. Category choices
+   update immediately through both transaction-list and bill-detail caches,
+   including clearing a category. Category tiles use a short 75ms color fade,
+   suppressed by the existing reduced-motion preference.
+   Category buttons, shortcuts, navigation,
+   and note editing stay available during category saves. Updates are queued in order
+   per transaction across modal instances; different transactions save
+   independently. Older responses, failures, and refetches cannot overwrite a
+   newer pending choice. Failed changes restore the last confirmed values only
+   when no newer choice supersedes them, without undoing unrelated edits, and
+   show an error notification; successful saves do not notify. Queues remain
+   in memory only and finish after closing or navigating away from the modal.
+   Refetches reconcile server state after the queues drain without keeping
+   controls pending. The dialog uses a description/amount
+   header, with small, muted installment progress above the amount, aligned to
+   its left edge. The same line height remains reserved when there is no
+   installment, so its presence does not shift the amount's right edge or
+   vertical position. Empty lines have no accessible installment label or
+   interactive target. The header sits above a large category-tile grid and a
+   narrower sidebar.
+   The sidebar shows labeled read-only transaction date, masked card attribution,
+   account, and editable note fields. Account issuer branding stays beside its
+   name at a readable 24px size; generic icons use full foreground contrast.
+   The C6 artwork's transparent frame is cropped so the mark remains legible at
+   compact sizes, with its existing light/dark ink treatment and no background
+   tile. Due date, source, workspace, and subdued Added time also retain their
+   labels and are always shown without a disclosure toggle. Desktop panes
+   scroll independently below the header; mobile stacks categories above the
+   sidebar in one scrolling body, with navigation available in the footer.
+   Scrolling regions use slim, rounded scrollbars with transparent tracks and
+   theme-aware thumb colors. The sidebar reserves its scrollbar space to keep
+   content aligned whether or not it overflows.
    Card editing, calculated/considered dates, and the duplicate header date are
-   omitted. Added time appears as subdued metadata; category buttons and their
-   keyboard behavior remains available. The modal omits decorative section
-   badges, shortcut instructions, and navigation keycaps; it uses restrained
-   typography, unboxed facts, and a quiet position counter in the footer.
+   omitted. Category buttons and their keyboard behavior remain available.
+   The modal omits decorative section badges, shortcut instructions, and
+   navigation keycaps; it uses restrained typography, unboxed facts, and a quiet
+   position counter in the footer.
+   The toolbar omits the Keyboard shortcuts icon; pressing `?` still opens
+   shortcut help, and the existing keyboard commands remain available.
    Display opens a compact anchored panel with an ordering dropdown, a separate
    sort-direction control, and toggles for date, account, card name, masked
    card number, category, installment, and amount. Account chips and masked
@@ -504,15 +535,38 @@ failed saves preserve the entered name for retry. No schema change is required.
 ### Workspace customizable summary values
 
 Period summary includes **Customizable Values** below its category breakdown.
+The full-height drawer is up to 640px wide on desktop, while fitting within the
+viewport with a 16px gutter on smaller screens. Its scrolling, close controls
+and two-column custom-tile layout are unchanged.
+The category section starts expanded and can be collapsed from its header with
+a pointer or keyboard; its category count remains visible. Categories appear in
+a compact, single-column list with their color and name on the left and signed
+total aligned on the right, including on mobile; long names wrap without pushing
+amounts out of view. Customizable Values retain their tile layout. Collapsing the
+list leaves the main totals and Customizable Values visible and does not change
+calculations.
+This display state is local to the mounted ledger, not shared workspace data.
 Every active workspace member can create, edit and delete shared tiles; owners
 have no exclusive editing capability. Definitions are persisted in the workspace,
 not browser storage. The client refreshes shared definitions on focus and every
 15 seconds while the panel is open. Closing the panel discards unsaved drafts.
 
 Tiles have an optional workspace-shared color from the existing category
-palette, chosen with a compact dropdown that starts at **No color** for new
-tiles. Members can assign, change or clear the color. A dot appears beside the
+palette, chosen with a compact dropdown to the left of the Title input. New tiles
+start at **No color**. Its trigger shows only the selected color dot, or a
+neutral no-color icon when unset, without a separate Color field label or visible
+color name. Color names remain in the menu and the trigger's accessible
+description.
+Members can assign, change or clear the color. A dot appears beside the
 title only when a color is set; no dot or empty placeholder appears otherwise.
+Saved tiles are inset, rounded metric cards with generous spacing, a prominent
+signed amount and a separate logic footer. Colored tiles also have a subtle
+top accent; uncolored tiles stay neutral. Edit/delete controls remain visible
+for keyboard and touch use. Full-width cards use larger amounts; typography
+adapts to available card width and long values, with contained slim scrolling
+for exceptional amounts rather than clipping or changing financial precision.
+Long titles and formulas wrap within the card, including on mobile. Arithmetic
+and incomplete-total errors retain their explanation instead of a numeric zero.
 Existing colors are preserved. Shared contracts and the PostgreSQL constraint
 accept only palette colors or `null`; omitting color preserves an existing
 choice on edit and defaults new tiles to no color. Category color controls are
@@ -531,8 +585,10 @@ shared contract and PostgreSQL constraint.
 
 Each tile has a unique 1–120 character title and arithmetic logic using decimal
 numbers (dot separator), `+`, `-`, `*`, `/`, unary signs, parentheses and
-`{{Category name}}` / `{{Custom tile title}}` references. Typing `{{` opens a
-searchable, keyboard-accessible reference list including both kinds. References
+category/custom-tile references. Typing `@` opens a searchable,
+keyboard-accessible reference list including both kinds; type part of a name and
+select with a pointer, Enter or Tab to insert its chip. Unselected `@` text cannot
+be saved and prompts the member to choose a suggestion. References
 are bound to workspace-scoped IDs on save, so tile renames do not break dependent
 formulas. Duplicate or reserved category names use explicit `{{category:ID}}`
 tokens; archived category references retain their attribution. New titles cannot
@@ -548,8 +604,9 @@ Operators, numbers and parentheses remain ordinary text and long expressions
 wrap inside the editor. The caret lands after a selected chip; arrow navigation
 skips it as a unit, and Backspace/Delete remove the whole reference. Undo/redo,
 selection, IME composition and plain-text copy/cut/paste are supported. Clipboard
-text and the saved/API expression retain the original `{{...}}` syntax; rich HTML
-is never interpreted. History is bounded and discarded with the editor, and
+text and the saved/API expression retain the original `{{...}}` syntax for
+compatibility with existing formulas; braces no longer trigger autocomplete.
+Rich HTML is never interpreted. History is bounded and discarded with the editor, and
 switching tile/workspace resets it. This is a UI-only representation change,
 requiring no migration or formula rewrite. Remaining formula text disables font
 ligatures and inherited stylistic features so literal braces remain distinct.

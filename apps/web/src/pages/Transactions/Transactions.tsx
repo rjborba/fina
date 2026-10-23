@@ -16,6 +16,11 @@ import { CustomValuesSection } from "@/components/transactions/CustomValuesSecti
 import { useTransactionDisplayPreferences } from "@/components/transactions/useTransactionDisplayPreferences"
 import { Button } from "@/components/ui/button"
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible"
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -39,8 +44,8 @@ import { useAtom } from "jotai"
 import {
   ArrowDownRight,
   ArrowUpRight,
+  ChevronDown,
   ReceiptText,
-  Keyboard,
   Sigma,
   TriangleAlert,
   X
@@ -510,16 +515,6 @@ const TransactionsView: FC = () => {
             >
               <Sigma className="size-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-              onClick={() => setIsShortcutsOpen(true)}
-              className="size-7 text-muted-foreground"
-            >
-              <Keyboard className="size-3.5" />
-            </Button>
             {hasBillsNeedingAttention ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -602,7 +597,7 @@ const TransactionsView: FC = () => {
         aria-hidden={!isDrawerOpen}
         aria-label="Period totals"
         className={cn(
-          "fixed inset-y-0 right-0 z-[70] flex w-[min(440px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "fixed inset-y-0 right-0 z-[70] flex w-[min(640px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
           isDrawerOpen
             ? "pointer-events-auto translate-x-0"
             : "pointer-events-none translate-x-[calc(100%+10px)]"
@@ -673,41 +668,60 @@ const TransactionsView: FC = () => {
             </div>
           </div>
 
-          <div className="border-b border-fina-grid bg-fina-canvas px-5 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <p
-                className="text-xs font-medium"
-                title={
-                  monthlyReview
-                    ? undefined
-                    : "Categories describe purchases; purchase totals can differ from confirmed bill payments."
+          <Collapsible defaultOpen>
+            <h3>
+              <CollapsibleTrigger
+                aria-label={
+                  monthlyReview ? "Category breakdown" : "Purchase categories"
                 }
+                className="group flex w-full items-center justify-between gap-4 border-b border-fina-grid bg-fina-canvas px-5 py-4 text-left hover:bg-fina-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fina-violet"
               >
-                {monthlyReview ? "Category breakdown" : "Purchase categories"}
-              </p>
-              <span className="text-[11px] text-foreground/50">
-                {categories?.length || 0} categories
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 bg-fina-surface">
-            {categories?.map((category) => (
-              <div
-                key={category.id}
-                className="border-b border-r border-fina-grid p-4"
+                <span
+                  className="text-xs font-medium"
+                  title={
+                    monthlyReview
+                      ? undefined
+                      : "Categories describe purchases; purchase totals can differ from confirmed bill payments."
+                  }
+                >
+                  {monthlyReview ? "Category breakdown" : "Purchase categories"}
+                </span>
+                <span className="flex items-center gap-2 text-foreground/50">
+                  <span className="text-[11px]">
+                    {categories?.length || 0} categories
+                  </span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="size-3.5 shrink-0 transition-transform duration-150 group-data-[state=closed]:-rotate-90 motion-reduce:transition-none"
+                  />
+                </span>
+              </CollapsibleTrigger>
+            </h3>
+            <CollapsibleContent>
+              <ul
+                role="list"
+                aria-label="Category totals"
+                className="bg-fina-surface"
               >
-                <div className="flex items-center gap-2">
-                  <CategoryAppearance color={category.color} />
-                  <p className="truncate text-xs font-medium">
-                    {category.name}
-                  </p>
-                </div>
-                <p className="mt-2 text-sm font-medium tabular-nums">
-                  {formatCurrency(sumCategories[category.id] || 0)}
-                </p>
-              </div>
-            ))}
-          </div>
+                {categories?.map((category) => (
+                  <li
+                    key={category.id}
+                    className="flex items-center justify-between gap-4 border-b border-fina-grid px-5 py-3"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <CategoryAppearance color={category.color} />
+                      <span className="min-w-0 break-words text-xs font-medium">
+                        {category.name}
+                      </span>
+                    </div>
+                    <span className="shrink-0 whitespace-nowrap text-xs font-medium tabular-nums">
+                      {formatCurrency(sumCategories[category.id] || 0)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
           {isDrawerOpen && selectedGroup ? (
             <CustomValuesSection
               key={selectedGroup.id}

@@ -5,7 +5,8 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor
+  waitFor,
+  within
 } from "@testing-library/react"
 import type { TransactionOutput } from "@fina/types"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -90,7 +91,7 @@ describe("TransactionDetailsModal", () => {
 
   afterEach(cleanup)
 
-  it("shows compact read-only facts without the removed fields or duplicate header date", () => {
+  it("shows labeled transaction details with installment progress above the amount", () => {
     render(
       <TransactionDetailsModal
         transaction={{
@@ -100,9 +101,11 @@ describe("TransactionDetailsModal", () => {
           calculatedDate: "2026-10-01",
           toBeConsideredAt: "2026-10-05",
           creditDueDate: "2026-10-10",
+          installmentCurrent: "3",
+          installmentTotal: 12,
           bankaccount: {
             id: "21",
-            name: "Card",
+            name: "Personal account",
             type: "credit",
             institutionId: "nubank",
             dueDate: 10
@@ -126,11 +129,41 @@ describe("TransactionDetailsModal", () => {
     expect(
       screen.queryByText("Considered", { exact: true })
     ).not.toBeInTheDocument()
-    expect(
-      screen.getAllByText("Transaction date", { exact: true })
-    ).toHaveLength(1)
+    for (const label of ["Transaction date", "Card", "Account", "Note"]) {
+      expect(screen.getByText(label, { exact: true })).toBeVisible()
+    }
     expect(screen.getByText("Personal · ••0042")).toBeVisible()
+    expect(screen.queryByText("More details")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("group", { name: "Installment" })
+    ).toHaveTextContent("3/12")
+    expect(
+      screen
+        .getByRole("group", { name: "Installment" })
+        .compareDocumentPosition(
+          screen.getByRole("group", { name: "Amount" })
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    const categoryChoices = screen.getByRole("region", { name: "Category" })
+    expect(
+      within(categoryChoices).getByRole("button", { name: "1 First category" })
+    ).toBeVisible()
+    const facts = screen.getByRole("complementary", {
+      name: "Transaction data"
+    })
+    expect(within(facts).getByText("Personal · ••0042")).toBeVisible()
+    expect(within(facts).getByText("Personal account")).toBeVisible()
+    expect(within(facts).queryByText("3/12")).not.toBeInTheDocument()
+    expect(
+      within(facts).getByRole("button", { name: "Add note" })
+    ).toBeVisible()
+    expect(facts).toHaveTextContent(
+      /Transaction date.*Card.*Account.*Note.*Credit due date.*Source.*Workspace.*Added/
+    )
     expect(screen.getByText(/^Added /)).toBeVisible()
+    expect(screen.getByText("Credit due date")).toBeVisible()
+    expect(screen.getByText("Manual entry")).toBeVisible()
+    expect(within(facts).getByText("My finances")).toBeVisible()
     expect(screen.getByRole("button", { name: /Uncategorized/ })).toBeVisible()
   })
 
@@ -186,6 +219,9 @@ describe("TransactionDetailsModal", () => {
       document.querySelector('[data-institution-id="inter"] img')
     ).not.toBeNull()
     expect(screen.queryByLabelText("Reference month")).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("group", { name: "Installment" })
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText("Review month", { exact: true })
     ).not.toBeInTheDocument()

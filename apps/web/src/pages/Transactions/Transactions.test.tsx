@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type {
+  CategoryOutput,
   CreditCardBillListQuery,
   CreditCardBillSummary,
   QueryTransactionInputDto,
@@ -56,6 +57,7 @@ const mocks = vi.hoisted(() => ({
   omitCardPurchases: false,
   userId: "fixture-user" as string | null,
   groupId: "group-1" as string | null,
+  categories: [] as CategoryOutput[],
   billQueries: [] as CreditCardBillListQuery[],
   transactionQueries: [] as Array<TransactionQuery & { enabled: boolean }>
 }))
@@ -277,7 +279,7 @@ vi.mock("@/data/creditCardBills/useCreditCardBills", () => ({
 }))
 
 vi.mock("@/data/categories/useCategories", () => ({
-  useCategories: () => ({ data: [] })
+  useCategories: () => ({ data: mocks.categories })
 }))
 
 vi.mock("@/data/bankAccounts/useBankAccounts", () => ({
@@ -376,6 +378,7 @@ describe("Transactions cash-flow ledger", () => {
     mocks.omitCardPurchases = false
     mocks.userId = "fixture-user"
     mocks.groupId = "group-1"
+    mocks.categories = []
     seedFilters()
   })
 
@@ -922,6 +925,59 @@ describe("Transactions cash-flow ledger", () => {
     }
   )
 
+  it.each([
+    ["cash-flow", "Purchase categories", "Net flow"],
+    ["monthly-review", "Category breakdown", "Review balance"]
+  ])(
+    "lists category totals and collapses the %s breakdown with pointer and keyboard controls",
+    async (basis, heading, totalLabel) => {
+      const user = userEvent.setup()
+      mocks.categories = [
+        {
+          id: "20",
+          name: "Groceries",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          color: "amber",
+          icon: "shopping-cart",
+          groupId: "group-1"
+        }
+      ]
+      localStorage.setItem("ledgerDateBasis:v1", JSON.stringify(basis))
+      render(
+        <MemoryRouter>
+          <Transactions />
+        </MemoryRouter>
+      )
+      await user.click(screen.getByRole("button", { name: "Period totals" }))
+      const summary = screen.getByRole("dialog", { name: "Period totals" })
+      const toggle = within(summary).getByRole("button", { name: heading })
+      expect(toggle).toHaveAttribute("aria-expanded", "true")
+      const categoryList = within(summary).getByRole("list", {
+        name: "Category totals"
+      })
+      const rows = within(categoryList).getAllByRole("listitem")
+      expect(rows).toHaveLength(1)
+      expect(within(rows[0]).getByText("Groceries")).toBeVisible()
+      expect(within(rows[0]).getByText(/R\$\s0,00/)).toBeVisible()
+
+      await user.click(toggle)
+      expect(toggle).toHaveAttribute("aria-expanded", "false")
+      expect(
+        within(summary).queryByRole("list", { name: "Category totals" })
+      ).not.toBeInTheDocument()
+      expect(within(summary).queryByText("Groceries")).not.toBeInTheDocument()
+      expect(within(toggle).getByText("1 categories")).toBeVisible()
+      expect(within(summary).getByText(totalLabel)).toBeVisible()
+
+      await user.keyboard("{Enter}")
+      expect(toggle).toHaveAttribute("aria-expanded", "true")
+      expect(within(summary).getByText("Groceries")).toBeVisible()
+      await user.keyboard(" ")
+      expect(toggle).toHaveAttribute("aria-expanded", "false")
+      expect(within(summary).queryByText("Groceries")).not.toBeInTheDocument()
+    }
+  )
+
   it("uses the actual paid amount in cash flow even when purchases in the bill change", () => {
     mocks.changedBill = true
     localStorage.setItem("inlineCreditCardTransactions", "true")
@@ -1153,6 +1209,9 @@ describe("Transactions cash-flow ledger", () => {
         <Transactions />
       </MemoryRouter>
     )
+    expect(
+      screen.queryByRole("button", { name: "Keyboard shortcuts" })
+    ).not.toBeInTheDocument()
     // The closed totals drawer remains mounted and must not suppress shortcuts.
     fireEvent.keyDown(document.body, { key: "f" })
     expect(

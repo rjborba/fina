@@ -4,6 +4,7 @@ import {
   type Locator,
   type Page,
   type Response,
+  type Route,
 } from "@playwright/test";
 
 const longDescription =
@@ -3283,6 +3284,28 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.name));
   await signInAsFixture(page);
+  await page.goto("/categories");
+  for (const [name, color] of [
+    ["Groceries", "Teal"],
+    ["Dining out", "Amber"],
+    ["Transport", "Indigo"],
+    ["Home", "Violet"],
+    ["Health", "Coral"],
+    ["Shopping", "Pink"],
+    ["Travel", "Sky"],
+    ["Subscriptions and recurring household bills", "Lime"],
+  ]) {
+    await page.getByRole("textbox", { name: "Category name" }).fill(name);
+    await page.getByRole("radio", { name: color, exact: true }).click();
+    await page
+      .getByRole("button", { name: "Add category", exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole("region", { name: "Existing categories" })
+        .getByText(name, { exact: true }),
+    ).toBeVisible();
+  }
   const parent = await addFixtureAccount(
     page,
     accountName,
@@ -3301,7 +3324,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
       [
         "Date;Description;Installment;Amount;Card name;Last4",
         `19/06/${year};Metadata Personal purchase;Single;-60,00;Personal;0042`,
-        `20/06/${year};Metadata Family purchase;Single;-40,00;Family;**** 5151`,
+        `20/06/${year};Metadata Family purchase;3/12;-40,00;Family;**** 5151`,
         `21/06/${year};Metadata Virtual purchase;Single;-20,00;Virtual;6161`,
         `22/06/${year};Metadata Personal refund;Single;10,00;Personal;0042`,
         `23/06/${year};Metadata unknown purchase;Single;-15,00;;`,
@@ -3444,19 +3467,263 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   await expect(modal.getByLabel("Card name", { exact: true })).toHaveCount(0);
   await expect(modal.getByText("Considered", { exact: true })).toHaveCount(0);
   await expect(modal.getByText("Calculated", { exact: true })).toHaveCount(0);
+  for (const label of ["Transaction date", "Card", "Account", "Note"]) {
+    await expect(modal.getByText(label, { exact: true })).toBeVisible();
+  }
+  const categoryPane = modal.getByRole("region", {
+    name: "Category",
+    exact: true,
+  });
+  const detailsPane = modal.getByRole("complementary", {
+    name: "Transaction data",
+  });
+  const accountLogo = detailsPane.locator('[data-institution-id="c6"]');
+  await expect(accountLogo).toHaveCSS("width", "24px");
+  await expect(accountLogo).toHaveCSS("height", "24px");
+  await expect(accountLogo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(accountLogo.locator("img")).toHaveCSS("filter", "none");
+  await expect(modal.getByText("More details", { exact: true })).toHaveCount(0);
+  const installment = modal.getByRole("group", {
+    name: "Installment",
+    exact: true,
+  });
+  await expect(installment).toHaveText("3/12");
+  await expect(installment).toBeInViewport();
+  await expect(detailsPane.getByText("3/12", { exact: true })).toHaveCount(0);
+  await expectFiniteAnimationsSettled(page);
+  const [dateBounds, cardBounds, installmentBounds, amountBounds] =
+    await Promise.all([
+      detailsPane.getByText("Transaction date", { exact: true }).boundingBox(),
+      detailsPane.getByText("Card", { exact: true }).boundingBox(),
+      installment.boundingBox(),
+      modal.getByText(/^-R\$\s*40,00$/).boundingBox(),
+    ]);
+  expect(dateBounds!.y).toBeLessThan(cardBounds!.y);
+  expect(Math.abs(installmentBounds!.x - amountBounds!.x)).toBeLessThan(1);
+  expect(installmentBounds!.y + installmentBounds!.height).toBeLessThanOrEqual(
+    amountBounds!.y,
+  );
+  await page.screenshot({
+    path: "test-results/transaction-header-with-installment.png",
+  });
+  await modal.getByRole("button", { name: "Next", exact: true }).click();
+  const singlePurchase = page.getByRole("dialog", {
+    name: "Metadata Personal purchase",
+    exact: true,
+  });
+  await expect(singlePurchase).toBeVisible();
   await expect(
-    modal.getByText("Transaction date", { exact: true }),
-  ).toHaveCount(1);
+    singlePurchase.getByRole("group", { name: "Installment", exact: true }),
+  ).toHaveCount(0);
+  await expectFiniteAnimationsSettled(page);
+  const singleAmountBounds = await singlePurchase
+    .getByRole("group", { name: "Amount", exact: true })
+    .boundingBox();
+  await page.screenshot({
+    path: "test-results/transaction-header-without-installment.png",
+  });
+  expect(
+    Math.abs(
+      singleAmountBounds!.x +
+        singleAmountBounds!.width -
+        amountBounds!.x -
+        amountBounds!.width,
+    ),
+  ).toBeLessThan(1);
+  expect(Math.abs(singleAmountBounds!.y - amountBounds!.y)).toBeLessThan(1);
+  await page.keyboard.press("ArrowLeft");
+  await expect(modal).toBeVisible();
+  await expect(
+    detailsPane.getByText("Credit due date", { exact: true }),
+  ).toBeVisible();
+  await expect(detailsPane.getByText("Source", { exact: true })).toBeVisible();
+  await expect(
+    detailsPane.getByText("Workspace", { exact: true }),
+  ).toBeVisible();
+  await expect(detailsPane.getByText(/^Added /)).toBeVisible();
+  const groceryCategory = categoryPane.getByRole("button", {
+    name: / Groceries$/,
+  });
+  const diningCategory = categoryPane.getByRole("button", {
+    name: / Dining out$/,
+  });
+  const uncategorizedCategory = categoryPane.getByRole("button", {
+    name: /Uncategorized/,
+  });
+  for (const category of [
+    groceryCategory,
+    diningCategory,
+    uncategorizedCategory,
+  ]) {
+    await expect(category).toHaveCSS("transition-duration", "0.075s");
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const category of [
+    groceryCategory,
+    diningCategory,
+    uncategorizedCategory,
+  ]) {
+    await expect(category).toHaveCSS("transition-duration", "1e-05s");
+  }
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  let categoryRequestStarted = false;
+  let categoryRequests = 0;
+  let failCategorySave!: () => void;
+  const categorySaveHeld = new Promise<void>((resolve) => {
+    failCategorySave = resolve;
+  });
+  const failCategoryRequest = async (route: Route) => {
+    if (route.request().method() !== "PATCH") {
+      await route.continue();
+      return;
+    }
+    categoryRequests += 1;
+    if (categoryRequests > 1) {
+      await route.continue();
+      return;
+    }
+    categoryRequestStarted = true;
+    await categorySaveHeld;
+    await route.fulfill({
+      status: 503,
+      json: {
+        code: "SERVICE_UNAVAILABLE",
+        message: "Try again later",
+        requestId: "browser-category-failure",
+      },
+    });
+  };
+  await page.route("**/transactions/*", failCategoryRequest);
+  await groceryCategory.click();
+  await expect(groceryCategory).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => categoryRequestStarted).toBe(true);
+  await expect(groceryCategory).toHaveCSS("transition-duration", "0.075s");
+  await expect(uncategorizedCategory).toHaveCSS(
+    "transition-duration",
+    "0.075s",
+  );
+  await expect(groceryCategory).toBeEnabled();
+  await expect(diningCategory).toBeEnabled();
+  await expect(
+    modal.getByRole("button", { name: "Add note", exact: true }),
+  ).toBeEnabled();
+  await diningCategory.click();
+  await expect(diningCategory).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    modal.getByRole("button", { name: "Next", exact: true }),
+  ).toBeEnabled();
+  await modal.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
+  await expect(modal).toBeVisible();
+  await expect(diningCategory).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(modal).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: "Open transaction: Metadata Family purchase",
+      exact: true,
+    })
+    .click();
+  await expect(diningCategory).toHaveAttribute("aria-pressed", "true");
+  expect(categoryRequests).toBe(1);
+  const queuedSave = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      new URL(response.url()).pathname.startsWith("/transactions/") &&
+      response.ok(),
+  );
+  failCategorySave();
+  await expect(diningCategory).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByText("Could not categorize this transaction", { exact: true }),
+  ).toBeVisible();
+  await queuedSave;
+  await page.unroute("**/transactions/*", failCategoryRequest);
+  await groceryCategory.click();
+  await expect(groceryCategory).toHaveAttribute("aria-pressed", "true");
+  await modal.getByRole("button", { name: "Add note", exact: true }).click();
+  await modal
+    .getByRole("textbox", { name: "Transaction note" })
+    .fill("Review this purchase with the household.");
+  await modal.getByRole("button", { name: "Save note", exact: true }).click();
+  await expect(
+    modal.getByRole("textbox", { name: "Transaction note" }),
+  ).toHaveCount(0);
+  await expect(
+    modal.getByRole("button", { name: "Edit note", exact: true }),
+  ).toContainText("Review this purchase with the household.");
+  const [categoryBounds, detailsBounds] = await Promise.all([
+    categoryPane.boundingBox(),
+    detailsPane.boundingBox(),
+  ]);
+  expect(categoryBounds!.width).toBeGreaterThan(detailsBounds!.width);
+  expect(categoryBounds!.x + categoryBounds!.width).toBeLessThanOrEqual(
+    detailsBounds!.x + 1,
+  );
+  expect(Math.abs(categoryBounds!.y - detailsBounds!.y)).toBeLessThan(2);
+  await page.setViewportSize({ width: 1280, height: 560 });
+  await detailsPane.hover();
+  await page.mouse.wheel(0, 400);
+  await expect
+    .poll(() => detailsPane.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  await expect(detailsPane.getByText(/^Added /)).toBeInViewport();
+  await expect(
+    modal.getByRole("heading", {
+      name: "Metadata Family purchase",
+      exact: true,
+    }),
+  ).toBeInViewport();
+  await expect(
+    modal.getByRole("button", { name: "Next", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: "test-results/transaction-details-scroll-light.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expect(modal).toHaveCSS("color", "rgb(236, 236, 241)");
+  await page.screenshot({
+    path: "test-results/transaction-details-scroll-dark.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await detailsPane.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(installment).toBeInViewport();
+  await expect(groceryCategory).toHaveAttribute("aria-pressed", "true");
+  await modal.focus();
   await expectFiniteAnimationsSettled(page);
   await page.screenshot({
     path: "test-results/transaction-details-light.png",
   });
   await page.evaluate(() => document.documentElement.classList.add("dark"));
   await expect(modal).toHaveCSS("color", "rgb(236, 236, 241)");
+  await expect(accountLogo.locator("img")).toHaveCSS(
+    "filter",
+    "brightness(0) invert(1)",
+  );
   await page.screenshot({
     path: "test-results/transaction-details-dark.png",
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await categoryPane
+    .getByRole("heading", { name: "Category", exact: true })
+    .scrollIntoViewIfNeeded();
+  const [mobileCategories, mobileDetails] = await Promise.all([
+    categoryPane.boundingBox(),
+    detailsPane.boundingBox(),
+  ]);
+  expect(mobileCategories!.y + mobileCategories!.height).toBeLessThanOrEqual(
+    mobileDetails!.y + 1,
+  );
+  const lastCategoryBounds = await modal
+    .getByRole("button", { name: /Uncategorized/ })
+    .boundingBox();
+  expect(
+    lastCategoryBounds!.y + lastCategoryBounds!.height,
+  ).toBeLessThanOrEqual(mobileDetails!.y);
   await expect(
     modal.getByRole("button", { name: "Uncategorized", exact: false }),
   ).toBeVisible();
@@ -3469,9 +3736,45 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   const modalBounds = await modal.boundingBox();
   expect(modalBounds!.x).toBeGreaterThanOrEqual(0);
   expect(modalBounds!.x + modalBounds!.width).toBeLessThanOrEqual(391);
+  await expect(
+    modal.getByRole("button", { name: "Next", exact: true }),
+  ).toBeInViewport();
   await page.screenshot({
     path: "test-results/transaction-details-mobile.png",
   });
+  await expect(installment).toBeInViewport();
+  const [mobileInstallment, mobileAmount] = await Promise.all([
+    installment.boundingBox(),
+    modal.getByText(/^-R\$\s*40,00$/).boundingBox(),
+  ]);
+  expect(Math.abs(mobileInstallment!.x - mobileAmount!.x)).toBeLessThan(1);
+  expect(mobileInstallment!.y + mobileInstallment!.height).toBeLessThanOrEqual(
+    mobileAmount!.y,
+  );
+  await modal.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(singlePurchase).toBeVisible();
+  await expect(
+    singlePurchase.getByRole("group", { name: "Installment", exact: true }),
+  ).toHaveCount(0);
+  const mobileSingleAmount = await singlePurchase
+    .getByRole("group", { name: "Amount", exact: true })
+    .boundingBox();
+  expect(
+    Math.abs(
+      mobileSingleAmount!.x +
+        mobileSingleAmount!.width -
+        mobileAmount!.x -
+        mobileAmount!.width,
+    ),
+  ).toBeLessThan(1);
+  expect(Math.abs(mobileSingleAmount!.y - mobileAmount!.y)).toBeLessThan(1);
+  await page.keyboard.press("ArrowLeft");
+  await expect(modal).toBeVisible();
+  await detailsPane.getByText(/^Added /).scrollIntoViewIfNeeded();
+  await expect(detailsPane.getByText(/^Added /)).toBeInViewport();
+  await expect(
+    modal.getByRole("button", { name: "Next", exact: true }),
+  ).toBeInViewport();
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.evaluate(() => document.documentElement.classList.remove("dark"));
   await page.keyboard.press("Escape");
@@ -3480,7 +3783,14 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
     detail.transactions.find(
       (purchase) => purchase.description === "Metadata Family purchase",
     ),
-  ).toMatchObject({ cardName: "Family", cardLast4: "5151" });
+  ).toMatchObject({
+    cardName: "Family",
+    cardLast4: "5151",
+    installmentCurrent: "3",
+    installmentTotal: 12,
+    category: { name: "Groceries" },
+    observation: "Review this purchase with the household.",
+  });
   expect(detail.bill.total).toBe(-125);
   await expect(
     page.getByTestId("transaction-card-number").filter({ hasText: "••5151" }),
@@ -3749,6 +4059,20 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     await saved;
     await page.keyboard.press("Escape");
   }
+  await expect(
+    page.getByRole("button", { name: "Keyboard shortcuts", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("heading", { name: "Transactions", exact: true })
+    .click();
+  await page.keyboard.press("?");
+  const shortcutHelp = page.getByRole("dialog", {
+    name: "Keyboard shortcuts",
+    exact: true,
+  });
+  await expect(shortcutHelp).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(shortcutHelp).toHaveCount(0);
   await page
     .getByRole("button", { name: "Period totals", exact: true })
     .click();
@@ -3757,10 +4081,72 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     exact: true,
   });
   const section = summary.getByRole("region", { name: "Customizable Values" });
+  await expect(summary).toHaveCSS("width", "640px");
+  await expect(
+    summary.getByRole("button", { name: "Close totals panel", exact: true }),
+  ).toBeInViewport();
+  const categoryToggle = summary.getByRole("button", {
+    name: /^(Category breakdown|Purchase categories)$/,
+  });
+  const categoryList = summary.getByRole("list", {
+    name: "Category totals",
+    exact: true,
+  });
+  const categoryRows = categoryList.getByRole("listitem");
+  const expectCategoryListLayout = async () => {
+    await expectFiniteAnimationsSettled(page);
+    await expect(categoryRows).toHaveCount(2);
+    await expect(categoryRows.nth(0)).toContainText(
+      "Dividido Proporcionalmente",
+    );
+    await expect(categoryRows.nth(0)).toContainText(/-R\$\s*100,00/);
+    await expect(categoryRows.nth(1)).toContainText("Vale");
+    await expect(categoryRows.nth(1)).toContainText(/R\$\s*40,00/);
+    const firstRow = await categoryRows.nth(0).boundingBox();
+    const secondRow = await categoryRows.nth(1).boundingBox();
+    expect(firstRow).not.toBeNull();
+    expect(secondRow).not.toBeNull();
+    expect(secondRow!.y).toBeGreaterThanOrEqual(firstRow!.y + firstRow!.height);
+    expect(secondRow!.x).toBeCloseTo(firstRow!.x, 0);
+    expect(secondRow!.width).toBeCloseTo(firstRow!.width, 0);
+  };
+  await expect(categoryToggle).toHaveAttribute("aria-expanded", "true");
+  await expectCategoryListLayout();
+  await expect(
+    summary.getByText("Dividido Proporcionalmente", { exact: true }),
+  ).toBeVisible();
+  await categoryToggle.press("Space");
+  await expect(categoryToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    summary.getByText("Dividido Proporcionalmente", { exact: true }),
+  ).toBeHidden();
+  await expect(categoryToggle.getByText("2 categories")).toBeVisible();
+  await expect(summary.getByText("Net flow", { exact: true })).toBeVisible();
+  await expect(section).toBeVisible();
+  await categoryToggle.press("Enter");
+  await expect(categoryToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    summary.getByText("Dividido Proporcionalmente", { exact: true }),
+  ).toBeVisible();
+  await categoryToggle.click();
+  await expect(categoryToggle).toHaveAttribute("aria-expanded", "false");
   const colorControl = section.getByRole("combobox", {
     name: "Tile color",
     exact: true,
   });
+  const expectColorBesideTitle = async () => {
+    const title = await section
+      .getByRole("textbox", { name: "Title", exact: true })
+      .boundingBox();
+    const color = await colorControl.boundingBox();
+    expect(title).not.toBeNull();
+    expect(color).not.toBeNull();
+    expect(color!.x + color!.width).toBeLessThanOrEqual(title!.x);
+    expect(Math.abs(color!.y - title!.y)).toBeLessThan(1);
+    expect(Math.abs(color!.height - title!.height)).toBeLessThan(1);
+    expect(color!.width).toBeLessThanOrEqual(60);
+    await expect(colorControl).toHaveText("");
+  };
   const chooseTileColor = async (name: string) => {
     await colorControl.click();
     await page.getByRole("option", { name, exact: true }).click();
@@ -3769,7 +4155,12 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("My Custom Tile");
-  await expect(colorControl).toHaveText("No color");
+  await expect(colorControl).toHaveAccessibleDescription("No color");
+  await expectColorBesideTitle();
+  await section
+    .getByRole("textbox", { name: "Title", exact: true })
+    .press("Shift+Tab");
+  await expect(colorControl).toBeFocused();
   await colorControl.click();
   await expect(
     page.getByRole("option", { name: "No color", exact: true }),
@@ -3785,6 +4176,11 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     path: "test-results/custom-values-color-dropdown.png",
   });
   await page.getByRole("option", { name: "Teal", exact: true }).click();
+  await expect(colorControl).toHaveAccessibleDescription("Teal");
+  await expect(colorControl).toHaveText("");
+  await page.screenshot({
+    path: "test-results/custom-values-color-compact.png",
+  });
   await expect(
     section.getByRole("radio", { name: "One tile", exact: true }),
   ).toBeChecked();
@@ -3792,10 +4188,16 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     .getByRole("radio", { name: "Two tiles (full width)", exact: true })
     .click();
   const logic = section.getByRole("combobox", { name: "Logic", exact: true });
+  await expect(logic).toHaveAttribute(
+    "data-placeholder",
+    "Type @ to add a category or custom tile",
+  );
+  await logic.fill("{{Dividido");
+  await expect(section.getByRole("listbox")).toHaveCount(0);
   await expect(logic).toHaveCSS("font-variant-ligatures", "none");
   await expect(logic).toHaveCSS("font-feature-settings", "normal");
   for (const method of ["click", "Enter", "Tab"]) {
-    await logic.fill("{{Dividido");
+    await logic.fill("@Dividido");
     if (method === "click")
       await section
         .getByRole("option", { name: /^Dividido Proporcionalmente/ })
@@ -3817,7 +4219,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await logic.fill("");
   await logic.pressSequentially("{{Dividido Proporcionalmente}} * 0.3");
   await expect(logic).toHaveText("Dividido Proporcionalmente * 0.3");
-  await logic.fill("({{Dividido");
+  await logic.fill("(@Dividido");
   await section
     .getByRole("option", { name: /^Dividido Proporcionalmente/ })
     .click();
@@ -3886,12 +4288,12 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section
     .getByRole("textbox", { name: "Title", exact: true })
     .fill("Combined tile");
-  await logic.fill("{{My");
+  await logic.fill("@My");
   await section.getByRole("option", { name: /^My Custom Tile/ }).click();
   await logic.press("End");
-  await logic.pressSequentially(" + {{Va");
+  await logic.pressSequentially(" + @Va");
   await expect(section.getByRole("option", { name: /^Vale/ })).toBeVisible();
-  await expect(logic).toHaveText("My Custom Tile + {{Va");
+  await expect(logic).toHaveText("My Custom Tile + @Va");
   await page.screenshot({
     path: "test-results/custom-values-autocomplete.png",
   });
@@ -3933,27 +4335,41 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     if (!bounds) throw new Error("Expected a visible custom tile");
     return bounds.width;
   };
-  expect(await tileWidth(first)).toBeCloseTo(
-    2 * (await tileWidth(combined)),
-    0,
-  );
+  const expectWideTile = async (wide: typeof first, narrow: typeof first) => {
+    const gap = await wide.evaluate((element) =>
+      parseFloat(getComputedStyle(element.parentElement!).columnGap),
+    );
+    expect(await tileWidth(wide)).toBeCloseTo(
+      2 * (await tileWidth(narrow)) + gap,
+      0,
+    );
+  };
+  const amountSize = (tile: typeof first) =>
+    tile
+      .getByRole("group", { name: "Calculated value", exact: true })
+      .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+  await expectWideTile(first, combined);
+  expect(await amountSize(first)).toBeGreaterThan(await amountSize(combined));
+  expect(await amountSize(combined)).toBeGreaterThanOrEqual(24);
+  await expect(
+    section.getByRole("button", { name: "Add tile", exact: true }),
+  ).toBeEnabled();
+  await section.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/custom-values-tiles.png" });
   await page.reload();
   await expect(combined).toContainText(/R\$\s*10,00/);
   await expect(combined.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );
   await expectFiniteAnimationsSettled(page);
-  expect(await tileWidth(first)).toBeCloseTo(
-    2 * (await tileWidth(combined)),
-    0,
-  );
+  await expectWideTile(first, combined);
   await expect(
     first.getByRole("img", { name: "Tile color: teal" }),
   ).toBeVisible();
   await first
     .getByRole("button", { name: "Edit My Custom Tile", exact: true })
     .click();
-  await expect(colorControl).toHaveText("Teal");
+  await expect(colorControl).toHaveAccessibleDescription("Teal");
   await chooseTileColor("Sky");
   await expect(
     section.getByRole("radio", { name: "Two tiles (full width)", exact: true }),
@@ -3999,10 +4415,14 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
   await expect(combined).toContainText("Cannot divide by zero.");
   await expect(combined).not.toContainText(/Infinity|NaN/);
+  await expect(
+    section.getByRole("button", { name: "Add tile", exact: true }),
+  ).toBeEnabled();
   await section.scrollIntoViewIfNeeded();
   await expectFiniteAnimationsSettled(page);
   await page.screenshot({ path: "test-results/custom-values-light.png" });
   await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expectFiniteAnimationsSettled(page);
   await page.screenshot({ path: "test-results/custom-values-dark.png" });
   const darkTitleColor = await renamed
     .getByRole("heading", { name: "Renamed tile", exact: true })
@@ -4015,12 +4435,14 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     renamed.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
   ).toHaveCSS("color", darkTitleColor);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(summary).toHaveCSS("width", "374px");
+  await expect(
+    summary.getByRole("button", { name: "Close totals panel", exact: true }),
+  ).toBeInViewport();
+  await expectCategoryListLayout();
   await section.scrollIntoViewIfNeeded();
   await expect(combined).toBeInViewport();
-  expect(await tileWidth(combined)).toBeCloseTo(
-    2 * (await tileWidth(renamed)),
-    0,
-  );
+  await expectWideTile(combined, renamed);
   expect(
     await summary.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
@@ -4030,7 +4452,8 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await renamed
     .getByRole("button", { name: "Edit Renamed tile", exact: true })
     .click();
-  await expect(colorControl).toHaveText("Sky");
+  await expect(colorControl).toHaveAccessibleDescription("Sky");
+  await expectColorBesideTitle();
   await chooseTileColor("No color");
   await expect(
     logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),

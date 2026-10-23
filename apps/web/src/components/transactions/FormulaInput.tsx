@@ -40,8 +40,8 @@ export function FormulaInput({
   const [dismissed, setDismissed] = useState(false)
   const [active, setActive] = useState(0)
   const beforeCaret = value.slice(0, caret)
-  const start = beforeCaret.lastIndexOf("{{")
-  const search = start >= 0 ? beforeCaret.slice(start + 2) : null
+  const start = beforeCaret.lastIndexOf("@")
+  const search = start >= 0 ? beforeCaret.slice(start + 1) : null
   const opened =
     focused && !dismissed && search !== null && !/[{}]/.test(search)
   const matches = opened
@@ -161,9 +161,12 @@ export function FormulaInput({
     replace(selection.start, selection.end, text.replace(/\r?\n/g, " "))
   }
   const choose = (option: FormulaOption) => {
-    const end = value.indexOf("}}", caret)
+    const nameEnd = start + 1 + option.name.length
     const replaceEnd =
-      end >= 0 && !/[{}]/.test(value.slice(caret, end)) ? end + 2 : caret
+      value.slice(start + 1, nameEnd).toLowerCase() ===
+      option.name.toLowerCase()
+        ? Math.max(caret, nameEnd)
+        : caret
     replace(start, replaceEnd, `{{${option.token}}}`)
     setDismissed(true)
   }
@@ -246,7 +249,7 @@ export function FormulaInput({
         }
         aria-describedby={`${id}-help`}
         aria-multiline="false"
-        data-placeholder="Type {{ to add a category or custom tile"
+        data-placeholder="Type @ to add a category or custom tile"
         spellCheck={false}
         className="min-h-9 w-full min-w-0 whitespace-pre-wrap break-words rounded-md border border-input bg-transparent px-3 py-1.5 font-mono text-xs leading-6 shadow-xs outline-none [font-feature-settings:normal] [font-variant-ligatures:none] empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-disabled:opacity-50"
         onFocus={() => setFocused(true)}

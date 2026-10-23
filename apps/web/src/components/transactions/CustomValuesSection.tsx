@@ -24,8 +24,10 @@ import {
 import { FormulaInput, type FormulaOption } from "./FormulaInput"
 import { FormulaText } from "./FormulaText"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
+import { getCategoryColorClassName } from "@/components/categories/categoryAppearanceOptions"
 import { CustomValueColorSelect } from "./CustomValueColorSelect"
 import type { CategoryColor } from "@fina/types"
+import { cn } from "@/lib/utils"
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -103,6 +105,10 @@ export function CustomValuesSection({
   let syntaxError = ""
   if (editing?.expression.trim()) {
     try {
+      if (editing.expression.replace(/\{\{[^{}]*\}\}/g, "").includes("@"))
+        throw new FormulaError(
+          "Choose a category or custom tile from the @ suggestions."
+        )
       parseCustomFormula(editing.expression)
       const original = tiles.find((tile) => tile.id === editing.id)
       const originalNames = original
@@ -280,23 +286,26 @@ export function CustomValuesSection({
                 })}
               </div>
             </div>
-            <Input
-              autoFocus
-              id={`${formId}-title`}
-              value={editing.title}
-              disabled={pending}
-              maxLength={120}
-              onChange={(event) =>
-                setEditing({ ...editing, title: event.target.value })
-              }
-            />
+            <div className="flex items-center gap-2">
+              <CustomValueColorSelect
+                id={`${formId}-color`}
+                color={editing.color}
+                onColorChange={(color) => setEditing({ ...editing, color })}
+                disabled={pending}
+              />
+              <Input
+                autoFocus
+                id={`${formId}-title`}
+                value={editing.title}
+                disabled={pending}
+                maxLength={120}
+                className="min-w-0 flex-1"
+                onChange={(event) =>
+                  setEditing({ ...editing, title: event.target.value })
+                }
+              />
+            </div>
           </div>
-          <CustomValueColorSelect
-            id={`${formId}-color`}
-            color={editing.color}
-            onColorChange={(color) => setEditing({ ...editing, color })}
-            disabled={pending}
-          />
           <div>
             <label
               id={`${formId}-logic-label`}
@@ -322,7 +331,7 @@ export function CustomValuesSection({
               id={`${formId}-logic-help`}
               className="mt-2 text-[11px] leading-relaxed text-foreground/55"
             >
-              Type {"{{"} to add category or custom-tile chips. Use + − * / and
+              Type @ to add category or custom-tile chips. Use + − * / and
               parentheses; decimals use a dot. Values keep the category totals’
               signs.
             </p>
@@ -371,114 +380,152 @@ export function CustomValuesSection({
           this period.
         </p>
       ) : null}
-      <div className="grid grid-cols-2 bg-fina-surface">
-        {tiles.map((tile) => (
-          <article
-            key={tile.id}
-            aria-label={tile.title}
-            className={`min-w-0 border-b border-r border-fina-grid p-4${tile.columnSpan === 2 ? " col-span-2" : ""}`}
-          >
-            <div className="flex items-start justify-between gap-1">
-              <div className="flex min-w-0 items-start gap-2">
+      <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+        {tiles.map((tile) => {
+          const unavailable = totalsUnavailable || !!results[tile.id]?.error
+          const formattedValue = money.format(results[tile.id]?.value ?? 0)
+          return (
+            <article
+              key={tile.id}
+              aria-label={tile.title}
+              className={cn(
+                "@container relative flex min-h-52 min-w-0 flex-col rounded-xl border border-fina-grid bg-fina-surface p-4 shadow-fina-sm",
+                tile.columnSpan === 2 && "col-span-2 min-h-56 p-5"
+              )}
+            >
+              {tile.color ? (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute inset-x-4 top-0 h-0.5 rounded-full opacity-70",
+                    getCategoryColorClassName(tile.color)
+                  )}
+                />
+              ) : null}
+              <div className="flex min-h-10 min-w-0 items-start gap-2">
                 {tile.color ? (
                   <CategoryAppearance
                     color={tile.color}
                     label={`Tile color: ${tile.color}`}
-                    className="mt-1"
+                    className="mt-1.5"
                   />
                 ) : null}
-                <h4 className="min-w-0 break-words text-xs font-medium">
+                <h4 className="min-w-0 break-words text-[13px] font-medium leading-5">
                   {tile.title}
                 </h4>
               </div>
-              <div className="flex shrink-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  disabled={pending}
-                  aria-label={`Edit ${tile.title}`}
-                  onClick={() => {
-                    setError("")
-                    setDeleting(null)
-                    setEditing({
-                      id: tile.id,
-                      title: tile.title,
-                      expression: tile.expression,
-                      color: tile.color,
-                      columnSpan: tile.columnSpan
-                    })
-                  }}
+              <div className="mb-5 mt-3">
+                <div
+                  role="group"
+                  aria-label="Calculated value"
+                  tabIndex={
+                    !unavailable && formattedValue.length > 16 ? 0 : undefined
+                  }
+                  className={cn(
+                    "fina-scrollbar max-w-full overflow-x-auto rounded-sm pb-1 font-medium leading-tight tracking-tight tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fina-violet",
+                    unavailable ? "text-base" : "whitespace-nowrap"
+                  )}
+                  style={
+                    unavailable
+                      ? undefined
+                      : {
+                          fontSize: `clamp(0.875rem, ${100 / (formattedValue.length * 0.6)}cqi, ${tile.columnSpan === 2 ? "2.5rem" : "1.75rem"})`
+                        }
+                  }
                 >
-                  <Pencil className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  disabled={pending}
-                  aria-label={`Delete ${tile.title}`}
-                  onClick={() => {
-                    setDeleting(tile.id)
-                    setError("")
-                  }}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </div>
-            </div>
-            <p className="mt-2 text-sm font-medium tabular-nums">
-              {totalsUnavailable || results[tile.id]?.error
-                ? "Unavailable"
-                : money.format(results[tile.id]?.value ?? 0)}
-            </p>
-            {totalsUnavailable || results[tile.id]?.error ? (
-              <p className="mt-1 text-[11px] text-red-700 dark:text-red-300">
-                {totalsUnavailable
-                  ? "Period totals are loading or incomplete."
-                  : results[tile.id]?.error}
-              </p>
-            ) : null}
-            <p className="mt-2 break-words font-mono text-[10px] text-foreground [font-feature-settings:normal] [font-variant-ligatures:none]">
-              <FormulaText value={tile.expression} options={options} />
-            </p>
-            {deleting === tile.id ? (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs">Delete this shared tile?</p>
-                <div className="flex flex-wrap gap-1">
-                  <Button
-                    type="button"
-                    variant="fina-danger"
-                    size="sm"
-                    disabled={pending}
-                    onClick={async () => {
-                      try {
-                        await query.remove.mutateAsync(tile.id)
-                        setDeleting(null)
-                        if (editing?.id === tile.id) setEditing(null)
-                      } catch (failure) {
-                        setError(errorMessage(failure))
-                      }
-                    }}
-                  >
-                    Delete tile
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => setDeleting(null)}
-                  >
-                    Keep tile
-                  </Button>
+                  {unavailable ? "Unavailable" : formattedValue}
                 </div>
+                {unavailable ? (
+                  <p className="mt-1 text-[11px] leading-relaxed text-red-700 dark:text-red-300">
+                    {totalsUnavailable
+                      ? "Period totals are loading or incomplete."
+                      : results[tile.id]?.error}
+                  </p>
+                ) : null}
               </div>
-            ) : null}
-          </article>
-        ))}
+              <div className="mt-auto border-t border-fina-grid pt-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-foreground/50">
+                    Logic
+                  </span>
+                  <div className="flex shrink-0 gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-foreground/60 hover:bg-fina-violet/10 hover:text-fina-violet"
+                      disabled={pending}
+                      aria-label={`Edit ${tile.title}`}
+                      onClick={() => {
+                        setError("")
+                        setDeleting(null)
+                        setEditing({
+                          id: tile.id,
+                          title: tile.title,
+                          expression: tile.expression,
+                          color: tile.color,
+                          columnSpan: tile.columnSpan
+                        })
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-foreground/60 hover:bg-fina-danger hover:text-red-600 dark:hover:text-red-300"
+                      disabled={pending}
+                      aria-label={`Delete ${tile.title}`}
+                      onClick={() => {
+                        setDeleting(tile.id)
+                        setError("")
+                      }}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="mt-1 break-words font-mono text-[11px] leading-5 text-foreground [font-feature-settings:normal] [font-variant-ligatures:none]">
+                  <FormulaText value={tile.expression} options={options} />
+                </p>
+              </div>
+              {deleting === tile.id ? (
+                <div className="mt-3 space-y-2 rounded-md bg-fina-canvas p-3">
+                  <p className="text-xs">Delete this shared tile?</p>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      variant="fina-danger"
+                      size="sm"
+                      disabled={pending}
+                      onClick={async () => {
+                        try {
+                          await query.remove.mutateAsync(tile.id)
+                          setDeleting(null)
+                          if (editing?.id === tile.id) setEditing(null)
+                        } catch (failure) {
+                          setError(errorMessage(failure))
+                        }
+                      }}
+                    >
+                      Delete tile
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => setDeleting(null)}
+                    >
+                      Keep tile
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          )
+        })}
       </div>
     </section>
   )

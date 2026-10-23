@@ -59,7 +59,11 @@ describe("inline formula references", () => {
       render(<Editor />)
       const editor = screen.getByRole("combobox", { name: "Logic" })
       await user.click(editor)
-      await user.paste("({{Cat")
+      expect(editor).toHaveAttribute(
+        "data-placeholder",
+        "Type @ to add a category or custom tile"
+      )
+      await user.paste("(@Cat")
       if (method === "click")
         await user.click(
           screen.getByRole("option", { name: "Category Category" })
@@ -69,8 +73,46 @@ describe("inline formula references", () => {
         within(editor).getByLabelText("Category: Category")
       ).toHaveAttribute("contenteditable", "false")
       expect(editor).not.toHaveTextContent("{{")
+      expect(editor).not.toHaveTextContent("@")
       await user.keyboard(") * 0.3")
       expect(source()).toBe("({{Category}}) * 0.3")
+    }
+  )
+  it("matches multiword custom tiles, reports unmatched @ queries and dismisses suggestions with Escape", async () => {
+    const user = userEvent.setup()
+    render(<Editor />)
+    const editor = screen.getByRole("combobox", { name: "Logic" })
+    await user.click(editor)
+    await user.paste("@")
+    expect(screen.getAllByRole("option")).toHaveLength(2)
+    await user.paste("cUsToM t")
+    expect(screen.getAllByRole("option")).toHaveLength(1)
+    await user.keyboard("{Enter}")
+    expect(source()).toBe("{{Custom tile}}")
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    await user.paste(" + @Missing")
+    expect(screen.getByText("No matching categories or tiles.")).toBeVisible()
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    expect(source()).toBe("{{Custom tile}} + @Missing")
+  })
+  it.each([
+    { initial: "(@Category) * {{Custom tile}}", caret: 4 },
+    { initial: "(@Cat) * {{Custom tile}}", caret: 5 }
+  ])(
+    "replaces an @ query in $initial without removing following operators or references",
+    async ({ initial, caret }) => {
+      const user = userEvent.setup()
+      render(<Editor initial={initial} />)
+      const editor = screen.getByRole("combobox", { name: "Logic" })
+      await user.click(editor)
+      selectFormula(editor, caret)
+      fireEvent(document, new Event("selectionchange"))
+      await user.click(
+        screen.getByRole("option", { name: "Category Category" })
+      )
+      expect(source()).toBe("({{Category}}) * {{Custom tile}}")
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     }
   )
   it("renders existing/manual category and custom-tile references, explicit identifiers and unknown references safely", async () => {
@@ -82,6 +124,7 @@ describe("inline formula references", () => {
       within(editor).getByLabelText("Custom tile: Custom tile")
     ).toBeVisible()
     expect(editor).toHaveTextContent("{{Missing}}")
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     await user.click(editor)
     selectFormula(editor, 0, source()!.length)
     await user.paste("{{Category}} + {{Custom tile}}")

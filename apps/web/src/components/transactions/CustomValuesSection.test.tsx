@@ -54,7 +54,7 @@ async function chooseColor(
   await user.click(screen.getByRole("combobox", { name: "Tile color" }))
   await user.click(screen.getByRole("option", { name }))
 }
-function mount() {
+function mount(totalsUnavailable = false) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   })
@@ -65,6 +65,7 @@ function mount() {
         groupId="1"
         categories={categories}
         categoryTotals={totals}
+        totalsUnavailable={totalsUnavailable}
       />
     </QueryClientProvider>
   )
@@ -156,9 +157,11 @@ describe("workspace custom tiles", () => {
     await screen.findByRole("article", { name: "My Custom Tile" })
     await user.click(screen.getByRole("button", { name: "Add tile" }))
     await user.type(screen.getByRole("textbox", { name: "Title" }), "Combined")
+    await user.tab({ shift: true })
+    expect(screen.getByRole("combobox", { name: "Tile color" })).toHaveFocus()
     expect(
       screen.getByRole("combobox", { name: "Tile color" })
-    ).toHaveTextContent("No color")
+    ).toHaveAccessibleDescription("No color")
     await chooseColor(user, "Teal")
     expect(screen.queryByText("Tile width")).not.toBeInTheDocument()
     expect(
@@ -174,14 +177,15 @@ describe("workspace custom tiles", () => {
     ).toBeChecked()
     const logic = screen.getByRole("combobox", { name: "Logic" })
     await user.click(logic)
-    await user.paste("{{")
+    expect(screen.getByText(/Type @ to add/)).toBeVisible()
+    await user.paste("@")
     expect(screen.getAllByRole("option")).toHaveLength(3)
     await user.keyboard("My{Enter}")
     expect(
       within(logic).getByLabelText("Custom tile: My Custom Tile")
     ).toBeVisible()
     expect(logic).not.toHaveTextContent("{{")
-    await user.paste(" + {{Va")
+    await user.paste(" + @Va")
     await user.keyboard("{ArrowDown}{Enter}")
     expect(within(logic).getByLabelText("Category: Vale")).toBeVisible()
     expect(logic).toHaveTextContent("My Custom Tile + Vale")
@@ -206,7 +210,7 @@ describe("workspace custom tiles", () => {
     )
     expect(
       screen.getByRole("combobox", { name: "Tile color" })
-    ).toHaveTextContent("Teal")
+    ).toHaveAccessibleDescription("Teal")
     expect(
       screen.getByRole("radio", { name: "Two tiles (full width)" })
     ).toBeChecked()
@@ -257,10 +261,16 @@ describe("workspace custom tiles", () => {
     )
     const logic = screen.getByRole("combobox", { name: "Logic" })
     await user.click(logic)
-    await user.paste("{{")
+    await user.paste("@")
     await user.keyboard("{Escape}")
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     expect(screen.getByRole("form", { name: "New custom tile" })).toBeVisible()
+    await user.click(screen.getByRole("button", { name: "Save tile" }))
+    expect(api.create).not.toHaveBeenCalled()
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Choose a category or custom tile from the @ suggestions."
+    )
+    await user.click(logic)
     await user.keyboard("{Control>}a{/Control}")
     await user.paste("1 +")
     await user.click(screen.getByRole("button", { name: "Save tile" }))
@@ -277,6 +287,42 @@ describe("workspace custom tiles", () => {
     )
     expect(logic).toHaveTextContent("42")
   })
+  it("keeps long titles and exact large amounts readable without changing a neutral tile's formula", async () => {
+    const title =
+      "A longer shared workspace title for an important calculated value"
+    records[0] = {
+      ...records[0],
+      title,
+      color: null,
+      expression: "9007199254740991",
+      resolvedExpression: "9007199254740991"
+    }
+    mount()
+    const tile = await screen.findByRole("article", { name: title })
+    expect(within(tile).getByRole("heading", { name: title })).toBeVisible()
+    const amount = within(tile).getByRole("group", { name: "Calculated value" })
+    expect(amount).toHaveTextContent(/R\$\s9\.007\.199\.254\.740\.991,00/)
+    expect(amount).toHaveAttribute("tabindex", "0")
+    expect(within(tile).queryByRole("img")).not.toBeInTheDocument()
+    expect(within(tile).getByText("9007199254740991")).toBeVisible()
+    expect(
+      within(tile).getByRole("button", { name: `Edit ${title}` })
+    ).toBeEnabled()
+  })
+
+  it("keeps the explanation instead of showing a numeric result when period totals are incomplete", async () => {
+    mount(true)
+    const tile = await screen.findByRole("article", { name: "My Custom Tile" })
+    expect(
+      within(tile).getByRole("group", { name: "Calculated value" })
+    ).toHaveTextContent("Unavailable")
+    expect(
+      within(tile).getByText("Period totals are loading or incomplete.")
+    ).toBeVisible()
+    expect(tile).not.toHaveTextContent(/R\$/)
+    expect(within(tile).getByLabelText("Category: Shared costs")).toBeVisible()
+  })
+
   it("starts without color, persists that choice, and allows assigning and clearing a color from the dropdown", async () => {
     const user = userEvent.setup()
     mount()
@@ -284,7 +330,11 @@ describe("workspace custom tiles", () => {
     await user.click(screen.getByRole("button", { name: "Add tile" }))
     expect(
       screen.getByRole("combobox", { name: "Tile color" })
-    ).toHaveTextContent("No color")
+    ).toHaveAccessibleDescription("No color")
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent(/^$/)
+    expect(screen.queryByText("Color", { exact: true })).not.toBeInTheDocument()
     await user.click(screen.getByRole("combobox", { name: "Tile color" }))
     await user.keyboard("{Escape}")
     expect(screen.getByRole("form", { name: "New custom tile" })).toBeVisible()
@@ -316,8 +366,14 @@ describe("workspace custom tiles", () => {
     )
     expect(
       screen.getByRole("combobox", { name: "Tile color" })
-    ).toHaveTextContent("No color")
+    ).toHaveAccessibleDescription("No color")
     await chooseColor(user, "Teal")
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveAccessibleDescription("Teal")
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveTextContent(/^$/)
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     await waitFor(() =>
       expect(
@@ -328,6 +384,9 @@ describe("workspace custom tiles", () => {
       within(tile).getByRole("button", { name: "Edit No color fixture" })
     )
     await chooseColor(user, "No color")
+    expect(
+      screen.getByRole("combobox", { name: "Tile color" })
+    ).toHaveAccessibleDescription("No color")
     await user.click(screen.getByRole("button", { name: "Save tile" }))
     await waitFor(() =>
       expect(

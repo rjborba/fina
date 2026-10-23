@@ -516,6 +516,46 @@ input,
   border-radius: 999px;
 }
 
+.fina-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent)
+    transparent;
+  overscroll-behavior: contain;
+}
+
+/* Reset the standard properties so they do not override the custom thumb. */
+@supports selector(::-webkit-scrollbar) {
+  .fina-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
+.fina-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.fina-scrollbar::-webkit-scrollbar-track,
+.fina-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.fina-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--foreground) 28%, transparent);
+  background-clip: padding-box;
+}
+
+.fina-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 44%, transparent);
+}
+
+.fina-scrollbar::-webkit-scrollbar-button {
+  display: none;
+}
+
 .transactions-list [data-column='transaction'] {
   min-width: 0;
 }
