@@ -272,9 +272,9 @@ function CreditCardBillDetails({
           <main className="space-y-8 px-4 py-6 md:px-8 md:py-8">
             <section
               aria-label="Bill summary"
-              className="grid overflow-hidden rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm sm:grid-cols-2 xl:grid-cols-4"
+              className="grid min-w-0 grid-cols-2 overflow-hidden rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm xl:grid-cols-4"
             >
-              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+              <div className="min-w-0 border-b border-r border-fina-grid p-4 sm:p-5 xl:border-b-0">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
                   <FinancialInstitutionLogo
                     institutionId={bill.accountInstitutionId}
@@ -285,27 +285,27 @@ function CreditCardBillDetails({
                   />
                   Bill total
                 </div>
-                <div className="mt-4 font-mono text-3xl font-semibold tracking-[-0.06em]">
+                <div className="fina-scrollbar mt-3 overflow-x-auto whitespace-nowrap font-mono text-lg font-semibold tracking-[-0.06em] sm:mt-4 sm:text-3xl">
                   {currencyFormatter.format(bill.total)}
                 </div>
               </div>
-              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+              <div className="min-w-0 border-b border-fina-grid p-4 sm:p-5 xl:border-b-0 xl:border-r">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
                   <CalendarDays className="size-4 text-fina-violet" /> Due date
                 </div>
-                <div className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
+                <div className="mt-3 text-base font-semibold tracking-[-0.05em] sm:mt-4 sm:text-2xl">
                   {dayjs(bill.dueDate).format("DD MMM YYYY")}
                 </div>
               </div>
-              <div className="border-b border-r border-fina-grid p-5 xl:border-b-0">
+              <div className="min-w-0 border-r border-fina-grid p-4 sm:p-5">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
                   <ReceiptText className="size-4 text-fina-violet" /> Entries
                 </div>
-                <div className="mt-4 text-3xl font-semibold tracking-[-0.06em]">
+                <div className="mt-3 text-lg font-semibold tracking-[-0.06em] sm:mt-4 sm:text-3xl">
                   {bill.transactionCount}
                 </div>
               </div>
-              <div className="border-b border-fina-grid p-5 xl:border-b-0">
+              <div className="min-w-0 p-4 sm:p-5">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
                   {bill.status === "reconciled" || bill.status === "empty" ? (
                     <CheckCircle2 className="size-4" />
@@ -314,7 +314,7 @@ function CreditCardBillDetails({
                   )}
                   {bill.status === "empty" ? "Bill status" : "Reconciliation"}
                 </div>
-                <div className="mt-4 text-lg font-semibold tracking-[-0.04em]">
+                <div className="mt-3 text-sm font-semibold tracking-[-0.04em] [overflow-wrap:anywhere] sm:mt-4 sm:text-lg">
                   {status.label}
                 </div>
               </div>

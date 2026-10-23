@@ -27,14 +27,14 @@ export function CategoryAppearancePicker({
         <div
           role="radiogroup"
           aria-label={label}
-          className="grid grid-cols-6 gap-2"
+          className="grid grid-cols-4 gap-2 sm:grid-cols-6"
         >
           {categoryColorOptions.map((option) => (
             <label
               key={option.value}
               title={option.label}
               className={cn(
-                "relative flex h-9 items-center justify-center rounded-md border bg-transparent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet",
+                "relative flex h-11 items-center justify-center rounded-md border bg-transparent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet sm:h-9",
                 color === option.value
                   ? "border-fina-violet bg-fina-violet/5"
                   : "border-transparent hover:bg-foreground/5"

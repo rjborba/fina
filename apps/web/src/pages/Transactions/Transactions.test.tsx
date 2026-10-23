@@ -39,6 +39,7 @@ import { Transactions } from "./Transactions"
 vi.mock("@/components/transactions/CustomValuesSection", () => ({
   CustomValuesSection: () => null
 }))
+vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => mocks.isMobile }))
 
 type TransactionQuery = QueryTransactionInputDto & {
   startDate: Date
@@ -51,6 +52,7 @@ type SavedFilter = Omit<TransactionFilterType, "startDate" | "endDate"> & {
 
 const mocks = vi.hoisted(() => ({
   updateTransaction: vi.fn(),
+  isMobile: false,
   removeTransactions: vi.fn(),
   includePayment: false,
   changedBill: false,
@@ -371,6 +373,7 @@ describe("Transactions cash-flow ledger", () => {
 
   beforeEach(() => {
     localStorage.clear()
+    mocks.isMobile = false
     mocks.transactionQueries.length = 0
     mocks.billQueries.length = 0
     mocks.includePayment = false
@@ -1324,6 +1327,56 @@ describe("Transactions cash-flow ledger", () => {
       ).toHaveAttribute("aria-expanded", "false")
     }
   )
+
+  it("groups secondary mobile controls in a sheet while keeping the period, filters and totals available", async () => {
+    mocks.isMobile = true
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Transactions />
+      </MemoryRouter>
+    )
+    expect(screen.getByRole("button", { name: "Date range" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "Filter" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "Period totals" })).toBeVisible()
+    expect(
+      screen.queryByRole("button", { name: "Monthly review" })
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "View options" }))
+    const tools = await screen.findByRole("dialog", { name: "View options" })
+    expect(
+      within(tools).getByRole("button", { name: "Display options" })
+    ).toBeVisible()
+    expect(
+      within(tools).getByRole("button", { name: "Find in view" })
+    ).toBeVisible()
+    await user.click(
+      within(tools).getByRole("button", { name: "Monthly review" })
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "View options" })
+      ).not.toBeInTheDocument()
+    )
+    expect(screen.getByRole("button", { name: "Review months" })).toBeVisible()
+    expect(localStorage.getItem("ledgerDateBasis:v1")).toBe('"monthly-review"')
+  })
+
+  it("opens mobile search from its keyboard shortcut without allowing summary toggles while editing", async () => {
+    mocks.isMobile = true
+    render(
+      <MemoryRouter>
+        <Transactions />
+      </MemoryRouter>
+    )
+    fireEvent.keyDown(document.body, { key: "f", ctrlKey: true })
+    const search = await screen.findByRole("textbox", { name: "Find in view" })
+    await waitFor(() => expect(search).toHaveFocus())
+    fireEvent.keyDown(search, { key: "s" })
+    expect(
+      screen.queryByRole("dialog", { name: "Period totals" })
+    ).not.toBeInTheDocument()
+  })
 
   it("keeps toolbar shortcuts inactive while typing or while totals are open", () => {
     render(

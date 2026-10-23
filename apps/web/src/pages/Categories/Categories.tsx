@@ -83,7 +83,7 @@ export const Categories: FC = () => {
         }
       />
 
-      <main className="grid gap-8 p-5 lg:grid-cols-[minmax(20rem,0.65fr)_minmax(0,1.35fr)] lg:items-start md:p-8">
+      <main className="grid min-w-0 grid-cols-1 gap-8 p-5 lg:grid-cols-[minmax(20rem,0.65fr)_minmax(0,1.35fr)] lg:items-start md:p-8">
         <FinaSurface elevation="sm" className="p-5 sm:p-6">
           <FinaSectionLabel>New / Label</FinaSectionLabel>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
@@ -159,13 +159,13 @@ export const Categories: FC = () => {
 
           <FinaSurface elevation="md" className="overflow-hidden">
             {categoryData?.length ? (
-              <ul className="grid divide-y divide-fina-grid sm:grid-cols-2 sm:divide-y-0">
+              <ul className="grid grid-cols-1 divide-y divide-fina-grid sm:grid-cols-2 sm:divide-y-0">
                 {categoryData.map((category, index) => (
                   <li
                     key={category.id}
-                    className="flex min-h-24 items-center justify-between gap-3 border-b border-fina-grid p-4 odd:sm:border-r"
+                    className="flex min-h-24 min-w-0 items-center justify-between gap-3 border-b border-fina-grid p-4 odd:sm:border-r"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div className="min-w-0">
                         <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
                           / {String(index + 1).padStart(2, "0")}
@@ -177,11 +177,12 @@ export const Categories: FC = () => {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex shrink-0 items-center">
                       <EditCategoryAppearanceDialog category={category} />
                       <Button
                         variant="fina-ghost"
                         size="icon"
+                        className="size-11 md:size-9"
                         aria-label={`Remove ${category.name}`}
                         onClick={() => removeCategory(category.id)}
                       >

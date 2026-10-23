@@ -4,7 +4,7 @@ import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 const finaSurfaceVariants = cva(
-  "rounded-lg border border-fina-grid text-foreground",
+  "min-w-0 rounded-lg border border-fina-grid text-foreground",
   {
     variants: {
       tone: {
@@ -50,7 +50,7 @@ function FinaSurface({
 }
 
 const finaBadgeVariants = cva(
-  "inline-flex items-center rounded-md border border-fina-grid px-2 py-1 text-[11px] font-medium tracking-[-0.01em] text-foreground",
+  "inline-flex max-w-full items-center rounded-md border border-fina-grid px-2 py-1 text-[11px] font-medium tracking-[-0.01em] text-foreground [overflow-wrap:anywhere]",
   {
     variants: {
       tone: {

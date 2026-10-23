@@ -570,7 +570,7 @@ export const Import = () => {
       </main>
 
       <Dialog open={importOpen} onOpenChange={handleImportOpenChange}>
-        <DialogContent className="left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-0 bg-fina-canvas p-0 text-foreground sm:rounded-md">
+        <DialogContent className="left-0 top-0 flex h-[100dvh] max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-fina-canvas p-0 text-foreground sm:rounded-md">
           <DialogHeader className="shrink-0 border-b border-fina-grid bg-fina-surface px-6 py-5 pr-14">
             <DialogTitle className="text-2xl font-semibold tracking-[-0.04em]">
               {loaded ? "Review and import" : "Import a CSV file"}
@@ -641,8 +641,8 @@ export const Import = () => {
               <Card className="rounded-lg border border-fina-grid bg-fina-surface shadow-fina-sm">
                 <CardHeader className="border-b border-fina-grid bg-fina-canvas">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <CardTitle className="text-xl font-semibold tracking-[-0.03em]">
+                    <div className="min-w-0 space-y-2">
+                      <CardTitle className="text-xl font-semibold tracking-[-0.03em] [overflow-wrap:anywhere]">
                         {loaded.file.name}
                       </CardTitle>
                       <CardDescription className="font-semibold text-foreground/60">
@@ -668,6 +668,7 @@ export const Import = () => {
                     <Button
                       type="button"
                       variant="fina-secondary"
+                      className="h-auto max-w-full whitespace-normal text-left"
                       onClick={() => setConfigurationOpen(true)}
                     >
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -1314,15 +1315,15 @@ export const Import = () => {
                         </AlertDescription>
                       </Alert>
                     )}
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div>
+                    <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {normalization?.summary.includedRowCount ?? 0}{" "}
                           {(normalization?.summary.includedRowCount ?? 0) === 1
                             ? "transaction"
                             : "transactions"}
                           {selectedAccount ? (
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex max-w-full items-center gap-1.5 [overflow-wrap:anywhere]">
                               {" "}
                               →
                               <FinancialInstitutionLogo
@@ -1351,10 +1352,11 @@ export const Import = () => {
                                     : "Choose a destination account before validation."}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                         <Button
                           type="button"
                           variant="fina-secondary"
+                          className="h-11 sm:h-9"
                           disabled={!payload || processing !== null}
                           onClick={async () => {
                             if (!payload || !loaded) return
@@ -1378,6 +1380,7 @@ export const Import = () => {
                         <Button
                           type="button"
                           variant="fina-primary"
+                          className="h-11 sm:h-9"
                           disabled={
                             !payload ||
                             !currentServerPreview?.valid ||

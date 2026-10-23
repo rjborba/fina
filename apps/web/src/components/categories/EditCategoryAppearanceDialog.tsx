@@ -53,6 +53,7 @@ export function EditCategoryAppearanceDialog({
         <Button
           variant="fina-ghost"
           size="icon"
+          className="size-11 md:size-9"
           aria-label={`Edit ${category.name} appearance`}
         >
           <Palette />

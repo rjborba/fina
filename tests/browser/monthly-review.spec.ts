@@ -91,6 +91,34 @@ async function closeTransactionFilters(page: Page) {
   ).toHaveCount(0);
 }
 
+async function openDisplayOptions(page: Page) {
+  const display = page.getByRole("button", {
+    name: "Display options",
+    exact: true,
+  });
+  const tools = page.getByRole("button", { name: "View options", exact: true });
+  await expect(display.or(tools)).toBeVisible();
+  if (!(await display.isVisible())) {
+    await tools.click();
+    await expectFiniteAnimationsSettled(page);
+  }
+  await display.click();
+}
+
+async function chooseLedgerView(
+  page: Page,
+  name: "Monthly review" | "Cash flow",
+) {
+  const choice = page.getByRole("button", { name, exact: true });
+  const tools = page.getByRole("button", { name: "View options", exact: true });
+  await expect(choice.or(tools)).toBeVisible();
+  if (!(await choice.isVisible())) {
+    await tools.click();
+    await expectFiniteAnimationsSettled(page);
+  }
+  await choice.click();
+}
+
 async function expectPopupSettled(popup: Locator) {
   await expect(popup).toBeVisible();
   await expect(popup).toHaveCSS("opacity", "1");
@@ -978,9 +1006,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   ).toBeVisible();
 
   await page.goto("/transactions");
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
+  await chooseLedgerView(page, "Monthly review");
   await selectReviewMonth(page, `${year}-06`);
   await expect(
     page.getByText("Fixture groceries", { exact: true }),
@@ -1163,9 +1189,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await page.mouse.move(0, 0);
   await expect(hoveredRow).toHaveAttribute("aria-selected", "true");
   await expect(hoveredRow).not.toHaveCSS("background-color", "rgb(18, 18, 18)");
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const darkDisplay = page.getByRole("dialog", {
     name: "Display options",
     exact: true,
@@ -1367,9 +1391,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
     await expect(
       restoredLedger.locator(`[data-metadata-slot="${slot}"]:visible`),
     ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await expect(
     display.getByRole("combobox", { name: "Ordering", exact: true }),
   ).toHaveText("Description");
@@ -1392,9 +1414,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   ).toContainText("Fixture groceries");
   await expectCompactTransactionList(page);
 
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const amountProperty = display.getByRole("button", {
     name: "Amount",
     exact: true,
@@ -1436,9 +1456,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
     );
   }
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await amountProperty.click();
   await expect(amountProperty).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
@@ -1513,7 +1531,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(
     page.getByText("Fixture July refund", { exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Cash flow", exact: true }).click();
+  await chooseLedgerView(page, "Cash flow");
   await expect(
     page
       .getByTestId("credit-card-bill-row")
@@ -1742,9 +1760,7 @@ test("reviews selected nonadjacent months across years with the same inline and 
   });
 
   await page.goto("/transactions");
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
+  await chooseLedgerView(page, "Monthly review");
   await selectReviewMonth(page, `${year}-06`);
   await searchByDescription(page, prefix);
   await closeTransactionFilters(page);
@@ -1853,9 +1869,7 @@ test("reviews selected nonadjacent months across years with the same inline and 
         reviewMonths.join(",")
     );
   });
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await page
     .getByRole("switch", {
       name: "Inline credit card transactions",
@@ -2004,9 +2018,7 @@ test("combines account, import, amount, and date filters with matching totals an
     .getByRole("button", { name: "Create Transaction", exact: true })
     .click();
   await expect(create).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
+  await chooseLedgerView(page, "Monthly review");
   await selectReviewMonth(page, `${year}-06`);
 
   const propertyMenu = await openTransactionFilters(page);
@@ -2181,9 +2193,7 @@ test("combines account, import, amount, and date filters with matching totals an
     fullPage: true,
   });
   await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await page
     .getByRole("switch", {
       name: "Inline credit card transactions",
@@ -2250,7 +2260,7 @@ test("combines account, import, amount, and date filters with matching totals an
   await expect(
     page.getByRole("button", { name: "Review months", exact: true }),
   ).toHaveText(`Jun ${year}`);
-  await page.getByRole("button", { name: "Cash flow", exact: true }).click();
+  await chooseLedgerView(page, "Cash flow");
   menu = await openFilterProperty(page, "Bank account");
   await menu.getByRole("checkbox", { name: checkingName, exact: true }).check();
   await closeTransactionFilters(page);
@@ -2284,7 +2294,7 @@ test("combines account, import, amount, and date filters with matching totals an
   const touchContext =
     await test.step("open a touch-capable mobile browser", () =>
       browser.newContext({
-        baseURL: "http://127.0.0.1:4180",
+        baseURL: new URL(page.url()).origin,
         viewport: { width: 390, height: 844 },
         hasTouch: true,
       }));
@@ -2413,9 +2423,7 @@ test("keeps a virtualized transaction list single-line while browsing and select
   ).toBeVisible();
 
   await page.goto(`/transactions?accountId=${encodeURIComponent(account.id)}`);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await orderTransactionsBy(page, "Description", "asc");
   await page.keyboard.press("Escape");
   await expect(
@@ -2715,9 +2723,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
   );
 
   await page.goto("/transactions");
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
+  await chooseLedgerView(page, "Monthly review");
   await selectReviewMonth(page, `${year}-06`);
   const accounts = await openFilterProperty(page, "Bank account");
   for (const [name, id] of [
@@ -2733,9 +2739,7 @@ test("persists bank and card issuer logos through creation, import, review, and 
     page.getByRole("button", { name: /^Edit Account is either of/ }),
     "inter",
   );
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const display = page.getByRole("dialog", {
     name: "Display options",
     exact: true,
@@ -2940,9 +2944,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     rows: [`14/06/${year};Selection fixture card purchase;-30,00`],
   });
   await page.goto("/transactions");
-  await page
-    .getByRole("button", { name: "Monthly review", exact: true })
-    .click();
+  await chooseLedgerView(page, "Monthly review");
   await selectReviewMonth(page, `${year}-06`);
   const accounts = await openFilterProperty(page, "Bank account");
   await accounts
@@ -2950,9 +2952,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     .check();
   await accounts.getByRole("checkbox", { name: cardName, exact: true }).check();
   await closeTransactionFilters(page);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const display = page.getByRole("dialog", {
     name: "Display options",
     exact: true,
@@ -3146,9 +3146,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     fullPage: true,
   });
   await page.evaluate(() => document.documentElement.classList.remove("dark"));
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const categoryProperty = display.getByRole("button", {
     name: "Category",
     exact: true,
@@ -3158,9 +3156,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await page.keyboard.press("Escape");
   await expectCompactTransactionList(page, false);
   await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await categoryProperty.click();
   await page.keyboard.press("Escape");
   await expectCompactTransactionList(page);
@@ -3189,9 +3185,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     .getByRole("checkbox", { name: cardName, exact: true })
     .check();
   await closeTransactionFilters(page);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   await display
     .getByRole("switch", {
       name: "Inline credit card transactions",
@@ -3214,7 +3208,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await expect(bar).toHaveCount(0);
 
   const touchContext = await browser.newContext({
-    baseURL: "http://127.0.0.1:4180",
+    baseURL: new URL(page.url()).origin,
     viewport: { width: 390, height: 844 },
     hasTouch: true,
   });
@@ -3225,9 +3219,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     touchPage.on("pageerror", (error) => browserErrors.push(error.name));
     await signInAsFixture(touchPage);
     await touchPage.goto("/transactions");
-    await touchPage
-      .getByRole("button", { name: "Monthly review", exact: true })
-      .tap();
+    await chooseLedgerView(touchPage, "Monthly review");
     await selectReviewMonth(touchPage, `${year}-06`);
     const touchAccounts = await openFilterProperty(touchPage, "Bank account");
     await touchAccounts
@@ -3414,9 +3406,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   );
   await expect(page.getByTestId("transaction-card")).toHaveCount(5);
   await expect(page.getByTestId("transaction-card-number")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Display options", exact: true })
-    .click();
+  await openDisplayOptions(page);
   const display = page.getByRole("dialog", {
     name: "Display options",
     exact: true,

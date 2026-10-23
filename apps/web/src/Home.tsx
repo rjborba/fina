@@ -70,7 +70,7 @@ function Home() {
 
       <main className="space-y-8 p-5 md:p-8">
         <section aria-labelledby="workspace-title">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-4 flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <FinaSectionLabel>Quick access</FinaSectionLabel>
               <h2

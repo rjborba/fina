@@ -50,7 +50,7 @@ export function BulkCardAssignment({
               ? "Select credit purchases from one account to assign their card"
               : "Edit the card details on all selected purchases"
           }
-          className="h-7 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
+          className="h-11 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] has-[>svg]:px-2 sm:h-7 dark:hover:bg-white/[0.05]"
         >
           <CreditCard className="size-3.5" aria-hidden />{" "}
           {assigning ? "Updating..." : "Card"}{" "}

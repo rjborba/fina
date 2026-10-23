@@ -532,6 +532,36 @@ failed saves preserve the entered name for retry. No schema change is required.
    applied to the verified local Supabase development database. Production is
    unchanged by local implementation.
 
+### Mobile layouts and transaction controls
+
+Below 768px, Transactions uses a single 56px control row: the current period,
+filters, period summary, and View options. The bottom View options sheet groups
+the ledger mode, search, display settings, and bill warnings without wrapping
+the toolbar. Active filters and the search criterion occupy a separate,
+horizontally scrollable strip. Search is applied when leaving the field, even
+before its debounce finishes. Existing shortcuts remain available, with search
+and display shortcuts opening the sheet when necessary. Desktop controls and
+ledger query semantics are unchanged. Financial columns retain their contained
+horizontal scrolling rather than hiding values or reducing precision.
+
+Page headers, forms, account/category lists, workspace names, and imports shrink
+within the viewport; long names wrap or truncate without displacing actions.
+Credit-card bill metrics use a compact two-column grid on phones. Transaction
+creation keeps its heading and submit action visible while the fields scroll
+on short screens. Dialogs, selects, and CSV review actions fit narrow screens;
+primary mobile transaction controls and category appearance actions provide
+44px touch targets. Bulk selection separates its status and actions on phones
+and accounts for the bottom safe area.
+
+A disposable-database browser audit exercises the main pages at 320px and 390px,
+including long workspace/account/category/file names, date/filter/display
+overlays, transaction creation on a 568px-tall screen, and CSV review. These are
+presentation changes only; no production data or schema changes are required.
+Browser tests default to loopback port 4180; set `FINA_BROWSER_TEST_PORT` to an
+unused port (1024–65535) for concurrent worktrees. Each run still creates and
+cleans its own disposable database, identity fixture, and Vite cache, and never
+reuses another session's server.
+
 ### Workspace customizable summary values
 
 Period summary includes **Customizable Values** below its category breakdown.

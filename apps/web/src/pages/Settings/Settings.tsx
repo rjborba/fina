@@ -68,7 +68,7 @@ export function Settings() {
         actions={<FinaBadge tone="surface">{groups.length} groups</FinaBadge>}
       />
 
-      <main className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-start md:p-8">
+      <main className="grid min-w-0 grid-cols-1 gap-8 p-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-start md:p-8">
         <section aria-labelledby="group-list-title">
           <div className="mb-4">
             <FinaSectionLabel>Groups / Access</FinaSectionLabel>

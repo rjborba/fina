@@ -57,6 +57,26 @@ describe("find in view", () => {
     })
   })
 
+  it("applies a pending draft when leaving search before the debounce finishes", () => {
+    const store = createStore()
+    store.set(transactionFilterAtom, initialFilter)
+    render(
+      <Provider store={store}>
+        <Search />
+      </Provider>
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Find in view" }))
+    const input = screen.getByRole("textbox", { name: "Find in view" })
+    fireEvent.change(input, { target: { value: "Coffee" } })
+    fireEvent.blur(input)
+    expect(store.get(transactionFilterAtom)).toEqual({
+      ...initialFilter,
+      partialDescription: "Coffee"
+    })
+    act(() => vi.advanceTimersByTime(200))
+    expect(store.get(transactionFilterAtom).partialDescription).toBe("Coffee")
+  })
+
   it.each(["clear", "Escape"])(
     "cancels pending text and preserves other filters on %s",
     (action) => {

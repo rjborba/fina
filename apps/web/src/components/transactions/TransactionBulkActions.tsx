@@ -36,7 +36,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 })
 
 const actionClass =
-  "h-7 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] focus-visible:ring-1 dark:hover:bg-white/[0.05]"
+  "h-11 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] focus-visible:ring-1 has-[>svg]:px-2 sm:h-7 dark:hover:bg-white/[0.05]"
 
 interface TransactionBulkActionsProps {
   selectedCount: number
@@ -115,50 +115,60 @@ export function TransactionBulkActions({
       role="toolbar"
       aria-label="Selected transaction actions"
       aria-busy={busy}
-      className="fixed bottom-5 left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-[#dedee3] bg-[#fcfcfd] p-2 text-[13px] text-[#303036] shadow-[0_4px_8px_-2px_rgba(0,0,0,0.08),0_8px_24px_-4px_rgba(0,0,0,0.12)] sm:rounded-full sm:py-[7px] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width)/2)] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width)-2rem)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width-icon)/2)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width-icon)-2rem)] dark:border-white/[0.12] dark:bg-[#1a1a1c] dark:text-[#e3e3e8] dark:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.35),0_8px_24px_-4px_rgba(0,0,0,0.4)]"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-[#dedee3] bg-[#fcfcfd] p-2 text-[13px] text-[#303036] shadow-[0_4px_8px_-2px_rgba(0,0,0,0.08),0_8px_24px_-4px_rgba(0,0,0,0.12)] sm:bottom-5 sm:rounded-full sm:py-[7px] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width)/2)] md:group-has-[[data-slot=sidebar][data-state=expanded]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width)-2rem)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:left-[calc(50%+var(--sidebar-width-icon)/2)] md:group-has-[[data-slot=sidebar][data-collapsible=icon]]/sidebar-wrapper:max-w-[calc(100vw-var(--sidebar-width-icon)-2rem)] dark:border-white/[0.12] dark:bg-[#1a1a1c] dark:text-[#e3e3e8] dark:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.35),0_8px_24px_-4px_rgba(0,0,0,0.4)]"
     >
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 px-2 py-1"
-      >
-        <ListChecks
-          className="size-3.5 shrink-0 opacity-65"
-          aria-hidden="true"
-        />
-        <span className="text-xs font-medium">{selectedCount} selected</span>
-        <span className="tabular-nums text-[#71717c] dark:text-[#a0a0aa]">
-          Net {currencyFormatter.format(selectedTotal)}
-        </span>
-        {unavailableValueCount > 0 ? (
-          <span className="text-xs text-[#71717c] dark:text-[#a0a0aa]">
-            {unavailableValueCount} without an amount
+      <div className="flex w-full items-center gap-1 sm:contents">
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 px-2 py-1 sm:flex-none"
+        >
+          <ListChecks
+            className="size-3.5 shrink-0 opacity-65"
+            aria-hidden="true"
+          />
+          <span className="text-xs font-medium">{selectedCount} selected</span>
+          <span className="tabular-nums text-[#71717c] dark:text-[#a0a0aa]">
+            Net {currencyFormatter.format(selectedTotal)}
           </span>
-        ) : null}
+          {unavailableValueCount > 0 ? (
+            <span className="text-xs text-[#71717c] dark:text-[#a0a0aa]">
+              {unavailableValueCount} without an amount
+            </span>
+          ) : null}
+        </div>
+        <span className="mx-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.12] sm:block" />
+        <Button
+          type="button"
+          variant="fina-ghost"
+          size="sm"
+          className={actionClass}
+          aria-label="Select all"
+          title={`Select all ${selectableCount} loaded transactions in this view`}
+          disabled={allSelected || busy}
+          onClick={onSelectAll}
+        >
+          <span className="sm:hidden" aria-hidden="true">
+            All
+          </span>
+          <span className="hidden sm:inline">Select all</span>
+        </Button>
+        <Button
+          type="button"
+          variant="fina-ghost"
+          size="sm"
+          className={actionClass}
+          aria-label="Unselect all"
+          disabled={busy}
+          onClick={onClearSelection}
+        >
+          <span className="sm:hidden" aria-hidden="true">
+            Clear
+          </span>
+          <span className="hidden sm:inline">Unselect all</span>
+        </Button>
       </div>
-      <span className="mx-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.12] sm:block" />
-      <Button
-        type="button"
-        variant="fina-ghost"
-        size="sm"
-        className={actionClass}
-        title={`Select all ${selectableCount} loaded transactions in this view`}
-        disabled={allSelected || busy}
-        onClick={onSelectAll}
-      >
-        Select all
-      </Button>
-      <Button
-        type="button"
-        variant="fina-ghost"
-        size="sm"
-        className={actionClass}
-        disabled={busy}
-        onClick={onClearSelection}
-      >
-        Unselect all
-      </Button>
       <span className="mx-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.12] sm:block" />
       <Popover
         open={categoryOpen}

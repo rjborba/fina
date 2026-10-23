@@ -142,161 +142,174 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         onOpenChange(newOpen)
       }}
     >
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-[425px]">
+      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Transaction</DialogTitle>
           <DialogDescription>
             Add a transaction to the selected account.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="bankaccount_id">Account</Label>
-            <Select
-              onValueChange={(value) => {
-                form.setValue("bankaccount_id", value)
-                form.setValue("card_name", "")
-                form.setValue("card_last4", "")
-                form.setValue("bill_month", "")
-              }}
-              value={selectedAccountId}
-            >
-              <SelectTrigger id="bankaccount_id">
-                <SelectValue placeholder="Select an account" />
-              </SelectTrigger>
-              <SelectContent>
-                {bankAccounts?.map((account) => (
-                  <SelectItem key={account.id} value={account.id.toString()}>
-                    <span className="flex items-center gap-2">
-                      <FinancialInstitutionLogo
-                        institutionId={account.institutionId}
-                        accountName={account.name}
-                        accountType={account.type}
-                        className="size-4"
-                        decorative
-                      />
-                      {account.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {creditCardSelected ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="card_name">Card name</Label>
-                <Input
-                  id="card_name"
-                  maxLength={80}
-                  placeholder="Optional"
-                  {...form.register("card_name")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="card_last4">Last four digits</Label>
-                <Input
-                  id="card_last4"
-                  inputMode="numeric"
-                  maxLength={4}
-                  pattern="[0-9]{4}"
-                  placeholder="Optional"
-                  {...form.register("card_last4")}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" {...form.register("date")} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input id="description" {...form.register("description")} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="value">Value</Label>
-            <Input
-              id="value"
-              type="number"
-              step="0.01"
-              {...form.register("value")}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category_id">Category</Label>
-            <Select
-              onValueChange={(value) =>
-                form.setValue("category_id", value === "-" ? "" : value)
-              }
-              value={form.watch("category_id")}
-            >
-              <SelectTrigger id="category_id">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="-">-</SelectItem>
-                {categories?.map((category) => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    <span className="flex items-center gap-2">
-                      <CategoryAppearance color={category.color} />
-                      {category.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="observation">Observation</Label>
-            <Input id="observation" {...form.register("observation")} />
-          </div>
-
-          {creditCardSelected ? (
-            <div className="space-y-4">
-              <BillMonthPicker
-                id="bill_month"
-                value={form.watch("bill_month")}
-                dueDate={selectedAccount?.dueDate}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-col gap-4"
+        >
+          <div
+            role="region"
+            aria-label="Transaction fields"
+            className="fina-scrollbar min-h-0 space-y-4 overflow-y-auto pr-1"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="bankaccount_id">Account</Label>
+              <Select
                 onValueChange={(value) => {
-                  form.setValue("bill_month", value, {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  })
+                  form.setValue("bankaccount_id", value)
+                  form.setValue("card_name", "")
+                  form.setValue("card_last4", "")
+                  form.setValue("bill_month", "")
                 }}
-              />
-              <div className="grid grid-cols-2 gap-4">
+                value={selectedAccountId}
+              >
+                <SelectTrigger id="bankaccount_id">
+                  <SelectValue placeholder="Select an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()}>
+                      <span className="flex items-center gap-2">
+                        <FinancialInstitutionLogo
+                          institutionId={account.institutionId}
+                          accountName={account.name}
+                          accountType={account.type}
+                          className="size-4"
+                          decorative
+                        />
+                        {account.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {creditCardSelected ? (
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="installment_current">
-                    Current Installment
-                  </Label>
+                  <Label htmlFor="card_name">Card name</Label>
                   <Input
-                    id="installment_current"
-                    type="number"
-                    {...form.register("installment_current")}
+                    id="card_name"
+                    maxLength={80}
+                    placeholder="Optional"
+                    {...form.register("card_name")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="installment_total">Total Installments</Label>
+                  <Label htmlFor="card_last4">Last four digits</Label>
                   <Input
-                    id="installment_total"
-                    type="number"
-                    {...form.register("installment_total")}
+                    id="card_last4"
+                    inputMode="numeric"
+                    maxLength={4}
+                    pattern="[0-9]{4}"
+                    placeholder="Optional"
+                    {...form.register("card_last4")}
                   />
                 </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Input id="date" type="date" {...form.register("date")} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input id="description" {...form.register("description")} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="value">Value</Label>
+              <Input
+                id="value"
+                type="number"
+                step="0.01"
+                {...form.register("value")}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category_id">Category</Label>
+              <Select
+                onValueChange={(value) =>
+                  form.setValue("category_id", value === "-" ? "" : value)
+                }
+                value={form.watch("category_id")}
+              >
+                <SelectTrigger id="category_id">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="-">-</SelectItem>
+                  {categories?.map((category) => (
+                    <SelectItem
+                      key={category.id}
+                      value={category.id.toString()}
+                    >
+                      <span className="flex items-center gap-2">
+                        <CategoryAppearance color={category.color} />
+                        {category.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="observation">Observation</Label>
+              <Input id="observation" {...form.register("observation")} />
+            </div>
+
+            {creditCardSelected ? (
+              <div className="space-y-4">
+                <BillMonthPicker
+                  id="bill_month"
+                  value={form.watch("bill_month")}
+                  dueDate={selectedAccount?.dueDate}
+                  onValueChange={(value) => {
+                    form.setValue("bill_month", value, {
+                      shouldDirty: true,
+                      shouldValidate: true
+                    })
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="installment_current">
+                      Current Installment
+                    </Label>
+                    <Input
+                      id="installment_current"
+                      type="number"
+                      {...form.register("installment_current")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installment_total">
+                      Total Installments
+                    </Label>
+                    <Input
+                      id="installment_total"
+                      type="number"
+                      {...form.register("installment_total")}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
           <Button
             type="submit"
-            className="w-full"
+            className="h-11 w-full shrink-0 md:h-9"
             disabled={
               addMutation.isPending ||
               (creditCardSelected && !form.watch("bill_month"))

@@ -37,7 +37,7 @@ export function TransactionsSearch({
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 text-muted-foreground"
+        className="size-11 text-muted-foreground md:size-7"
         aria-label="Find in view"
         title="Find in view (⌘/Ctrl F)"
         onClick={() => onOpenChange(true)}
@@ -48,7 +48,7 @@ export function TransactionsSearch({
   }
 
   return (
-    <div className="flex h-7 w-44 items-center gap-1.5 rounded-md border border-fina-grid px-2 focus-within:border-fina-violet/50">
+    <div className="flex h-11 w-full min-w-0 items-center gap-1.5 rounded-md border border-fina-grid px-2 focus-within:border-fina-violet/50 md:h-7 md:w-44">
       <Search className="size-3.5 shrink-0 text-muted-foreground" />
       <input
         ref={inputRef}
@@ -56,7 +56,11 @@ export function TransactionsSearch({
         placeholder="Find in view…"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
-        className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+        onBlur={() => {
+          if (draft !== filter.partialDescription)
+            setFilter((current) => ({ ...current, partialDescription: draft }))
+        }}
+        className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-xs"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.stopPropagation()
@@ -69,7 +73,7 @@ export function TransactionsSearch({
       <button
         type="button"
         aria-label="Clear search"
-        className="text-muted-foreground hover:text-foreground"
+        className="flex size-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground md:size-auto"
         onClick={() => {
           setDraft("")
           setFilter((current) => ({ ...current, partialDescription: "" }))

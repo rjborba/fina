@@ -22,7 +22,7 @@ function InviteItem({ invite }: { invite: Invite }) {
         </div>
         <div className="min-w-0">
           <FinaSectionLabel>Workspace invitation</FinaSectionLabel>
-          <p className="mt-1 text-lg font-semibold tracking-[-0.025em]">
+          <p className="mt-1 text-lg font-semibold tracking-[-0.025em] [overflow-wrap:anywhere]">
             {invite.groupName}
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground/60">

@@ -69,7 +69,7 @@ export function TransactionsSort({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          className="h-7 gap-1.5 rounded-md border border-fina-grid px-2 text-xs font-normal text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-foreground/30 focus-visible:bg-fina-canvas focus-visible:ring-0 data-[state=open]:bg-fina-canvas data-[state=open]:text-foreground"
+          className="h-11 gap-1.5 rounded-md border border-fina-grid px-3 text-xs font-normal text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-foreground/30 focus-visible:bg-fina-canvas focus-visible:ring-0 data-[state=open]:bg-fina-canvas data-[state=open]:text-foreground md:h-7 md:px-2"
           aria-label="Display options"
           title={`Display options${onOpenChange ? " (Shift V)" : ""} · ${orderingLabel}`}
           aria-keyshortcuts={onOpenChange ? "Shift+V" : undefined}
@@ -82,7 +82,7 @@ export function TransactionsSort({
         align="end"
         sideOffset={8}
         aria-label="Display options"
-        className="w-[304px] max-w-[calc(100vw-24px)] rounded-xl border border-fina-grid bg-fina-surface p-0 text-xs text-foreground shadow-fina-md"
+        className="fina-scrollbar max-h-[var(--radix-popover-content-available-height)] w-[304px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-fina-grid bg-fina-surface p-0 text-xs text-foreground shadow-fina-md"
       >
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <span className="text-muted-foreground">Ordering</span>

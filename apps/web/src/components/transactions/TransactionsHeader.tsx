@@ -52,7 +52,7 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
 
   return (
     <header className="shrink-0 bg-fina-surface dark:bg-fina-canvas">
-      <div className="flex h-12 items-center justify-between gap-3 border-b border-fina-grid px-6 max-md:pl-14">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border-fina-grid px-3 pl-14 md:h-12 md:gap-3 md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <h1 className="truncate text-sm font-medium tracking-normal text-foreground">
             Transactions
@@ -67,13 +67,13 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
         <Button
           onClick={() => setIsCreateOpen(true)}
           variant="ghost"
-          className="h-7 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+          className="h-11 shrink-0 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground md:h-7"
           title="New entry (C)"
           aria-keyshortcuts="C"
         >
           <Plus className="size-3.5" />
           New entry
-          <kbd className="ml-1 rounded border border-fina-grid px-1 text-[10px] text-muted-foreground">
+          <kbd className="ml-1 hidden rounded border border-fina-grid px-1 text-[10px] text-muted-foreground md:inline">
             C
           </kbd>
         </Button>

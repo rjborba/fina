@@ -77,6 +77,7 @@ interface TransactionsFilterProps {
   isOpen: boolean
   onFilterToggle: (value: boolean) => void
   presentation?: "panel" | "popover"
+  iconOnly?: boolean
   dateBasis?: "cash-flow" | "monthly-review"
 }
 
@@ -106,7 +107,8 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
   isOpen,
   onFilterToggle,
   presentation = "panel",
-  dateBasis
+  dateBasis,
+  iconOnly = false
 }) => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
   const pendingDescriptionRef = useRef<string | null>(null)
@@ -165,13 +167,25 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          className="h-7 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+          className={cn(
+            "h-7 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground",
+            iconOnly && "relative size-11 shrink-0 px-0"
+          )}
           title="Filter (F)"
           aria-keyshortcuts="F"
         >
           <Filter className="size-3.5" />
-          Filter
-          {count ? <span className="text-fina-violet">{count}</span> : null}
+          <span className={iconOnly ? "sr-only" : undefined}>Filter</span>
+          {count ? (
+            <span
+              className={cn(
+                "text-fina-violet",
+                iconOnly && "absolute right-1 top-0 text-[10px]"
+              )}
+            >
+              {count}
+            </span>
+          ) : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent

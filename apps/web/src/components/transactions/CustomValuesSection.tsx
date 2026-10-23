@@ -299,7 +299,7 @@ export function CustomValuesSection({
                 value={editing.title}
                 disabled={pending}
                 maxLength={120}
-                className="min-w-0 flex-1"
+                className="h-11 min-w-0 flex-1 md:h-9"
                 onChange={(event) =>
                   setEditing({ ...editing, title: event.target.value })
                 }

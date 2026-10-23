@@ -22,13 +22,18 @@ import { Check, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { FC, useEffect, useState } from "react"
 import { DateRange } from "react-day-picker"
 
-export const TransactionsDateFilter: FC<{ monthlyReview?: boolean }> = ({
-  monthlyReview = false
-}) => {
-  return monthlyReview ? <MonthlyReviewDateFilter /> : <CashFlowDateFilter />
+export const TransactionsDateFilter: FC<{
+  monthlyReview?: boolean
+  mobile?: boolean
+}> = ({ monthlyReview = false, mobile = false }) => {
+  return monthlyReview ? (
+    <MonthlyReviewDateFilter mobile={mobile} />
+  ) : (
+    <CashFlowDateFilter mobile={mobile} />
+  )
 }
 
-const MonthlyReviewDateFilter: FC = () => {
+const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
   const [filter, setFilter] = useAtom(transactionFilterAtom)
   const [open, setOpen] = useState(false)
   const [displayYear, setDisplayYear] = useState(() =>
@@ -63,13 +68,21 @@ const MonthlyReviewDateFilter: FC = () => {
       : `${selectedMonths.length} months`
 
   return (
-    <div className="flex h-7 items-center gap-0.5">
+    <div
+      className={cn(
+        "flex h-7 items-center gap-0.5",
+        mobile && "h-11 min-w-0 flex-1"
+      )}
+    >
       <Button
         variant="fina-ghost"
         size="icon"
         aria-label="Previous month"
         disabled={selectedMonths[0] === "0001-01"}
-        className="size-6 text-muted-foreground"
+        className={cn(
+          "size-6 text-muted-foreground",
+          mobile && "h-11 w-9 shrink-0"
+        )}
         onClick={() => shiftMonths(-1)}
       >
         <ChevronLeftIcon className="size-3.5" />
@@ -84,13 +97,24 @@ const MonthlyReviewDateFilter: FC = () => {
         <PopoverTrigger asChild>
           <Button
             variant="fina-ghost"
-            className="h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas"
+            className={cn(
+              "h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas",
+              mobile && "h-11 min-w-0 flex-1 flex-col gap-0 px-1"
+            )}
             aria-label="Review months"
             title={selectedMonths
               .map((month) => dayjs(reviewMonthStart(month)).format("MMM YYYY"))
               .join(", ")}
           >
-            {summary}
+            {mobile ? (
+              <span
+                aria-hidden="true"
+                className="text-[10px] leading-4 text-muted-foreground"
+              >
+                Review
+              </span>
+            ) : null}
+            <span className="max-w-full truncate">{summary}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -199,7 +223,10 @@ const MonthlyReviewDateFilter: FC = () => {
         size="icon"
         aria-label="Next month"
         disabled={selectedMonths.at(-1) === "9999-12"}
-        className="size-6 text-muted-foreground"
+        className={cn(
+          "size-6 text-muted-foreground",
+          mobile && "h-11 w-9 shrink-0"
+        )}
         onClick={() => shiftMonths(1)}
       >
         <ChevronRightIcon className="size-3.5" />
@@ -222,7 +249,7 @@ function monthsInRange(filter: TransactionFilterType): string[] {
   return months
 }
 
-const CashFlowDateFilter: FC = () => {
+const CashFlowDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
   const [date, setDate] = useState<DateRange | undefined>({
     from: filterProps.startDate,
@@ -254,12 +281,20 @@ const CashFlowDateFilter: FC = () => {
   }
 
   return (
-    <div className="flex h-7 items-center gap-0.5">
+    <div
+      className={cn(
+        "flex h-7 items-center gap-0.5",
+        mobile && "h-11 min-w-0 flex-1"
+      )}
+    >
       <Button
         variant="fina-ghost"
         size="icon"
         aria-label="Previous month"
-        className="size-6 text-muted-foreground"
+        className={cn(
+          "size-6 text-muted-foreground",
+          mobile && "h-11 w-9 shrink-0"
+        )}
         onClick={() => {
           if (isFullMonth) {
             const baseDate = dayjs(date?.from).subtract(1, "month")
@@ -281,17 +316,31 @@ const CashFlowDateFilter: FC = () => {
         <PopoverTrigger asChild>
           <Button
             variant="fina-ghost"
-            className="h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas"
+            className={cn(
+              "h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas",
+              mobile && "h-11 min-w-0 flex-1 flex-col gap-0 px-1"
+            )}
             aria-label="Date range"
           >
-            <span className="whitespace-nowrap">
+            {mobile ? (
+              <span
+                aria-hidden="true"
+                className="text-[10px] leading-4 text-muted-foreground"
+              >
+                Cash flow
+              </span>
+            ) : null}
+            <span className="max-w-full truncate whitespace-nowrap">
               {isFullMonth
                 ? dayjs(date?.from).format("MMM YYYY")
                 : `${dayjs(date?.from).format("D MMM")} – ${dayjs(date?.to ?? date?.from).format("D MMM YYYY")}`}
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto rounded-md border border-fina-grid p-0 shadow-fina-lg">
+        <PopoverContent
+          collisionPadding={8}
+          className="max-w-[calc(100vw-16px)] w-auto rounded-md border border-fina-grid p-0 shadow-fina-lg"
+        >
           <Calendar
             initialFocus
             mode="range"
@@ -307,7 +356,10 @@ const CashFlowDateFilter: FC = () => {
         variant="fina-ghost"
         size="icon"
         aria-label="Next month"
-        className="size-6 text-muted-foreground"
+        className={cn(
+          "size-6 text-muted-foreground",
+          mobile && "h-11 w-9 shrink-0"
+        )}
         onClick={() => {
           if (isFullMonth) {
             const baseDate = dayjs(date?.from).add(1, "month")

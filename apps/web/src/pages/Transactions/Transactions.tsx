@@ -8,6 +8,7 @@ import { TransactionsSort } from "@/components/transactions/TransactionsSort"
 import { TransactionsDateFilter } from "@/components/transactions/TransactionsDateFilter"
 import { TransactionsSearch } from "@/components/transactions/TransactionsSearch"
 import { TransactionShortcuts } from "@/components/transactions/TransactionShortcuts"
+import { TransactionMobileTools } from "@/components/transactions/TransactionMobileTools"
 import { TransactionFilterProvider } from "@/components/transactions/TransactionFilterProvider"
 import { CreditCardBillsLedger } from "@/components/transactions/CreditCardBillsLedger"
 import type { TransactionsListProps } from "@/components/transactions/TransactionsList"
@@ -39,6 +40,7 @@ import { useTransactions } from "@/data/transactions/useTransactions"
 import { useTransactionMutation } from "@/data/transactions/useTransactionsMutation"
 import useLocalStorageState from "@/hooks/useLocalStorageState"
 import { useAuth } from "@/hooks/useAuth"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { useAtom } from "jotai"
 import {
@@ -265,6 +267,8 @@ const TransactionsView: FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchFocusRequest, setSearchFocusRequest] = useState(0)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+  const isMobile = useIsMobile()
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useLocalStorageState<boolean>(
     "transactionsDrawerOpen",
     false
@@ -303,6 +307,7 @@ const TransactionsView: FC = () => {
         setIsDrawerOpen(!isDrawerOpen)
       } else if ((event.metaKey || event.ctrlKey) && key === "f") {
         event.preventDefault()
+        if (isMobile) setIsMobileToolsOpen(true)
         setIsSearchOpen(true)
         setSearchFocusRequest((request) => request + 1)
       } else if (!event.metaKey && !event.ctrlKey) {
@@ -311,6 +316,7 @@ const TransactionsView: FC = () => {
           setIsFilterOpen(true)
         } else if (key === "v" && event.shiftKey) {
           event.preventDefault()
+          if (isMobile) setIsMobileToolsOpen(true)
           setIsDisplayOpen(true)
         } else if (event.key === "?") {
           event.preventDefault()
@@ -320,7 +326,7 @@ const TransactionsView: FC = () => {
     }
     window.addEventListener("keydown", handleShortcut)
     return () => window.removeEventListener("keydown", handleShortcut)
-  }, [isDrawerOpen, setIsDrawerOpen])
+  }, [isDrawerOpen, setIsDrawerOpen, isMobile])
 
   useEffect(() => {
     drawerRef.current?.toggleAttribute("inert", !isDrawerOpen)
@@ -436,117 +442,277 @@ const TransactionsView: FC = () => {
   return (
     <div className="flex h-svh min-w-0 flex-col bg-fina-surface text-foreground dark:bg-fina-canvas">
       <TransactionsHeader totalCount={visibleEntryCount}>
-        <div
-          role="toolbar"
-          aria-label="Transaction view controls"
-          className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-fina-grid px-4 py-1.5 md:px-6"
-        >
-          <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
+        {isMobile ? (
+          <>
             <div
-              role="group"
-              aria-label="Ledger view"
-              className="flex items-center gap-0.5"
+              role="toolbar"
+              aria-label="Transaction view controls"
+              className="flex h-14 min-w-0 flex-nowrap items-center gap-1 border-b border-fina-grid px-3"
             >
-              {(["monthly-review", "cash-flow"] as const).map((view) => (
-                <Button
-                  key={view}
-                  variant="fina-ghost"
-                  aria-pressed={dateBasis === view}
-                  className={cn(
-                    "h-7 px-2 text-xs font-normal",
-                    dateBasis === view
-                      ? "bg-fina-canvas text-foreground"
-                      : "text-muted-foreground"
-                  )}
+              <TransactionsDateFilter monthlyReview={monthlyReview} mobile />
+              <TransactionsFilter
+                presentation="popover"
+                iconOnly
+                isOpen={isFilterOpen}
+                onFilterToggle={setIsFilterOpen}
+                dateBasis={dateBasis}
+              />
+              <Button
+                ref={summaryButtonRef}
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0 text-muted-foreground"
+                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                aria-label="Period totals"
+                aria-keyshortcuts="S"
+                aria-expanded={isDrawerOpen}
+                aria-controls="transactions-summary-panel"
+                title="Period summary (S)"
+              >
+                <Sigma className="size-4" />
+              </Button>
+              <TransactionMobileTools
+                open={isMobileToolsOpen}
+                onOpenChange={(open) => {
+                  setIsMobileToolsOpen(open)
+                  if (!open) setIsDisplayOpen(false)
+                }}
+                needsAttention={hasBillsNeedingAttention}
+                onOpenAutoFocus={(event) => {
+                  if (isSearchOpen) {
+                    event.preventDefault()
+                    setSearchFocusRequest((request) => request + 1)
+                  }
+                }}
+              >
+                <div
+                  role="group"
+                  aria-label="Ledger view"
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {(["monthly-review", "cash-flow"] as const).map((view) => (
+                    <Button
+                      key={view}
+                      variant="fina-ghost"
+                      className={cn(
+                        "h-11 border border-fina-grid text-xs",
+                        dateBasis === view && "bg-fina-canvas text-foreground"
+                      )}
+                      aria-pressed={dateBasis === view}
+                      onClick={() => {
+                        setDateBasis(view)
+                        if (view === "monthly-review")
+                          setFilterProps((current) => ({
+                            ...current,
+                            startDate: reviewMonthStart(
+                              reviewMonthFromDate(current.startDate)
+                            ),
+                            endDate: reviewMonthEnd(
+                              reviewMonthFromDate(current.endDate)
+                            )
+                          }))
+                        setIsMobileToolsOpen(false)
+                      }}
+                    >
+                      {view === "monthly-review"
+                        ? "Monthly review"
+                        : "Cash flow"}
+                    </Button>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Find transactions
+                  </p>
+                  <TransactionsSearch
+                    open={isSearchOpen}
+                    onOpenChange={setIsSearchOpen}
+                    focusRequest={searchFocusRequest}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Columns and ordering
+                  </p>
+                  <TransactionsSort
+                    value={sort}
+                    onValueChange={setSort}
+                    open={isDisplayOpen}
+                    onOpenChange={(open) => {
+                      setIsDisplayOpen(open)
+                      if (!open) setIsMobileToolsOpen(false)
+                    }}
+                    displayProperties={displayProperties}
+                    onDisplayPropertiesChange={setDisplayProperties}
+                    inlineCreditCardTransactions={inlineCreditCardTransactions}
+                    onInlineCreditCardTransactionsChange={
+                      monthlyReview
+                        ? setInlineCreditCardTransactions
+                        : undefined
+                    }
+                  />
+                </div>
+                {hasBillsNeedingAttention ? (
+                  <p
+                    role="status"
+                    className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400"
+                  >
+                    <TriangleAlert className="size-4 shrink-0" />
+                    Some bills need reconciliation or review. Unlinked payments
+                    may duplicate a bill.
+                  </p>
+                ) : null}
+              </TransactionMobileTools>
+            </div>
+            <div
+              aria-label="Active transaction filters"
+              className="fina-scrollbar flex min-w-0 gap-2 overflow-x-auto px-3 py-1 empty:hidden [&>*]:shrink-0"
+            >
+              <TransactionFilterChips
+                value={filterProps}
+                onChange={changeFilter}
+                dateBasis={dateBasis}
+                linkedAccountId={linkedAccountId}
+              />
+              {filterProps.partialDescription ? (
+                <button
+                  type="button"
+                  className="flex min-h-8 max-w-60 items-center gap-2 rounded-md border border-fina-grid px-2 text-xs"
+                  aria-label="Clear search"
                   onClick={() => {
-                    setDateBasis(view)
-                    if (view === "monthly-review")
-                      setFilterProps((current) => ({
-                        ...current,
-                        startDate: reviewMonthStart(
-                          reviewMonthFromDate(current.startDate)
-                        ),
-                        endDate: reviewMonthEnd(
-                          reviewMonthFromDate(current.endDate)
-                        )
-                      }))
+                    changeFilter((current) => ({
+                      ...current,
+                      partialDescription: ""
+                    }))
+                    setIsSearchOpen(false)
                   }}
                 >
-                  {view === "monthly-review" ? "Monthly review" : "Cash flow"}
-                </Button>
-              ))}
+                  <span className="truncate">
+                    Find: {filterProps.partialDescription}
+                  </span>
+                  <X className="size-3 shrink-0" />
+                </button>
+              ) : null}
+              {linkedAccountId ? (
+                <span className="self-center text-xs text-muted-foreground">
+                  Account filter
+                </span>
+              ) : null}
             </div>
-            <TransactionsFilter
-              presentation="popover"
-              isOpen={isFilterOpen}
-              onFilterToggle={setIsFilterOpen}
-              dateBasis={dateBasis}
-            />
-            <TransactionFilterChips
-              value={filterProps}
-              onChange={changeFilter}
-              dateBasis={dateBasis}
-              linkedAccountId={linkedAccountId}
-            />
-            {linkedAccountId ? (
-              <span className="text-[11px] text-muted-foreground">
-                Account filter
-              </span>
-            ) : null}
-          </div>
-          <div className="flex max-w-full flex-wrap items-center gap-1">
-            <TransactionsDateFilter monthlyReview={monthlyReview} />
-            <TransactionsSearch
-              open={isSearchOpen}
-              onOpenChange={setIsSearchOpen}
-              focusRequest={searchFocusRequest}
-            />
-            <TransactionsSort
-              value={sort}
-              onValueChange={setSort}
-              open={isDisplayOpen}
-              onOpenChange={setIsDisplayOpen}
-              displayProperties={displayProperties}
-              onDisplayPropertiesChange={setDisplayProperties}
-              inlineCreditCardTransactions={inlineCreditCardTransactions}
-              onInlineCreditCardTransactionsChange={
-                monthlyReview ? setInlineCreditCardTransactions : undefined
-              }
-            />
-            <Button
-              ref={summaryButtonRef}
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-              aria-label="Period totals"
-              aria-keyshortcuts="S"
-              aria-expanded={isDrawerOpen}
-              aria-controls="transactions-summary-panel"
-              className="size-7 text-muted-foreground"
-              title="Period summary (S)"
-            >
-              <Sigma className="size-3.5" />
-            </Button>
-            {hasBillsNeedingAttention ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    role="status"
-                    aria-label="Some bills need reconciliation or review"
-                    className="flex size-7 items-center justify-center text-amber-600 dark:text-amber-400"
+          </>
+        ) : (
+          <div
+            role="toolbar"
+            aria-label="Transaction view controls"
+            className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-fina-grid px-4 py-1.5 md:px-6"
+          >
+            <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
+              <div
+                role="group"
+                aria-label="Ledger view"
+                className="flex items-center gap-0.5"
+              >
+                {(["monthly-review", "cash-flow"] as const).map((view) => (
+                  <Button
+                    key={view}
+                    variant="fina-ghost"
+                    aria-pressed={dateBasis === view}
+                    className={cn(
+                      "h-7 px-2 text-xs font-normal",
+                      dateBasis === view
+                        ? "bg-fina-canvas text-foreground"
+                        : "text-muted-foreground"
+                    )}
+                    onClick={() => {
+                      setDateBasis(view)
+                      if (view === "monthly-review")
+                        setFilterProps((current) => ({
+                          ...current,
+                          startDate: reviewMonthStart(
+                            reviewMonthFromDate(current.startDate)
+                          ),
+                          endDate: reviewMonthEnd(
+                            reviewMonthFromDate(current.endDate)
+                          )
+                        }))
+                    }}
                   >
-                    <TriangleAlert className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Some bills need reconciliation or review. Unlinked payments
-                  may duplicate a bill.
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
+                    {view === "monthly-review" ? "Monthly review" : "Cash flow"}
+                  </Button>
+                ))}
+              </div>
+              <TransactionsFilter
+                presentation="popover"
+                isOpen={isFilterOpen}
+                onFilterToggle={setIsFilterOpen}
+                dateBasis={dateBasis}
+              />
+              <TransactionFilterChips
+                value={filterProps}
+                onChange={changeFilter}
+                dateBasis={dateBasis}
+                linkedAccountId={linkedAccountId}
+              />
+              {linkedAccountId ? (
+                <span className="text-[11px] text-muted-foreground">
+                  Account filter
+                </span>
+              ) : null}
+            </div>
+            <div className="flex max-w-full flex-wrap items-center gap-1">
+              <TransactionsDateFilter monthlyReview={monthlyReview} />
+              <TransactionsSearch
+                open={isSearchOpen}
+                onOpenChange={setIsSearchOpen}
+                focusRequest={searchFocusRequest}
+              />
+              <TransactionsSort
+                value={sort}
+                onValueChange={setSort}
+                open={isDisplayOpen}
+                onOpenChange={setIsDisplayOpen}
+                displayProperties={displayProperties}
+                onDisplayPropertiesChange={setDisplayProperties}
+                inlineCreditCardTransactions={inlineCreditCardTransactions}
+                onInlineCreditCardTransactionsChange={
+                  monthlyReview ? setInlineCreditCardTransactions : undefined
+                }
+              />
+              <Button
+                ref={summaryButtonRef}
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                aria-label="Period totals"
+                aria-keyshortcuts="S"
+                aria-expanded={isDrawerOpen}
+                aria-controls="transactions-summary-panel"
+                className="size-7 text-muted-foreground"
+                title="Period summary (S)"
+              >
+                <Sigma className="size-3.5" />
+              </Button>
+              {hasBillsNeedingAttention ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      role="status"
+                      aria-label="Some bills need reconciliation or review"
+                      className="flex size-7 items-center justify-center text-amber-600 dark:text-amber-400"
+                    >
+                      <TriangleAlert className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Some bills need reconciliation or review. Unlinked payments
+                    may duplicate a bill.
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
           </div>
-        </div>
+        )}
       </TransactionsHeader>
       <section
         aria-label="Transaction ledger"
