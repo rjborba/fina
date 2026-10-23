@@ -80,6 +80,36 @@ test("uses Portuguese through sign-in, account creation and CSV import and persi
   ).toBeVisible();
   const ledger = page.getByRole("grid", { name: "Transações" });
   await expect(ledger).toContainText(/-R\$\s*1\.234,56/);
+  const purchase = () =>
+    page.getByRole("row").filter({ hasText: "I18n fixture purchase" });
+  await purchase()
+    .getByRole("button", {
+      name: "Adicionar comentário à transação",
+      exact: true,
+    })
+    .click();
+  const conversation = page.getByRole("dialog", {
+    name: "Conversa da transação",
+    exact: true,
+  });
+  await conversation
+    .getByRole("textbox", { name: "Comentário", exact: true })
+    .fill("I18n fixture comment");
+  await conversation
+    .getByRole("button", { name: "Enviar comentário", exact: true })
+    .click();
+  await expect(
+    conversation.getByText("I18n fixture comment", { exact: true }),
+  ).toBeVisible();
+  await conversation
+    .getByRole("button", { name: "Resolver conversa", exact: true })
+    .click();
+  await expect(
+    conversation.getByRole("button", { name: "Reabrir conversa", exact: true }),
+  ).toBeVisible();
+  await conversation
+    .getByRole("button", { name: "Fechar", exact: true })
+    .click();
 
   await page.getByRole("button", { name: /^Filtrar/ }).click();
   await page
@@ -107,6 +137,25 @@ test("uses Portuguese through sign-in, account creation and CSV import and persi
   await expect(page.getByRole("grid", { name: "Transactions" })).toContainText(
     "-R$1,234.56",
   );
+  await purchase()
+    .getByRole("button", { name: "Open transaction conversation", exact: true })
+    .click();
+  const englishConversation = page.getByRole("dialog", {
+    name: "Transaction conversation",
+    exact: true,
+  });
+  await expect(
+    englishConversation.getByText("I18n fixture comment", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    englishConversation.getByRole("button", {
+      name: "Reopen conversation",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await englishConversation
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("combobox", { name: "Language" }).selectOption("pt-BR");
   await page.reload();

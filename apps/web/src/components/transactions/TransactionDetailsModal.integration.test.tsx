@@ -32,6 +32,9 @@ import { TransactionDetailsModal } from "./TransactionDetailsModal"
 import TransactionsList from "./TransactionsList"
 
 const api = vi.hoisted(() => ({
+  conversation: vi
+    .fn()
+    .mockResolvedValue({ transactionId: "7", resolved: false, messages: [] }),
   categories: vi.fn(),
   toast: vi.fn(),
   update: vi.fn()
@@ -43,6 +46,7 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 vi.mock("@/api/generated", () => ({
+  transactionsControllerConversation: api.conversation,
   categoriesControllerFindAll: api.categories,
   transactionsControllerUpdate: api.update
 }))
@@ -99,6 +103,8 @@ const initialTransaction: TransactionOutput = {
   installmentCurrent: null,
   creditDueDate: "2026-10-05",
   observation: null,
+  commentCount: 0,
+  conversationResolved: false,
   toBeConsideredAt: "2026-10-05",
   calculatedDate: "2026-09-27",
   billPayment: null,
@@ -217,13 +223,17 @@ describe("transaction detail category shortcut flow", () => {
       expect(
         screen.getByRole("button", { name: "0 Uncategorized" })
       ).toBeEnabled()
-      expect(screen.getByRole("button", { name: "Add note" })).toBeEnabled()
+      expect(
+        screen.getByRole("button", { name: "Add transaction comment" })
+      ).toBeEnabled()
       if (key === "1") {
-        await user.click(screen.getByRole("button", { name: "Add note" }))
-        const editor = screen.getByRole("textbox", { name: "Transaction note" })
+        await user.click(
+          screen.getByRole("button", { name: "Add transaction comment" })
+        )
+        const editor = await screen.findByRole("textbox", { name: "Comment" })
         expect(editor).toBeEnabled()
         await user.type(editor, "Draft while category saves")
-        await user.click(screen.getByRole("button", { name: "Cancel" }))
+        await user.keyboard("{Escape}")
       }
       expect(storedTransaction.category?.id ?? null).not.toBe(categoryId)
       expect(api.toast).not.toHaveBeenCalled()
@@ -313,13 +323,13 @@ describe("transaction detail category shortcut flow", () => {
 
     // A separate confirmed edit must survive this category request failing.
     storedTransactions = [
-      { ...storedTransactions[0], observation: "Concurrent note" },
+      { ...storedTransactions[0], commentCount: 1 },
       { ...storedTransactions[1], category: categories[1] }
     ]
     const otherEdits = (rows: TransactionOutput[]) =>
       rows.map((row) =>
         row.id === "7"
-          ? { ...row, observation: "Concurrent note" }
+          ? { ...row, commentCount: 1 }
           : { ...row, category: categories[1] }
       )
     act(() => {
@@ -346,7 +356,7 @@ describe("transaction detail category shortcut flow", () => {
     for (const rows of [ledgerRows, billRows]) {
       expect(rows[0]).toMatchObject({
         category: { id: "10" },
-        observation: "Concurrent note"
+        commentCount: 1
       })
       expect(rows[1].category?.id).toBe("11")
     }

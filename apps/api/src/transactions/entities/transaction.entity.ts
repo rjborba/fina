@@ -53,6 +53,12 @@ export class Transactions {
   @Column('text', { name: 'observation', nullable: true })
   observation?: string | null;
 
+  @Column('integer', { name: 'comment_count', default: 0 })
+  commentCount: number;
+
+  @Column('boolean', { name: 'conversation_resolved', default: false })
+  conversationResolved: boolean;
+
   @Column('boolean', {
     name: 'removed',
     default: () => 'false',

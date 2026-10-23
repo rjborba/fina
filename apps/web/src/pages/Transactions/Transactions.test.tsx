@@ -155,6 +155,8 @@ const checkingTransaction = {
   installmentCurrent: null,
   creditDueDate: null,
   observation: null,
+  commentCount: 0,
+  conversationResolved: false,
   toBeConsideredAt: null,
   calculatedDate: "2026-02-10",
   billPayment: null,

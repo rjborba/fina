@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BillMonthSchema } from "../BillMonth";
 import { CardNameSchema, CardLast4Schema } from "./CardMetadata";
+import { TransactionCommentBodySchema } from "./TransactionConversation";
 export const TransactionWriteFieldsSchema = z.object({
   cardName: CardNameSchema.nullable().optional(),
   cardLast4: CardLast4Schema.nullable().optional(),
@@ -10,7 +11,7 @@ export const TransactionWriteFieldsSchema = z.object({
   installmentTotal: z.number().int().nullable().optional(),
   installmentCurrent: z.string().nullable().optional(),
   creditDueDate: z.coerce.date().nullable().optional(),
-  observation: z.string().nullable().optional(),
+  observation: TransactionCommentBodySchema.nullable().optional(),
   toBeConsideredAt: z.coerce.date().nullable().optional(),
   calculatedDate: z.coerce.date().nullable().optional()
 });

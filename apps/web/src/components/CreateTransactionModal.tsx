@@ -104,7 +104,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
         description: data.description,
         value: data.value ? parseFloat(data.value) : null,
         categoryId: data.category_id ? data.category_id : null,
-        observation: data.observation || null,
+        observation: data.observation.trim() || null,
         bankaccountId: data.bankaccount_id,
         cardName:
           selectedAccount?.type === "credit"
@@ -268,7 +268,7 @@ export const CreateTransactionModal: FC<CreateTransactionModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="observation">{t("Observation")}</Label>
+              <Label htmlFor="observation">{t("Initial comment")}</Label>
               <Input id="observation" {...form.register("observation")} />
             </div>
 

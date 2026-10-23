@@ -23,7 +23,9 @@ const initial = {
   id: "7",
   description: "Purchase",
   category: null,
-  observation: null
+  observation: null,
+  commentCount: 0,
+  conversationResolved: false
 } as TransactionOutput
 const ledgerKey = ["transactions", "fixture"]
 const billKey = ["credit-card-bills", "detail", "group", "account", "2026-10"]
@@ -62,6 +64,49 @@ afterEach(() => {
 })
 
 describe("transaction update queue", () => {
+  it("keeps conversation changes when a delayed category response arrives", async () => {
+    const client = fixture()
+    const response = deferred<TransactionOutput>()
+    const send = vi.fn(() => response.promise)
+    const pending = queueTransactionUpdate(
+      client,
+      { id: "7", transaction: { category: firstCategory } },
+      send
+    )
+    await vi.waitFor(() => expect(send).toHaveBeenCalledOnce())
+    client.setQueryData<QueryTransactionOutputDtoType>(
+      ledgerKey,
+      (page) =>
+        page && {
+          ...page,
+          data: page.data.map((row) => ({
+            ...row,
+            commentCount: 2,
+            conversationResolved: true
+          }))
+        }
+    )
+    client.setQueryData<CreditCardBillDetail>(
+      billKey,
+      (bill) =>
+        bill && {
+          ...bill,
+          transactions: bill.transactions.map((row) => ({
+            ...row,
+            commentCount: 2,
+            conversationResolved: true
+          }))
+        }
+    )
+    response.resolve({ ...initial, category: firstCategory })
+    await pending
+    for (const page of rows(client))
+      expect(page[0]).toMatchObject({
+        category: firstCategory,
+        commentCount: 2,
+        conversationResolved: true
+      })
+  })
   it.each([
     [true, true, "11"],
     [false, true, "11"],

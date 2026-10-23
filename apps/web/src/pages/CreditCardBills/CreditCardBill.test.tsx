@@ -62,6 +62,8 @@ const transaction = {
   installmentCurrent: null,
   creditDueDate: "2026-07-10",
   observation: null,
+  commentCount: 0,
+  conversationResolved: false,
   toBeConsideredAt: null,
   calculatedDate: "2026-07-10",
   reviewMonth: "2026-06",

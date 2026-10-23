@@ -10,24 +10,21 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
-import { TransactionNote } from "./TransactionNote"
-import type { UpdateLedgerTransaction } from "./TransactionLedgerTransaction"
+import { TransactionConversation } from "./TransactionConversation"
 
 export function TransactionCommentButton({
   transaction,
-  onUpdateTransaction,
   disabled = false
 }: {
   transaction: TransactionOutput
-  onUpdateTransaction: UpdateLedgerTransaction
   disabled?: boolean
 }) {
   const { t } = useTranslation()
 
   const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
-  const hasNote = Boolean(transaction.observation?.trim())
+  const hasComments = transaction.commentCount > 0
+  const unresolved = hasComments && !transaction.conversationResolved
   return (
     <div
       data-column="comment"
@@ -38,15 +35,24 @@ export function TransactionCommentButton({
         ref={trigger}
         type="button"
         aria-label={
-          hasNote ? t("Edit transaction note") : t("Add transaction note")
+          hasComments
+            ? t("Open transaction conversation")
+            : t("Add transaction comment")
         }
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={hasNote ? undefined : t("Add note")}
+        title={
+          hasComments
+            ? t("commentsSummary", {
+                count: transaction.commentCount,
+                status: unresolved ? t("Unresolved") : t("Resolved")
+              })
+            : t("Add comment")
+        }
         disabled={disabled}
         className={cn(
           "flex size-8 items-center justify-center rounded-md outline-none hover:bg-yellow-400/20 focus-visible:ring-2 focus-visible:ring-yellow-600 disabled:opacity-50",
-          hasNote
+          unresolved
             ? "text-yellow-800 dark:text-yellow-300"
             : "text-foreground/35 hover:text-yellow-700 dark:hover:text-yellow-300"
         )}
@@ -55,47 +61,31 @@ export function TransactionCommentButton({
         <MessageSquare
           aria-hidden="true"
           className="size-4"
-          fill={hasNote ? "currentColor" : "none"}
+          fill={hasComments ? "currentColor" : "none"}
         />
       </button>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!saving) setOpen(next)
-        }}
-      >
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="w-[calc(100vw-2rem)] rounded-lg border-fina-grid bg-fina-surface text-foreground"
+          className="transaction-scrollbar max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border-fina-grid bg-fina-surface text-foreground"
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             trigger.current?.focus()
           }}
           onKeyDown={(event) => event.stopPropagation()}
-          onEscapeKeyDown={(event) => {
-            if (saving) event.preventDefault()
-          }}
         >
           <DialogHeader>
-            <DialogTitle>{t("Transaction note")}</DialogTitle>
+            <DialogTitle>{t("Transaction conversation")}</DialogTitle>
             <DialogDescription className="break-words">
               {transaction.description || t("Untitled transaction")}
             </DialogDescription>
           </DialogHeader>
-          <TransactionNote
-            key={transaction.id}
-            value={transaction.observation}
-            startEditing
-            disabled={disabled}
-            onDone={() => setOpen(false)}
-            onSave={async (observation) => {
-              setSaving(true)
-              try {
-                await onUpdateTransaction(transaction.id, { observation })
-              } finally {
-                setSaving(false)
-              }
-            }}
-          />
+          {open ? (
+            <TransactionConversation
+              key={transaction.id}
+              id={transaction.id}
+              disabled={disabled}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

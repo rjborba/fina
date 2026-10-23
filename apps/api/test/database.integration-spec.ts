@@ -45,6 +45,7 @@ import { WorkspaceCustomValues1792620000000 } from '../src/database/migrations/1
 import { CustomValueColors1792668625989 } from '../src/database/migrations/1792668625989-CustomValueColors';
 import { CustomValueWidth1792669875893 } from '../src/database/migrations/1792669875893-CustomValueWidth';
 import { OptionalCustomValueColor1792702564234 } from '../src/database/migrations/1792702564234-OptionalCustomValueColor';
+import { TransactionConversations1792704000000 } from '../src/database/migrations/1792704000000-TransactionConversations';
 import { CustomValue, evaluateCustomValues } from '@fina/types';
 
 const migrations = [
@@ -73,6 +74,7 @@ const migrations = [
   CustomValueColors1792668625989,
   CustomValueWidth1792669875893,
   OptionalCustomValueColor1792702564234,
+  TransactionConversations1792704000000,
 ];
 
 const legacyInstitutionAccounts: Array<{
@@ -130,6 +132,12 @@ describe('backend-only PostgreSQL boundary', () => {
   };
   let legacyWidthValue: typeof legacyCustomValue & { color: string };
   let optionalColorsBefore: Array<Record<string, unknown>>;
+  let legacyConversationRows: Array<{
+    id: string;
+    observation: string | null;
+    created_at: Date;
+    removed: boolean;
+  }>;
 
   beforeAll(async () => {
     const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -341,6 +349,13 @@ describe('backend-only PostgreSQL boundary', () => {
     optionalColorsBefore = await dataSource.query<
       Array<Record<string, unknown>>
     >('SELECT * FROM public.custom_values ORDER BY id');
+    legacyConversationRows = await dataSource.query(
+      `INSERT INTO public.transactions (group_id, observation, removed) VALUES
+       ($1, '  Historical comment  ', false), ($1, 'Deleted history', true),
+       ($1, E' \\n\\t ', false), ($1, NULL, false), ($1, repeat('x', 5000), false)
+       RETURNING id, observation, created_at, removed`,
+      [legacyGroup.id],
+    );
     await dataSource.destroy();
     dataSource = new DataSource({ ...dataSourceOptions, migrations });
     await dataSource.initialize();
@@ -397,6 +412,7 @@ describe('backend-only PostgreSQL boundary', () => {
       'import_profiles',
       'imports',
       'invites',
+      'transaction_comments',
       'transactions',
       'user_group',
       'users',
@@ -534,12 +550,14 @@ describe('backend-only PostgreSQL boundary', () => {
           card_last4: string | null;
         }>
       >(
-        'SELECT id, card_name, card_last4 FROM public.transactions ORDER BY id',
+        'SELECT id, card_name, card_last4 FROM public.transactions WHERE id = ANY($1::bigint[]) ORDER BY id',
+        [cardMigrationExpected.map((row) => row.id)],
       ),
     ).toEqual(cardMigrationExpected);
     expect(
       await dataSource.query<Array<{ data: unknown }>>(
-        "SELECT to_jsonb(purchase) - 'card_name' - 'card_last4' - 'flagged' AS data FROM public.transactions purchase ORDER BY id",
+        "SELECT to_jsonb(purchase) - 'card_name' - 'card_last4' - 'flagged' - 'comment_count' - 'conversation_resolved' AS data FROM public.transactions purchase WHERE id = ANY($1::bigint[]) ORDER BY id",
+        [cardMigrationExpected.map((row) => row.id)],
       ),
     ).toEqual(cardMigrationBefore);
     expect(
@@ -5804,6 +5822,295 @@ describe('backend-only PostgreSQL boundary', () => {
         .expect(201),
     );
     expect(fallback.columnSpan).toBe(1);
+  });
+
+  it('preserves historical observations, timestamps and soft deletion when migrating conversations', async () => {
+    for (const legacy of legacyConversationRows) {
+      const rows = await dataSource.query<
+        Array<{ body: string; created_at: Date; author_id: string | null }>
+      >(
+        'SELECT body, created_at, author_id FROM public.transaction_comments WHERE transaction_id = $1',
+        [legacy.id],
+      );
+      const expectedCount = legacy.observation?.trim() ? 1 : 0;
+      expect(rows).toHaveLength(expectedCount);
+      if (expectedCount)
+        expect(rows[0]).toEqual({
+          body: legacy.observation,
+          created_at: legacy.created_at,
+          author_id: null,
+        });
+      const [transaction] = await dataSource.query<
+        Array<{
+          observation: string | null;
+          created_at: Date;
+          removed: boolean;
+          comment_count: number;
+          conversation_resolved: boolean;
+        }>
+      >(
+        'SELECT observation, created_at, removed, comment_count, conversation_resolved FROM public.transactions WHERE id = $1',
+        [legacy.id],
+      );
+      expect(transaction).toEqual({
+        observation: legacy.observation,
+        created_at: legacy.created_at,
+        removed: legacy.removed,
+        comment_count: expectedCount,
+        conversation_resolved: false,
+      });
+    }
+    const [privileges] = await dataSource.query<
+      Array<{ anon: boolean; authenticated: boolean }>
+    >(
+      `SELECT has_table_privilege('anon', 'public.transaction_comments', 'SELECT') AS anon, has_table_privilege('authenticated', 'public.transaction_comments', 'INSERT') AS authenticated`,
+    );
+    expect(privileges).toEqual({ anon: false, authenticated: false });
+    expect(await dataSource.runMigrations()).toEqual([]);
+  });
+
+  it('supports shared threads, resolution, reopening, concurrent replies and tenant-safe deletion', async () => {
+    const fixture = await reviewFixture();
+    const {
+      groupId,
+      otherGroupId,
+      checkingAccountId,
+      ownerToken,
+      memberToken,
+      outsiderToken,
+    } = fixture;
+    const transaction = responseBody<TransactionOutput>(
+      await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(
+          reviewTransaction(groupId, checkingAccountId, {
+            observation: '  First comment  ',
+          }),
+        )
+        .expect(201),
+    );
+    expect(transaction).toMatchObject({
+      commentCount: 1,
+      conversationResolved: false,
+      observation: null,
+    });
+    const path = `/transactions/${transaction.id}/conversation`;
+    const read = async () =>
+      responseBody<import('@fina/types').TransactionConversation>(
+        await request(httpServer)
+          .get(path)
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .expect(200),
+      );
+    let thread = await read();
+    // More simultaneous readers than the default pool size must not reserve
+    // extra connections for membership checks inside open transactions.
+    await Promise.all(Array.from({ length: 12 }, () => read()));
+    expect(thread.messages).toHaveLength(1);
+    expect(thread.messages[0]).toMatchObject({
+      body: 'First comment',
+      author: { id: jwt.decode(memberToken)?.sub },
+    });
+    expect(thread.messages[0].createdAt).toEqual(expect.any(String));
+    for (const token of [ownerToken, memberToken]) {
+      await request(httpServer)
+        .patch(path)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ resolved: true })
+        .expect(200);
+      await request(httpServer)
+        .patch(path)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ resolved: false })
+        .expect(200);
+    }
+    await request(httpServer)
+      .patch(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ resolved: true })
+      .expect(200);
+    await Promise.all(
+      [ownerToken, memberToken].map((token, index) =>
+        request(httpServer)
+          .post(`${path}/messages`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ body: `Reply ${index}` })
+          .expect(201),
+      ),
+    );
+    thread = await read();
+    expect(thread.resolved).toBe(false);
+    expect(thread.messages.map((message) => message.body)).toEqual(
+      expect.arrayContaining(['First comment', 'Reply 0', 'Reply 1']),
+    );
+    expect(new Set(thread.messages.map((message) => message.id)).size).toBe(3);
+    await request(httpServer)
+      .patch(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ resolved: true })
+      .expect(200);
+    // A financial edit racing with replies must preserve the count and reopened status.
+    await Promise.all([
+      request(httpServer)
+        .patch(`/transactions/${transaction.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ description: 'Synthetic edited transaction' })
+        .expect(200),
+      request(httpServer)
+        .post(`${path}/messages`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ body: 'Another reply' })
+        .expect(201),
+    ]);
+    const updated = responseBody<TransactionOutput>(
+      await request(httpServer)
+        .get(`/transactions/${transaction.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200),
+    );
+    expect(updated).toMatchObject({
+      commentCount: 4,
+      conversationResolved: false,
+      description: 'Synthetic edited transaction',
+    });
+    await expect(
+      dataSource.query(
+        'INSERT INTO public.transaction_comments (group_id, transaction_id, body) VALUES ($1, $2, $3)',
+        [otherGroupId, transaction.id, 'Invalid tenant'],
+      ),
+    ).rejects.toThrow();
+    await request(httpServer)
+      .delete(`/transactions/${transaction.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    await request(httpServer)
+      .get(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(404);
+    await request(httpServer)
+      .post(`${path}/messages`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ body: 'Deleted' })
+      .expect(404);
+    await request(httpServer)
+      .patch(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ resolved: true })
+      .expect(404);
+    const [retained] = await dataSource.query<Array<{ count: number }>>(
+      'SELECT count(*)::integer AS count FROM public.transaction_comments WHERE transaction_id = $1',
+      [transaction.id],
+    );
+    expect(retained.count).toBe(4);
+    await request(httpServer)
+      .delete(`/groups/${groupId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ confirmName: 'Monthly review fixture' })
+      .expect(200);
+    expect(
+      await dataSource.query(
+        'SELECT id FROM public.transaction_comments WHERE group_id = $1',
+        [groupId],
+      ),
+    ).toEqual([]);
+    // Foreign tenant still has no access, even after aggregate deletion.
+    await request(httpServer)
+      .get(path)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .expect(404);
+  });
+
+  it('validates thread input and rejects missing identity, forged authors, cross-group and revoked membership', async () => {
+    const { groupId, checkingAccountId, memberToken, outsiderToken } =
+      await reviewFixture();
+    const transaction = responseBody<TransactionOutput>(
+      await request(httpServer)
+        .post('/transactions')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(reviewTransaction(groupId, checkingAccountId))
+        .expect(201),
+    );
+    const path = `/transactions/${transaction.id}/conversation`;
+    for (const target of [path, '/transactions/999999999/conversation']) {
+      const hidden = await request(httpServer)
+        .get(target)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .expect(404);
+      expect(responseBody<{ message: string }>(hidden).message).toBe(
+        'Resource not found',
+      );
+      await request(httpServer)
+        .post(`${target}/messages`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ body: 'Forbidden' })
+        .expect(404);
+      await request(httpServer)
+        .patch(target)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ resolved: true })
+        .expect(404);
+    }
+    for (const method of ['get', 'post', 'patch'] as const) {
+      const target = method === 'post' ? `${path}/messages` : path;
+      await request(httpServer)
+        [method](target)
+        .send(method === 'post' ? { body: 'Hello' } : { resolved: true })
+        .expect(401);
+      await request(httpServer)
+        [method](target)
+        .set('Authorization', 'Bearer invalid')
+        .send(method === 'post' ? { body: 'Hello' } : { resolved: true })
+        .expect(401);
+    }
+    for (const input of [
+      { body: '' },
+      { body: ' \n ' },
+      { body: 'x'.repeat(4001) },
+      { body: 'Hello', userId: randomUUID() },
+      { body: 'Hello', groupId },
+      { body: null },
+    ]) {
+      await request(httpServer)
+        .post(`${path}/messages`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(input)
+        .expect(400);
+    }
+    for (const input of [{ resolved: 'true' }, { resolved: true, groupId }])
+      await request(httpServer)
+        .patch(path)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send(input)
+        .expect(400);
+    await request(httpServer)
+      .patch(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ resolved: true })
+      .expect(400);
+    await request(httpServer)
+      .patch(`/transactions/${transaction.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ observation: 'Overwrite' })
+      .expect(400);
+    const [count] = await dataSource.query<Array<{ count: number }>>(
+      'SELECT count(*)::integer AS count FROM public.transaction_comments WHERE transaction_id = $1',
+      [transaction.id],
+    );
+    expect(count.count).toBe(0);
+    await dataSource.query(
+      'DELETE FROM public.user_group WHERE group_id = $1 AND user_id = $2',
+      [groupId, jwt.decode(memberToken)?.sub],
+    );
+    await request(httpServer)
+      .get(path)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(404);
+    await request(httpServer)
+      .post(`${path}/messages`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ body: 'Revoked' })
+      .expect(404);
   });
 
   function tokenFor(userId: string, email: string): string {

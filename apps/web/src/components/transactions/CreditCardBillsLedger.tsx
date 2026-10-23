@@ -546,10 +546,8 @@ export function CreditCardBillsLedger({
               start={virtualRow.start}
               flagged={
                 row.kind === "transaction" &&
-                Boolean(row.transaction.observation?.trim())
-              }
-              notePreview={
-                row.kind === "transaction" ? row.transaction.observation : null
+                row.transaction.commentCount > 0 &&
+                !row.transaction.conversationResolved
               }
               isFocused={isFocused}
               isSelected={isBill ? undefined : isSelected}
@@ -575,7 +573,6 @@ export function CreditCardBillsLedger({
               {row.kind === "transaction" ? (
                 <TransactionCommentButton
                   transaction={row.transaction}
-                  onUpdateTransaction={onUpdateTransaction}
                   disabled={isSelectionBusy}
                 />
               ) : (
