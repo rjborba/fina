@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { lazy, Suspense, useEffect } from "react"
 import Login from "./components/Login"
 import { Sidebar } from "./components/Sidebar"
@@ -54,6 +55,8 @@ const GroupDetails = lazy(() =>
 )
 
 function AppContent() {
+  const { t } = useTranslation()
+
   const { user } = useAuth()
   const [isDarkMode] = useLocalStorageState("theme-dark", false)
 
@@ -90,7 +93,7 @@ function AppContent() {
                         <div className="rounded-xl border border-fina-grid bg-fina-surface p-7 text-center shadow-fina-md">
                           <WalletMinimal className="mx-auto size-8 text-fina-violet" />
                           <div className="mt-4 text-xs font-medium text-foreground/60">
-                            Loading Fina
+                            {t("Loading Fina")}
                           </div>
                         </div>
                       </div>

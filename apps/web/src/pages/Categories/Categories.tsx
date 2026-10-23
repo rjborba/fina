@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CATEGORY_COLOR_VALUES, type CategoryColor } from "@fina/types"
 import { Plus, Tag, Trash2 } from "lucide-react"
@@ -39,6 +40,8 @@ type CategoryFormData = {
 }
 
 export const Categories: FC = () => {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { addCategory, removeCategory } = useCategoriesMutation()
   const { data: categoryData } = useCategories({
@@ -72,25 +75,27 @@ export const Categories: FC = () => {
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Categories"
+        eyebrow={t("Categories")}
         marker="04"
-        title="Categories"
-        description="Build a focused set of labels for the active workspace, then assign them directly from the transaction ledger."
+        title={t("Categories")}
+        description={t(
+          "Build a focused set of labels for the active workspace, then assign them directly from the transaction ledger."
+        )}
         actions={
           <FinaBadge tone="yellow">
-            {categoryData?.length ?? 0} labels
+            {t("labelsCount", { count: categoryData?.length ?? 0 })}
           </FinaBadge>
         }
       />
 
       <main className="grid min-w-0 grid-cols-1 gap-8 p-5 lg:grid-cols-[minmax(20rem,0.65fr)_minmax(0,1.35fr)] lg:items-start md:p-8">
         <FinaSurface elevation="sm" className="p-5 sm:p-6">
-          <FinaSectionLabel>New / Label</FinaSectionLabel>
+          <FinaSectionLabel>{t("New / Label")}</FinaSectionLabel>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-            Add category
+            {t("Add category")}
           </h2>
           <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
-            Keep names short and recognizable in the transaction table.
+            {t("Keep names short and recognizable in the transaction table.")}
           </p>
 
           <Form {...form}>
@@ -104,12 +109,12 @@ export const Categories: FC = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
-                      Category name
+                      {t("Category name")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
-                        placeholder="e.g. Groceries"
+                        placeholder={t("e.g. Groceries")}
                         {...field}
                       />
                     </FormControl>
@@ -119,11 +124,11 @@ export const Categories: FC = () => {
               />
 
               <div
-                aria-label="Category preview"
+                aria-label={t("Category preview")}
                 className="flex min-h-8 items-center"
               >
                 <CategoryChip
-                  name={categoryName.trim() || "Category"}
+                  name={categoryName.trim() || t("Category")}
                   color={selectedColor}
                 />
               </div>
@@ -140,7 +145,7 @@ export const Categories: FC = () => {
                 className="w-full"
               >
                 <Plus />
-                {form.formState.isSubmitting ? "Adding…" : "Add category"}
+                {form.formState.isSubmitting ? t("Adding…") : t("Add category")}
               </Button>
             </form>
           </Form>
@@ -148,12 +153,12 @@ export const Categories: FC = () => {
 
         <section aria-labelledby="category-list-title">
           <div className="mb-4">
-            <FinaSectionLabel>Registry / Available</FinaSectionLabel>
+            <FinaSectionLabel>{t("Registry / Available")}</FinaSectionLabel>
             <h2
               id="category-list-title"
               className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
             >
-              Existing categories
+              {t("Existing categories")}
             </h2>
           </div>
 
@@ -183,7 +188,9 @@ export const Categories: FC = () => {
                         variant="fina-ghost"
                         size="icon"
                         className="size-11 md:size-9"
-                        aria-label={`Remove ${category.name}`}
+                        aria-label={t("Remove {{value0}}", {
+                          value0: category.name
+                        })}
                         onClick={() => removeCategory(category.id)}
                       >
                         <Trash2 />
@@ -195,9 +202,9 @@ export const Categories: FC = () => {
             ) : (
               <div className="p-10 text-center">
                 <Tag className="mx-auto size-9" />
-                <p className="mt-4 font-semibold">No categories yet</p>
+                <p className="mt-4 font-semibold">{t("No categories yet")}</p>
                 <p className="mt-2 text-sm font-medium text-foreground/60">
-                  Add a label to begin organizing transactions.
+                  {t("Add a label to begin organizing transactions.")}
                 </p>
               </div>
             )}

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+import { translate } from "@/i18n"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -46,10 +48,12 @@ export const BillMonthPicker = ({
   onValueChange,
   dueDate,
   className,
-  label = "Bill due in",
-  description = "File names are never used to choose a bill.",
+  label = translate("Bill due in"),
+  description = translate("File names are never used to choose a bill."),
   disabled = false
 }: BillMonthPickerProps) => {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const selectedYear = value ? Number(value.slice(0, 4)) : null
   const selectedMonth = value ? Number(value.slice(5, 7)) - 1 : null
@@ -92,8 +96,8 @@ export const BillMonthPicker = ({
                 </span>
                 <span className="text-base font-semibold tracking-[-0.02em] text-foreground">
                   {selectedMonth === null || selectedYear === null
-                    ? "Choose month"
-                    : `${months[selectedMonth]} ${selectedYear}`}
+                    ? t("Choose month")
+                    : `${t(months[selectedMonth])} ${selectedYear}`}
                 </span>
               </span>
             </span>
@@ -109,14 +113,14 @@ export const BillMonthPicker = ({
               type="button"
               variant="fina-ghost"
               size="icon"
-              aria-label="Previous year"
+              aria-label={t("Previous year")}
               onClick={() => setDisplayYear((year) => year - 1)}
             >
               <ChevronLeft className="size-4" />
             </Button>
             <div className="text-center">
               <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/50">
-                Year
+                {t("Year")}
               </div>
               <div className="text-lg font-semibold">{displayYear}</div>
             </div>
@@ -124,7 +128,7 @@ export const BillMonthPicker = ({
               type="button"
               variant="fina-ghost"
               size="icon"
-              aria-label="Next year"
+              aria-label={t("Next year")}
               onClick={() => setDisplayYear((year) => year + 1)}
             >
               <ChevronRight className="size-4" />
@@ -139,7 +143,7 @@ export const BillMonthPicker = ({
                   key={month}
                   type="button"
                   variant="fina-ghost"
-                  aria-label={`${month} ${displayYear}`}
+                  aria-label={`${t(month)} ${displayYear}`}
                   aria-pressed={selected}
                   className={cn(
                     "relative h-10 rounded-md border border-transparent px-2 text-xs font-semibold",
@@ -154,7 +158,7 @@ export const BillMonthPicker = ({
                     setOpen(false)
                   }}
                 >
-                  {month.slice(0, 3)}
+                  {t(month).slice(0, 3)}
                   {selected ? (
                     <Check className="absolute right-1 top-1 size-3" />
                   ) : null}
@@ -164,8 +168,11 @@ export const BillMonthPicker = ({
           </div>
           <div className="border-t border-fina-grid bg-fina-canvas px-4 py-3 text-xs font-semibold text-foreground/65">
             {dueDay
-              ? `Due day ${dueDay}. Fina combines it with the selected month.`
-              : "Choose the calendar month for this view."}
+              ? t(
+                  "Due day {{value0}}. Fina combines it with the selected month.",
+                  { value0: dueDay }
+                )
+              : t("Choose the calendar month for this view.")}
           </div>
         </PopoverContent>
       </Popover>

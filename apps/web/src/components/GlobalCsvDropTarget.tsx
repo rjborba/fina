@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { queueImportFile } from "@/imports/pendingImport"
 import { FileUp } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -8,6 +9,8 @@ function carriesFiles(event: DragEvent): boolean {
 }
 
 export function GlobalCsvDropTarget() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const dragDepth = useRef(0)
   const [active, setActive] = useState(false)
@@ -75,9 +78,9 @@ export function GlobalCsvDropTarget() {
           <FileUp className="h-8 w-8" />
         </span>
         <div>
-          <p className="text-xl font-semibold">Drop file to import</p>
+          <p className="text-xl font-semibold">{t("Drop file to import")}</p>
           <p className="text-sm text-muted-foreground">
-            Release it anywhere to open the CSV import preview.
+            {t("Release it anywhere to open the CSV import preview.")}
           </p>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import { formatCurrency, getLocale } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import {
   TransactionFilterChips,
   TransactionsFilter,
@@ -73,16 +75,11 @@ const TransactionsList = lazy(() =>
   }))
 )
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
-
-const formatCurrency = (value: number) => currencyFormatter.format(value)
-
 const EMPTY_TRANSACTIONS: TransactionOutput[] = []
 
 export const Transactions: FC = () => {
+  const { t } = useTranslation()
+
   const { user } = useAuth()
   const { selectedGroup } = useActiveGroup()
 
@@ -92,7 +89,7 @@ export const Transactions: FC = () => {
         role="status"
         className="flex h-svh items-center justify-center bg-fina-surface text-xs text-muted-foreground dark:bg-fina-canvas"
       >
-        Loading the ledger...
+        {t("Loading the ledger...")}
       </div>
     )
   }
@@ -106,6 +103,8 @@ export const Transactions: FC = () => {
 }
 
 const TransactionsView: FC = () => {
+  const { t } = useTranslation()
+
   const [searchParams] = useSearchParams()
   const linkedAccountId = searchParams.get("accountId")
   const {
@@ -446,7 +445,7 @@ const TransactionsView: FC = () => {
           <>
             <div
               role="toolbar"
-              aria-label="Transaction view controls"
+              aria-label={t("Transaction view controls")}
               className="flex h-14 min-w-0 flex-nowrap items-center gap-1 border-b border-fina-grid px-3"
             >
               <TransactionsDateFilter monthlyReview={monthlyReview} mobile />
@@ -463,11 +462,11 @@ const TransactionsView: FC = () => {
                 size="icon"
                 className="size-11 shrink-0 text-muted-foreground"
                 onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                aria-label="Period totals"
+                aria-label={t("Period totals")}
                 aria-keyshortcuts="S"
                 aria-expanded={isDrawerOpen}
                 aria-controls="transactions-summary-panel"
-                title="Period summary (S)"
+                title={t("Period summary (S)")}
               >
                 <Sigma className="size-4" />
               </Button>
@@ -487,7 +486,7 @@ const TransactionsView: FC = () => {
               >
                 <div
                   role="group"
-                  aria-label="Ledger view"
+                  aria-label={t("Ledger view")}
                   className="grid grid-cols-2 gap-2"
                 >
                   {(["monthly-review", "cash-flow"] as const).map((view) => (
@@ -515,14 +514,14 @@ const TransactionsView: FC = () => {
                       }}
                     >
                       {view === "monthly-review"
-                        ? "Monthly review"
-                        : "Cash flow"}
+                        ? t("Monthly review")
+                        : t("Cash flow")}
                     </Button>
                   ))}
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Find transactions
+                    {t("Find transactions")}
                   </p>
                   <TransactionsSearch
                     open={isSearchOpen}
@@ -532,7 +531,7 @@ const TransactionsView: FC = () => {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Columns and ordering
+                    {t("Columns and ordering")}
                   </p>
                   <TransactionsSort
                     value={sort}
@@ -558,14 +557,15 @@ const TransactionsView: FC = () => {
                     className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400"
                   >
                     <TriangleAlert className="size-4 shrink-0" />
-                    Some bills need reconciliation or review. Unlinked payments
-                    may duplicate a bill.
+                    {t(
+                      "Some bills need reconciliation or review. Unlinked payments may duplicate a bill."
+                    )}
                   </p>
                 ) : null}
               </TransactionMobileTools>
             </div>
             <div
-              aria-label="Active transaction filters"
+              aria-label={t("Active transaction filters")}
               className="fina-scrollbar flex min-w-0 gap-2 overflow-x-auto px-3 py-1 empty:hidden [&>*]:shrink-0"
             >
               <TransactionFilterChips
@@ -578,7 +578,7 @@ const TransactionsView: FC = () => {
                 <button
                   type="button"
                   className="flex min-h-8 max-w-60 items-center gap-2 rounded-md border border-fina-grid px-2 text-xs"
-                  aria-label="Clear search"
+                  aria-label={t("Clear search")}
                   onClick={() => {
                     changeFilter((current) => ({
                       ...current,
@@ -588,14 +588,16 @@ const TransactionsView: FC = () => {
                   }}
                 >
                   <span className="truncate">
-                    Find: {filterProps.partialDescription}
+                    {t("Find: {{description}}", {
+                      description: filterProps.partialDescription
+                    })}
                   </span>
                   <X className="size-3 shrink-0" />
                 </button>
               ) : null}
               {linkedAccountId ? (
                 <span className="self-center text-xs text-muted-foreground">
-                  Account filter
+                  {t("Account filter")}
                 </span>
               ) : null}
             </div>
@@ -603,13 +605,13 @@ const TransactionsView: FC = () => {
         ) : (
           <div
             role="toolbar"
-            aria-label="Transaction view controls"
+            aria-label={t("Transaction view controls")}
             className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-fina-grid px-4 py-1.5 md:px-6"
           >
             <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
               <div
                 role="group"
-                aria-label="Ledger view"
+                aria-label={t("Ledger view")}
                 className="flex items-center gap-0.5"
               >
                 {(["monthly-review", "cash-flow"] as const).map((view) => (
@@ -637,7 +639,9 @@ const TransactionsView: FC = () => {
                         }))
                     }}
                   >
-                    {view === "monthly-review" ? "Monthly review" : "Cash flow"}
+                    {view === "monthly-review"
+                      ? t("Monthly review")
+                      : t("Cash flow")}
                   </Button>
                 ))}
               </div>
@@ -655,7 +659,7 @@ const TransactionsView: FC = () => {
               />
               {linkedAccountId ? (
                 <span className="text-[11px] text-muted-foreground">
-                  Account filter
+                  {t("Account filter")}
                 </span>
               ) : null}
             </div>
@@ -683,12 +687,12 @@ const TransactionsView: FC = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                aria-label="Period totals"
+                aria-label={t("Period totals")}
                 aria-keyshortcuts="S"
                 aria-expanded={isDrawerOpen}
                 aria-controls="transactions-summary-panel"
                 className="size-7 text-muted-foreground"
-                title="Period summary (S)"
+                title={t("Period summary (S)")}
               >
                 <Sigma className="size-3.5" />
               </Button>
@@ -698,15 +702,16 @@ const TransactionsView: FC = () => {
                     <button
                       type="button"
                       role="status"
-                      aria-label="Some bills need reconciliation or review"
+                      aria-label={t("Some bills need reconciliation or review")}
                       className="flex size-7 items-center justify-center text-amber-600 dark:text-amber-400"
                     >
                       <TriangleAlert className="size-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Some bills need reconciliation or review. Unlinked payments
-                    may duplicate a bill.
+                    {t(
+                      "Some bills need reconciliation or review. Unlinked payments may duplicate a bill."
+                    )}
                   </TooltipContent>
                 </Tooltip>
               ) : null}
@@ -715,13 +720,13 @@ const TransactionsView: FC = () => {
         )}
       </TransactionsHeader>
       <section
-        aria-label="Transaction ledger"
+        aria-label={t("Transaction ledger")}
         className="flex min-h-0 flex-1 flex-col pt-2"
       >
         <Suspense
           fallback={
             <div className="px-6 py-8 text-xs text-muted-foreground">
-              Loading the ledger...
+              {t("Loading the ledger...")}
             </div>
           }
         >
@@ -756,7 +761,7 @@ const TransactionsView: FC = () => {
 
       <button
         type="button"
-        aria-label="Close totals panel"
+        aria-label={t("Close totals panel")}
         aria-hidden={!isDrawerOpen}
         tabIndex={isDrawerOpen ? 0 : -1}
         onClick={() => setIsDrawerOpen(false)}
@@ -773,7 +778,7 @@ const TransactionsView: FC = () => {
         role="dialog"
         aria-modal="true"
         aria-hidden={!isDrawerOpen}
-        aria-label="Period totals"
+        aria-label={t("Period totals")}
         className={cn(
           "fixed inset-y-0 right-0 z-[70] flex w-[min(800px,calc(100vw-16px))] flex-col border-l border-fina-grid bg-fina-canvas text-foreground shadow-fina-lg transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
           isDrawerOpen
@@ -783,14 +788,14 @@ const TransactionsView: FC = () => {
       >
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-fina-grid bg-fina-surface px-5">
           <div>
-            <h2 className="text-sm font-medium">Period summary</h2>
+            <h2 className="text-sm font-medium">{t("Period summary")}</h2>
           </div>
           <Button
             ref={closeDrawerButtonRef}
             variant="ghost"
             size="icon"
             tabIndex={isDrawerOpen ? 0 : -1}
-            aria-label="Close totals panel"
+            aria-label={t("Close totals panel")}
             onClick={() => setIsDrawerOpen(false)}
             className="size-9 rounded-md border border-fina-grid bg-fina-surface text-foreground shadow-none hover:bg-fina-canvas"
           >
@@ -800,7 +805,7 @@ const TransactionsView: FC = () => {
 
         <div
           role="region"
-          aria-label="Period summary content"
+          aria-label={t("Period summary content")}
           tabIndex={isDrawerOpen ? 0 : -1}
           className="fina-scrollbar min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
         >
@@ -808,7 +813,7 @@ const TransactionsView: FC = () => {
             <div className="border-b border-r border-fina-grid p-5">
               <div className="flex items-start justify-between gap-4">
                 <span className="text-xs font-medium text-foreground/50">
-                  {monthlyReview ? "Review balance" : "Net flow"}
+                  {monthlyReview ? t("Review balance") : t("Net flow")}
                 </span>
                 <Sigma className="size-4 text-fina-violet" />
               </div>
@@ -819,7 +824,7 @@ const TransactionsView: FC = () => {
             <div className="border-b border-fina-grid p-5">
               <div className="flex items-start justify-between gap-4">
                 <span className="text-xs font-medium text-foreground/50">
-                  Incoming
+                  {t("Incoming")}
                 </span>
                 <ArrowUpRight className="size-4 text-emerald-600" />
               </div>
@@ -830,7 +835,7 @@ const TransactionsView: FC = () => {
             <div className="border-r border-fina-grid p-5">
               <div className="flex items-start justify-between gap-4">
                 <span className="text-xs font-medium text-foreground/50">
-                  Outgoing
+                  {t("Outgoing")}
                 </span>
                 <ArrowDownRight className="size-4 text-red-500" />
               </div>
@@ -841,12 +846,12 @@ const TransactionsView: FC = () => {
             <div className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <span className="text-xs font-medium text-foreground/50">
-                  Entries
+                  {t("Entries")}
                 </span>
                 <ReceiptText className="size-4 text-fina-violet" />
               </div>
               <p className="mt-3 text-lg font-medium tabular-nums">
-                {visibleEntryCount.toLocaleString("en-US")}
+                {visibleEntryCount.toLocaleString(getLocale())}
               </p>
             </div>
           </div>
@@ -855,7 +860,9 @@ const TransactionsView: FC = () => {
             <h3>
               <CollapsibleTrigger
                 aria-label={
-                  monthlyReview ? "Category breakdown" : "Purchase categories"
+                  monthlyReview
+                    ? t("Category breakdown")
+                    : t("Purchase categories")
                 }
                 className="group flex w-full items-center justify-between gap-4 border-b border-fina-grid bg-fina-canvas px-5 py-4 text-left hover:bg-fina-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fina-violet"
               >
@@ -864,14 +871,18 @@ const TransactionsView: FC = () => {
                   title={
                     monthlyReview
                       ? undefined
-                      : "Categories describe purchases; purchase totals can differ from confirmed bill payments."
+                      : t(
+                          "Categories describe purchases; purchase totals can differ from confirmed bill payments."
+                        )
                   }
                 >
-                  {monthlyReview ? "Category breakdown" : "Purchase categories"}
+                  {monthlyReview
+                    ? t("Category breakdown")
+                    : t("Purchase categories")}
                 </span>
                 <span className="flex items-center gap-2 text-foreground/50">
                   <span className="text-[11px]">
-                    {categories?.length || 0} categories
+                    {t("categoriesCount", { count: categories?.length ?? 0 })}
                   </span>
                   <ChevronDown
                     aria-hidden="true"
@@ -883,7 +894,7 @@ const TransactionsView: FC = () => {
             <CollapsibleContent>
               <ul
                 role="list"
-                aria-label="Category totals"
+                aria-label={t("Category totals")}
                 className="bg-fina-surface"
               >
                 {categories?.map((category) => (

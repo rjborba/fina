@@ -1,10 +1,11 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localTestDatabaseUrl } from "./local-test-database.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const requireApi = createRequire(join(root, "apps/api/package.json"));
@@ -12,7 +13,9 @@ const requireWeb = createRequire(join(root, "apps/web/package.json"));
 const { Client } = requireApi("pg");
 const { DataSource } = requireApi("typeorm");
 const jwt = requireApi("jsonwebtoken");
-const webPort = Number(process.env.FINA_BROWSER_TEST_PORT ?? 4180);
+const webPort = Number(
+  process.env.FINA_BROWSER_TEST_PORT ?? process.env.FINA_BROWSER_PORT ?? 4180,
+);
 if (!Number.isInteger(webPort) || webPort < 1024 || webPort > 65535) {
   throw new Error(
     "FINA_BROWSER_TEST_PORT must be an integer from 1024 to 65535.",
@@ -85,10 +88,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 async function start() {
   // Never load production configuration. Only the local administrative connection
   // is used, exclusively to create/drop this process's uniquely named database.
-  const local = requireApi("dotenv").parse(
-    await readFile(join(root, "apps/api/.env.local")),
-  );
-  const adminUrl = new URL(local.DATABASE_URL);
+  const adminUrl = await localTestDatabaseUrl();
   if (
     !["127.0.0.1", "localhost", "[::1]"].includes(adminUrl.hostname) ||
     adminUrl.port !== "54322"
@@ -259,11 +259,14 @@ async function start() {
   console.log(`Isolated browser-test application ready at ${webOrigin}`);
 }
 
-start().catch(async () => {
+start().catch(async (error) => {
   // Never echo driver exceptions, connection strings, SQL, or identity payloads.
   console.error(
     "Could not start the isolated browser-test harness. Check local Supabase and run pnpm build:api.",
   );
+  if (typeof error?.code === "string" && /^[A-Z0-9_]{2,64}$/.test(error.code)) {
+    console.error(`Browser-test harness error code: ${error.code}`);
+  }
   await cleanup();
   process.exitCode = 1;
 });

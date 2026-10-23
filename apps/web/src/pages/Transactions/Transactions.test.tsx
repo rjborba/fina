@@ -961,7 +961,7 @@ describe("Transactions cash-flow ledger", () => {
       const rows = within(categoryList).getAllByRole("listitem")
       expect(rows).toHaveLength(1)
       expect(within(rows[0]).getByText("Groceries")).toBeVisible()
-      expect(within(rows[0]).getByText(/R\$\s0,00/)).toBeVisible()
+      expect(within(rows[0]).getByText(/R\$\s*0\.00/)).toBeVisible()
 
       await user.click(toggle)
       expect(toggle).toHaveAttribute("aria-expanded", "false")
@@ -969,7 +969,7 @@ describe("Transactions cash-flow ledger", () => {
         within(summary).queryByRole("list", { name: "Category totals" })
       ).not.toBeInTheDocument()
       expect(within(summary).queryByText("Groceries")).not.toBeInTheDocument()
-      expect(within(toggle).getByText("1 categories")).toBeVisible()
+      expect(within(toggle).getByText("1 category")).toBeVisible()
       expect(within(summary).getByText(totalLabel)).toBeVisible()
 
       await user.keyboard("{Enter}")
@@ -996,8 +996,10 @@ describe("Transactions cash-flow ledger", () => {
     fireEvent.click(screen.getByRole("button", { name: "Period totals" }))
     const summary = screen.getByRole("dialog", { name: "Period totals" })
     expect(within(summary).getByText("Net flow")).toBeVisible()
-    expect(within(summary).getByText(/-R\$\s80,00/)).toBeVisible()
-    expect(within(summary).queryByText(/-R\$\s140,00/)).not.toBeInTheDocument()
+    expect(within(summary).getByText(/-R\$\s*80\.00/)).toBeVisible()
+    expect(
+      within(summary).queryByText(/-R\$\s*140\.00/)
+    ).not.toBeInTheDocument()
   })
 
   it("switches the requested date basis and persists the view preference", async () => {
@@ -1038,7 +1040,7 @@ describe("Transactions cash-flow ledger", () => {
       fireEvent.click(screen.getByRole("button", { name: "Period totals" }))
       const summary = screen.getByRole("dialog", { name: "Period totals" })
       expect(within(summary).getByText("Review balance")).toBeVisible()
-      expect(within(summary).getByText(/-R\$\s80,00/)).toBeVisible()
+      expect(within(summary).getByText(/-R\$\s*80\.00/)).toBeVisible()
     }
   )
 

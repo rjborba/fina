@@ -1,4 +1,7 @@
 "use client"
+
+import { useTranslation } from "react-i18next"
+
 import { ChevronsUpDown, Users } from "lucide-react"
 import {
   DropdownMenu,
@@ -18,6 +21,8 @@ import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { cn } from "@/lib/utils"
 
 export function GroupSwitcher() {
+  const { t } = useTranslation()
+
   const { isMobile } = useSidebar()
   const { selectedGroup, groups, setSelectedGroup } = useActiveGroup()
 
@@ -42,7 +47,7 @@ export function GroupSwitcher() {
                   {selectedGroup.name}
                 </span>
                 <span className="truncate text-[10px] text-sidebar-foreground/50">
-                  Active workspace
+                  {t("Active workspace")}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto" />
@@ -55,7 +60,7 @@ export function GroupSwitcher() {
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-[11px] font-medium text-foreground/50">
-              Workspaces
+              {t("Workspaces")}
             </DropdownMenuLabel>
             {groups.map((group) => (
               <DropdownMenuItem

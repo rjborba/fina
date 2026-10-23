@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = Number(process.env.FINA_BROWSER_TEST_PORT ?? 4180);
+const port = Number(
+  process.env.FINA_BROWSER_TEST_PORT ?? process.env.FINA_BROWSER_PORT ?? 4180,
+);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) {
   throw new Error(
     "FINA_BROWSER_TEST_PORT must be an integer from 1024 to 65535.",

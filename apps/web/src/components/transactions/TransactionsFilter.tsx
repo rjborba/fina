@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { transactionFilterAtom } from "@/data/transactions/TransactionFilterAtom"
 import { cn } from "@/lib/utils"
 import { useAtom } from "jotai"
@@ -110,6 +111,8 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
   dateBasis,
   iconOnly = false
 }) => {
+  const { t } = useTranslation()
+
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
   const pendingDescriptionRef = useRef<string | null>(null)
   const trackDescriptionDraft = useCallback((description: string | null) => {
@@ -171,11 +174,13 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
             "h-7 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground",
             iconOnly && "relative size-11 shrink-0 px-0"
           )}
-          title="Filter (F)"
+          title={t("Filter (F)")}
           aria-keyshortcuts="F"
         >
           <Filter className="size-3.5" />
-          <span className={iconOnly ? "sr-only" : undefined}>Filter</span>
+          <span className={iconOnly ? "sr-only" : undefined}>
+            {t("Filter")}
+          </span>
           {count ? (
             <span
               className={cn(
@@ -196,7 +201,7 @@ export const TransactionsFilter: FC<TransactionsFilterProps> = ({
           filterPopupClass,
           "w-[216px] max-w-[calc(100vw-16px)] overflow-hidden p-0"
         )}
-        aria-label="Transaction filters"
+        aria-label={t("Transaction filters")}
       >
         {panel}
       </PopoverContent>
@@ -216,6 +221,8 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
   dateBasis = "cash-flow",
   onDescriptionDraftChange
 }) => {
+  const { t } = useTranslation()
+
   const [property, setProperty] = useState<FilterProperty | null>(
     initialProperty ?? null
   )
@@ -309,12 +316,14 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
     window.addEventListener("keydown", closeOnEscape)
     return () => window.removeEventListener("keydown", closeOnEscape)
   }, [cancelHoverClose, compact, initialProperty, isOpen, onFilterToggle])
-  const available = properties.filter(
-    (item) =>
-      (item.key !== "account" || allowAccounts) &&
-      (item.key !== "date" || (value.startDate && value.endDate))
-  )
-  const label = properties.find((item) => item.key === property)?.label
+  const available = properties
+    .map((item) => ({ ...item, label: t(item.label) }))
+    .filter(
+      (item) =>
+        (item.key !== "account" || allowAccounts) &&
+        (item.key !== "date" || (value.startDate && value.endDate))
+    )
+  const label = available.find((item) => item.key === property)?.label
   const editor = (key: FilterProperty, autoFocus = false) => (
     <TransactionFilterEditor
       key={key}
@@ -348,7 +357,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
       <div
         ref={panelRef}
         role={compact ? "group" : "complementary"}
-        aria-label="Transaction filters"
+        aria-label={t("Transaction filters")}
         aria-hidden={!isOpen}
         onPointerEnter={compact ? cancelHoverClose : undefined}
         onPointerLeave={
@@ -366,11 +375,11 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
         <div className={compact ? "w-full" : "w-[320px]"}>
           {!compact ? (
             <div className="flex h-12 items-center justify-between border-b border-fina-grid px-4">
-              <h2 className="text-sm font-medium">Filters</h2>
+              <h2 className="text-sm font-medium">{t("Filters")}</h2>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Close filters"
+                aria-label={t("Close filters")}
                 onClick={() => onFilterToggle(false)}
                 className="size-7"
               >
@@ -384,7 +393,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
           ) : (
             <div className={filterSearchHeaderClass}>
               <Input
-                aria-label="Search filter properties"
+                aria-label={t("Search filter properties")}
                 autoFocus
                 value={search}
                 onChange={(event) => {
@@ -400,7 +409,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
                     if (first) propertyRefs.current[first.key]?.focus()
                   }
                 }}
-                placeholder="Add filter…"
+                placeholder={t("Add filter…")}
                 className={filterSearchInputClass}
               />
               <kbd className={cn("rounded px-1 text-[10px]", filterMutedClass)}>
@@ -510,7 +519,9 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
                               sideOffset={submenuSide === "right" ? 6 : 4}
                               alignOffset={submenuSide === "right" ? -4 : 0}
                               collisionPadding={8}
-                              aria-label={`${name} filter`}
+                              aria-label={t("{{value0}} filter", {
+                                value0: name
+                              })}
                               className={cn(
                                 filterPopupClass,
                                 "max-w-[calc(100vw-16px)] overflow-hidden p-0",
@@ -581,7 +592,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
                     item.label.toLowerCase().includes(search.toLowerCase())
                   ) ? (
                     <p className="p-3 text-xs text-muted-foreground">
-                      No matching filters.
+                      {t("No matching filters.")}
                     </p>
                   ) : null}
                 </div>
@@ -589,7 +600,10 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
             ) : (
               <div className="space-y-4 p-1">
                 {available.map(({ key, label: name }) => (
-                  <section key={key} aria-label={`${name} filter`}>
+                  <section
+                    key={key}
+                    aria-label={t("{{value0}} filter", { value0: name })}
+                  >
                     <h3 className="mb-2 text-[11px] font-medium text-muted-foreground">
                       {name}
                     </h3>
@@ -635,7 +649,7 @@ export const TransactionFilterPanel: FC<TransactionFilterPanelProps> = ({
               )}
             >
               <RotateCcw className="size-3" />
-              Clear filters
+              {t("Clear filters")}
             </Button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   FINANCIAL_INSTITUTIONS,
   inferFinancialInstitutionId,
@@ -68,6 +69,8 @@ export function FinancialInstitutionLogo({
   className,
   decorative = false
 }: FinancialInstitutionLogoProps) {
+  const { t } = useTranslation()
+
   const resolvedId =
     institutionId === undefined
       ? inferFinancialInstitutionId(accountName ?? "")
@@ -76,7 +79,7 @@ export function FinancialInstitutionLogo({
   const logo = institution ? institutionLogos[institution.id] : undefined
   const FallbackIcon = accountType === "credit" ? CreditCard : Landmark
   const fallbackLabel =
-    accountType === "credit" ? "Credit card" : "Bank account"
+    accountType === "credit" ? t("Credit card") : t("Bank account")
 
   return (
     <span
@@ -93,7 +96,9 @@ export function FinancialInstitutionLogo({
       {logo && institution ? (
         <img
           src={logo}
-          alt={decorative ? "" : `${institution.name} logo`}
+          alt={
+            decorative ? "" : t("{{value0}} logo", { value0: institution.name })
+          }
           className={cn(
             "size-full object-contain",
             // Single-ink marks need light ink, not an opaque tile, in dark mode.

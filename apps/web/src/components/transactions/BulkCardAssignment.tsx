@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { ChevronDown, CreditCard } from "lucide-react"
 import { CardMetadataEditor } from "@/components/creditCards/CardMetadataEditor"
@@ -18,6 +19,8 @@ export function BulkCardAssignment({
   busy: boolean
   onAssignCard: (card: CardMetadata) => Promise<void>
 }) {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const [assigning, setAssigning] = useState(false)
   const disabled = busy || assigning || !accountId
@@ -43,17 +46,19 @@ export function BulkCardAssignment({
           type="button"
           variant="fina-ghost"
           size="sm"
-          aria-label="Card for selected purchases"
+          aria-label={t("Card for selected purchases")}
           disabled={disabled}
           title={
             !accountId
-              ? "Select credit purchases from one account to assign their card"
-              : "Edit the card details on all selected purchases"
+              ? t(
+                  "Select credit purchases from one account to assign their card"
+                )
+              : t("Edit the card details on all selected purchases")
           }
           className="h-11 rounded-md border-0 bg-transparent px-2 text-[13px] font-normal shadow-none hover:bg-black/[0.05] has-[>svg]:px-2 sm:h-7 dark:hover:bg-white/[0.05]"
         >
           <CreditCard className="size-3.5" aria-hidden />{" "}
-          {assigning ? "Updating..." : "Card"}{" "}
+          {assigning ? t("Updating...") : t("Card")}{" "}
           <ChevronDown className="size-3" aria-hidden />
         </Button>
       </PopoverTrigger>
@@ -61,7 +66,7 @@ export function BulkCardAssignment({
         side="top"
         align="end"
         sideOffset={8}
-        aria-label="Card for selected purchases"
+        aria-label={t("Card for selected purchases")}
         className="w-64 rounded-xl border-fina-grid bg-fina-surface p-3 shadow-fina-md"
       >
         <CardMetadataEditor

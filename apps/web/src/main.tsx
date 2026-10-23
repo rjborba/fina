@@ -11,6 +11,7 @@ import App from "./App.tsx"
 import "./index.css"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import "@/api/client"
+import "@/i18n"
 
 const queryClient = new QueryClient({
   defaultOptions: {

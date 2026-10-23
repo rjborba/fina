@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import { Check, X } from "lucide-react"
 import { FC, useEffect, useRef, useState, KeyboardEvent } from "react"
@@ -16,6 +17,8 @@ export const EditableText: FC<EditableTextProps> = ({
   onChange,
   className
 }) => {
+  const { t } = useTranslation()
+
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -33,7 +36,7 @@ export const EditableText: FC<EditableTextProps> = ({
   const handleAccept = () => {
     if (editValue !== value) {
       onChange(editValue).catch(() => {
-        toast({ title: "Something went wrong", variant: "destructive" })
+        toast({ title: t("Something went wrong"), variant: "destructive" })
         setEditValue(value)
       })
     }

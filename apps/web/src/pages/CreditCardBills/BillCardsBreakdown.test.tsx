@@ -53,7 +53,7 @@ describe("bill card breakdown", () => {
     })
     expect(mine).toHaveAttribute("aria-pressed", "true")
     expect(mine).toHaveTextContent("2 purchases")
-    expect(mine).toHaveTextContent(/-R\$\s*50,00/)
+    expect(mine).toHaveTextContent(/-R\$\s*50\.00/)
     const unknown = within(section).getByRole("button", {
       name: "Filter purchases by Not identified"
     })
@@ -77,7 +77,7 @@ describe("bill card breakdown", () => {
     )
     expect(
       screen.getByLabelText("Card subtotal rounding adjustment")
-    ).toHaveTextContent(/Rounding adjustment.*-R\$\s*0,01/)
+    ).toHaveTextContent(/Rounding adjustment.*-R\$\s*0\.01/)
     expect(screen.getAllByRole("button")).toHaveLength(3)
     rerender(
       <BillCardsBreakdown

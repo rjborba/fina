@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { FC, useEffect, useState } from "react"
 import type { CategoryOutput } from "@fina/types"
 
@@ -33,13 +34,15 @@ export const EditableSelect: FC<EditableSelectProps> = ({
   onOpenChange,
   disabled = false
 }) => {
+  const { t } = useTranslation()
+
   const [internalValue, setInternalValue] = useState(value)
 
   const selectedOption = options.find(
     (option) => String(option.id) === String(internalValue)
   )
 
-  const displayText = selectedOption?.name || "Uncategorized"
+  const displayText = selectedOption?.name || t("Uncategorized")
 
   useEffect(() => {
     setInternalValue(value)
@@ -64,7 +67,7 @@ export const EditableSelect: FC<EditableSelectProps> = ({
         onOpenChange(false)
 
         onChange(normalizedNewValue).catch(() => {
-          toast({ title: "Something went wrong", variant: "destructive" })
+          toast({ title: t("Something went wrong"), variant: "destructive" })
           setInternalValue(value)
         })
       }}
@@ -87,7 +90,7 @@ export const EditableSelect: FC<EditableSelectProps> = ({
             </span>
           </SelectItem>
         ))}
-        <SelectItem value={NONE_CATEGORY_ID}>Uncategorized</SelectItem>
+        <SelectItem value={NONE_CATEGORY_ID}>{t("Uncategorized")}</SelectItem>
       </SelectContent>
     </Select>
   )

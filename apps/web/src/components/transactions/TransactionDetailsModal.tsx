@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { TransactionNote } from "./TransactionNote"
 import type { BankaccountOutputDto, CategoryOutputDto } from "@/api/generated"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
@@ -47,10 +49,7 @@ interface DetailCellProps {
   value: ReactNode
 }
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const currencyFormatter = { format: formatCurrency }
 
 function formatDate(value: string | null | undefined) {
   return value ? dayjs(value).format("ddd, DD MMM YYYY") : "—"
@@ -87,6 +86,8 @@ export function TransactionDetailsModal({
   totalTransactions,
   currentTransactionIndex
 }: TransactionDetailsModalProps) {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data: bankAccountsData } = useBankAccounts({
     groupId: selectedGroup?.id?.toString()
@@ -137,12 +138,12 @@ export function TransactionDetailsModal({
         })
       } catch {
         toast({
-          title: "Could not categorize this transaction",
+          title: t("Could not categorize this transaction"),
           variant: "destructive"
         })
       }
     },
-    [transaction, updateTransaction]
+    [t, transaction, updateTransaction]
   )
 
   useEffect(() => {
@@ -277,10 +278,11 @@ export function TransactionDetailsModal({
         <DialogHeader className="grid space-y-0 border-b border-fina-grid bg-fina-canvas px-5 py-6 pr-16 text-left sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6 sm:px-6 sm:pr-16">
           <div className="min-w-0">
             <DialogTitle className="break-words text-xl font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] sm:text-2xl">
-              {transaction?.description || "Untitled transaction"}
+              {transaction?.description || t("Untitled transaction")}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Transaction #{transaction?.id ?? "—"}
+              {t("Transaction #")}
+              {transaction?.id ?? "—"}
             </DialogDescription>
           </div>
 
@@ -288,7 +290,7 @@ export function TransactionDetailsModal({
             {hasInstallment ? (
               <span
                 role="group"
-                aria-label="Installment"
+                aria-label={t("Installment")}
                 className="absolute left-0 top-0 whitespace-nowrap text-sm font-semibold leading-5 tabular-nums text-foreground/55"
               >
                 {`${transaction?.installmentCurrent}/${transaction?.installmentTotal}`}
@@ -296,7 +298,7 @@ export function TransactionDetailsModal({
             ) : null}
             <div
               role="group"
-              aria-label="Amount"
+              aria-label={t("Amount")}
               className={cn(
                 "whitespace-nowrap text-right text-3xl font-semibold leading-tight tracking-tight sm:text-4xl",
                 isIncome
@@ -320,7 +322,7 @@ export function TransactionDetailsModal({
               id="transaction-category-title"
               className="text-xs font-medium text-foreground/55"
             >
-              Category
+              {t("Category")}
             </h3>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3">
@@ -342,7 +344,7 @@ export function TransactionDetailsModal({
                       />
                     </span>
                     <span className="min-w-0 whitespace-normal break-words text-left text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
-                      {category.name || "Untitled"}
+                      {category.name || t("Untitled")}
                     </span>
                   </Button>
                 )
@@ -356,7 +358,7 @@ export function TransactionDetailsModal({
               >
                 <KeyboardKey>0</KeyboardKey>
                 <span className="min-w-0 whitespace-normal break-words text-left text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
-                  Uncategorized
+                  {t("Uncategorized")}
                 </span>
               </Button>
             </div>
@@ -367,22 +369,22 @@ export function TransactionDetailsModal({
             className="fina-scrollbar min-h-0 min-w-0 border-t border-fina-grid px-5 py-3 sm:px-6 md:overflow-y-auto md:border-l md:border-t-0 md:[scrollbar-gutter:stable]"
           >
             <h3 id="transaction-facts-title" className="sr-only">
-              Transaction data
+              {t("Transaction data")}
             </h3>
             <DetailCell
               icon={<CalendarDays className="size-3.5" />}
-              label="Transaction date"
+              label={t("Transaction date")}
               value={formatDate(transaction?.date)}
             />
             {accountIsCredit ? (
               <DetailCell
                 icon={<CreditCard className="size-3.5" />}
-                label="Card"
+                label={t("Card")}
                 value={<CardLabel card={transaction} className="max-w-full" />}
               />
             ) : null}
             <DetailCell
-              label="Account"
+              label={t("Account")}
               value={
                 <div className="flex items-center gap-2">
                   <FinancialInstitutionLogo
@@ -399,7 +401,7 @@ export function TransactionDetailsModal({
             {transaction ? (
               <DetailCell
                 icon={<ReceiptText className="size-3.5" />}
-                label="Note"
+                label={t("Note")}
                 value={
                   <TransactionNote
                     key={transaction.id}
@@ -418,22 +420,22 @@ export function TransactionDetailsModal({
               {transaction?.creditDueDate ? (
                 <DetailCell
                   icon={<CalendarDays className="size-3.5" />}
-                  label="Credit due date"
+                  label={t("Credit due date")}
                   value={formatDate(transaction.creditDueDate)}
                 />
               ) : null}
               <DetailCell
                 icon={<FileSpreadsheet className="size-3.5" />}
-                label="Source"
-                value={transaction?.import?.fileName ?? "Manual entry"}
+                label={t("Source")}
+                value={transaction?.import?.fileName ?? t("Manual entry")}
               />
               <DetailCell
                 icon={<Layers3 className="size-3.5" />}
-                label="Workspace"
+                label={t("Workspace")}
                 value={transaction?.group.name ?? "—"}
               />
               <p className="py-3 text-[11px] text-foreground/35">
-                Added{" "}
+                {t("Added")}{" "}
                 {transaction?.createdAt
                   ? dayjs(transaction.createdAt).format("DD MMM YYYY, HH:mm")
                   : "—"}
@@ -449,10 +451,10 @@ export function TransactionDetailsModal({
             disabled={!hasPreviousTransaction}
             onClick={onPreviousTransaction}
           >
-            <ArrowLeft className="size-4" /> Previous
+            <ArrowLeft className="size-4" /> {t("Previous")}
           </Button>
           <span className="text-xs tabular-nums text-foreground/40">
-            {currentTransactionIndex + 1} of {totalTransactions}
+            {currentTransactionIndex + 1} {t("of")} {totalTransactions}
           </span>
           <Button
             variant="ghost"
@@ -460,7 +462,7 @@ export function TransactionDetailsModal({
             disabled={!hasNextTransaction}
             onClick={onNextTransaction}
           >
-            Next <ArrowRight className="size-4" />
+            {t("Next")} <ArrowRight className="size-4" />
           </Button>
         </footer>
       </DialogContent>

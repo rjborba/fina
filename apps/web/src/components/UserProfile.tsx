@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { User } from "@supabase/supabase-js"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -8,6 +9,8 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ user, isSidebarCollapsed }: UserProfileProps) {
+  const { t } = useTranslation()
+
   const avatarUrl = user.user_metadata?.avatar_url
   const userInitial = user.user_metadata?.name?.[0]?.toUpperCase() || "U"
 
@@ -20,7 +23,7 @@ export function UserProfile({ user, isSidebarCollapsed }: UserProfileProps) {
         })}
       >
         <Avatar className="h-8 w-8">
-          <AvatarImage src={avatarUrl} alt="User avatar" />
+          <AvatarImage src={avatarUrl} alt={t("User avatar")} />
           <AvatarFallback className="bg-primary text-primary-foreground">
             {userInitial}
           </AvatarFallback>
@@ -28,7 +31,7 @@ export function UserProfile({ user, isSidebarCollapsed }: UserProfileProps) {
         {!isSidebarCollapsed && user && (
           <div className="flex flex-col items-start">
             <span className="text-sm font-medium">
-              {user.user_metadata?.name || "User"}
+              {user.user_metadata?.name || t("User")}
             </span>
             <span className="text-xs text-muted-foreground">{user.email}</span>
           </div>

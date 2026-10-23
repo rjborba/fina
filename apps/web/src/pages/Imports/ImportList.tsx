@@ -1,3 +1,5 @@
+import { getLocale, formatDate } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { CalendarDays, FileSpreadsheet, Trash2 } from "lucide-react"
 import { FinancialInstitutionLogo } from "@/components/accounts/FinancialInstitutionLogo"
 import { type FC } from "react"
@@ -10,6 +12,8 @@ import { useImports } from "@/data/imports/useImports"
 import { useImportsMutation } from "@/data/imports/useImportsMutation"
 
 export const ImportList: FC = () => {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const { data: importsData } = useImports({
     groupId: selectedGroup?.id?.toString()
@@ -20,19 +24,22 @@ export const ImportList: FC = () => {
     <section aria-labelledby="import-history-title">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <FinaSectionLabel>Files / History</FinaSectionLabel>
+          <FinaSectionLabel>{t("Files / History")}</FinaSectionLabel>
           <h2
             id="import-history-title"
             className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
           >
-            Import history
+            {t("Import history")}
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/60">
-            Removing an import archives it and its transactions, allowing a
-            corrected file to be imported again.
+            {t(
+              "Removing an import archives it and its transactions, allowing a corrected file to be imported again."
+            )}
           </p>
         </div>
-        <FinaBadge tone="surface">{importsData?.length ?? 0} files</FinaBadge>
+        <FinaBadge tone="surface">
+          {t("filesCount", { count: importsData?.length ?? 0 })}
+        </FinaBadge>
       </div>
 
       <FinaSurface elevation="md" className="overflow-hidden">
@@ -49,7 +56,7 @@ export const ImportList: FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="font-mono text-[9px] font-semibold tracking-[0.16em] text-foreground/45">
-                      File / {String(index + 1).padStart(2, "0")}
+                      {t("File /")} {String(index + 1).padStart(2, "0")}
                     </div>
                     <div className="mt-1 truncate text-lg font-semibold tracking-[-0.025em]">
                       {item.fileName}
@@ -67,23 +74,26 @@ export const ImportList: FC = () => {
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <FileSpreadsheet className="size-3.5" />
-                        {item.transactionCount} transactions
+                        {t("transactionsCount", {
+                          count: item.transactionCount
+                        })}
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" />
                         {item.dateStart && item.dateEnd
-                          ? `${item.dateStart} – ${item.dateEnd}`
-                          : "No date range"}
+                          ? `${formatDate(item.dateStart)} – ${formatDate(item.dateEnd)}`
+                          : t("No date range")}
                       </span>
                       {item.billDueDate ? (
                         <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5" /> Bill due{" "}
-                          {item.billDueDate}
+                          <CalendarDays className="size-3.5" /> {t("Bill due")}{" "}
+                          {formatDate(item.billDueDate)}
                         </span>
                       ) : null}
                     </div>
                     <div className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-foreground/40">
-                      Added {new Date(item.createdAt).toLocaleString()}
+                      {t("Added")}{" "}
+                      {new Date(item.createdAt).toLocaleString(getLocale())}
                     </div>
                   </div>
                 </div>
@@ -93,7 +103,7 @@ export const ImportList: FC = () => {
                   type="button"
                   onClick={() => void removeImport(item.id)}
                 >
-                  <Trash2 /> Remove
+                  <Trash2 /> {t("Remove")}
                 </Button>
               </li>
             ))}
@@ -101,9 +111,9 @@ export const ImportList: FC = () => {
         ) : (
           <div className="p-10 text-center">
             <FileSpreadsheet className="mx-auto size-10" />
-            <p className="mt-4 font-semibold">No imports yet</p>
+            <p className="mt-4 font-semibold">{t("No imports yet")}</p>
             <p className="mt-2 text-sm font-semibold text-foreground/60">
-              Import a CSV statement to start the history.
+              {t("Import a CSV statement to start the history.")}
             </p>
           </div>
         )}

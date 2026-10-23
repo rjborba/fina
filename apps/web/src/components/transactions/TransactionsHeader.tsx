@@ -1,3 +1,5 @@
+import { getLocale } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { FC, type ReactNode, useEffect, useState } from "react"
 
 import { Plus } from "lucide-react"
@@ -14,6 +16,8 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
   totalCount,
   children
 }) => {
+  const { t } = useTranslation()
+
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   useEffect(() => {
@@ -55,24 +59,24 @@ export const TransactionsHeader: FC<TransactionsHeaderProps> = ({
       <div className="flex h-14 items-center justify-between gap-2 border-b border-fina-grid px-3 pl-14 md:h-12 md:gap-3 md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <h1 className="truncate text-sm font-medium tracking-normal text-foreground">
-            Transactions
+            {t("Transactions")}
           </h1>
           <span
             className="text-xs tabular-nums text-muted-foreground"
-            aria-label={`${totalCount.toLocaleString("en-US")} entries`}
+            aria-label={t("entriesCount", { count: totalCount })}
           >
-            {totalCount.toLocaleString("en-US")}
+            {totalCount.toLocaleString(getLocale())}
           </span>
         </div>
         <Button
           onClick={() => setIsCreateOpen(true)}
           variant="ghost"
           className="h-11 shrink-0 gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground md:h-7"
-          title="New entry (C)"
+          title={t("New entry (C)")}
           aria-keyshortcuts="C"
         >
           <Plus className="size-3.5" />
-          New entry
+          {t("New entry")}
           <kbd className="ml-1 hidden rounded border border-fina-grid px-1 text-[10px] text-muted-foreground md:inline">
             C
           </kbd>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useRef, useState } from "react"
 import { MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -21,6 +22,8 @@ export function TransactionCommentButton({
   onUpdateTransaction: UpdateLedgerTransaction
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -34,10 +37,12 @@ export function TransactionCommentButton({
       <button
         ref={trigger}
         type="button"
-        aria-label={hasNote ? "Edit transaction note" : "Add transaction note"}
+        aria-label={
+          hasNote ? t("Edit transaction note") : t("Add transaction note")
+        }
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={hasNote ? undefined : "Add note"}
+        title={hasNote ? undefined : t("Add note")}
         disabled={disabled}
         className={cn(
           "flex size-8 items-center justify-center rounded-md outline-none hover:bg-yellow-400/20 focus-visible:ring-2 focus-visible:ring-yellow-600 disabled:opacity-50",
@@ -71,9 +76,9 @@ export function TransactionCommentButton({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Transaction note</DialogTitle>
+            <DialogTitle>{t("Transaction note")}</DialogTitle>
             <DialogDescription className="break-words">
-              {transaction.description || "Untitled transaction"}
+              {transaction.description || t("Untitled transaction")}
             </DialogDescription>
           </DialogHeader>
           <TransactionNote

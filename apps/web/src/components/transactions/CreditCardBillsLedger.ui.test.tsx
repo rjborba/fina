@@ -663,7 +663,7 @@ describe("CreditCardBillsLedger selection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }))
 
     expect(screen.getByRole("status")).toHaveTextContent("2 selected")
-    expect(screen.getByRole("status")).toHaveTextContent(/Net -R\$\s*35,00/)
+    expect(screen.getByRole("status")).toHaveTextContent(/Net -R\$\s*35\.00/)
     expect(billRow).not.toHaveAttribute("aria-selected")
     for (const row of checkingRows) {
       expect(within(row).getByRole("checkbox")).toBeChecked()

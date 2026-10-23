@@ -1,3 +1,4 @@
+import { getLocale } from "@/i18n"
 import type { CreditCardBillSummary, TransactionOutput } from "@fina/types"
 import type { TransactionSortOption } from "./transactionSort"
 
@@ -85,7 +86,7 @@ export function buildGroupedLedgerRows(
         ? left.value - right.value
         : field === "date"
           ? left.date.localeCompare(right.date)
-          : textValue(left).localeCompare(textValue(right), "pt-BR", {
+          : textValue(left).localeCompare(textValue(right), getLocale(), {
               sensitivity: "base"
             })
     return comparison === 0

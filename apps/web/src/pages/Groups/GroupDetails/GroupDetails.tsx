@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   ArrowLeft,
   Mail,
@@ -28,6 +29,8 @@ import { useUsersPerGroup } from "@/data/usersPerGroup/usersPerGroup"
 import { toast } from "@/hooks/use-toast"
 
 export function GroupDetails() {
+  const { t } = useTranslation()
+
   const [workspaceName, setWorkspaceName] = useState<string | null>(null)
   const [renameError, setRenameError] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
@@ -44,14 +47,14 @@ export function GroupDetails() {
     return (
       <FinaPage>
         <FinaPageHeader
-          eyebrow="Settings"
+          eyebrow={t("Settings")}
           marker="06"
-          title="Group not found."
-          description="This workspace is not available to your account."
+          title={t("Group not found.")}
+          description={t("This workspace is not available to your account.")}
           actions={
             <Button asChild variant="fina-secondary">
               <Link to="/settings">
-                <ArrowLeft /> Back to settings
+                <ArrowLeft /> {t("Back to settings")}
               </Link>
             </Button>
           }
@@ -65,13 +68,13 @@ export function GroupDetails() {
       await addInvite.mutateAsync({ email: inviteEmail, groupId: group.id })
       setInviteEmail("")
       toast({
-        title: "Invitation created",
-        description: "The invitation is ready to accept"
+        title: t("Invitation created"),
+        description: t("The invitation is ready to accept")
       })
     } catch {
       toast({
-        title: "Error sending invite",
-        description: "Please try again later"
+        title: t("Error sending invite"),
+        description: t("Please try again later")
       })
     }
   }
@@ -79,14 +82,16 @@ export function GroupDetails() {
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Workspace"
+        eyebrow={t("Workspace")}
         marker="06.1"
         title={group.name}
-        description="Manage who can access this workspace and its financial records."
+        description={t(
+          "Manage who can access this workspace and its financial records."
+        )}
         actions={
           <Button asChild variant="fina-secondary" lift>
             <Link to="/settings">
-              <ArrowLeft /> All groups
+              <ArrowLeft /> {t("All groups")}
             </Link>
           </Button>
         }
@@ -115,7 +120,7 @@ export function GroupDetails() {
                     name: parsed.data.name
                   })
                   setWorkspaceName(null)
-                  toast({ title: "Workspace renamed" })
+                  toast({ title: t("Workspace renamed") })
                 } catch {
                   setRenameError(
                     "Could not rename the workspace. Please try again."
@@ -124,7 +129,7 @@ export function GroupDetails() {
               }}
             >
               <label htmlFor="workspace-name" className="block font-semibold">
-                Workspace name
+                {t("Workspace name")}
               </label>
               <Input
                 id="workspace-name"
@@ -142,7 +147,7 @@ export function GroupDetails() {
               />
               {renameError ? (
                 <p id="workspace-name-error" role="alert">
-                  {renameError}
+                  {t(renameError)}
                 </p>
               ) : null}
               <Button
@@ -152,7 +157,7 @@ export function GroupDetails() {
                   (workspaceName ?? group.name).trim() === group.name
                 }
               >
-                {renameGroup.isPending ? "Saving…" : "Save name"}
+                {renameGroup.isPending ? t("Saving…") : t("Save name")}
               </Button>
             </form>
           </FinaSurface>
@@ -161,23 +166,25 @@ export function GroupDetails() {
         <section aria-labelledby="people-title">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <FinaSectionLabel>Access / People</FinaSectionLabel>
+              <FinaSectionLabel>{t("Access / People")}</FinaSectionLabel>
               <h2
                 id="people-title"
                 className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
               >
-                Members & invitations
+                {t("Members & invitations")}
               </h2>
             </div>
             <FinaBadge tone="sky">
-              {(usersPerGroup?.length ?? 0) + (invites?.length ?? 0)} entries
+              {t("entriesCount", {
+                count: (usersPerGroup?.length ?? 0) + (invites?.length ?? 0)
+              })}
             </FinaBadge>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.7fr)] lg:items-start">
             <FinaSurface elevation="md" className="overflow-hidden">
               <div className="border-b border-fina-grid bg-fina-canvas px-4 py-3 text-xs font-medium text-foreground/60">
-                Workspace access list
+                {t("Workspace access list")}
               </div>
               <ul className="divide-y divide-fina-grid">
                 {usersPerGroup?.map((member) => (
@@ -193,7 +200,7 @@ export function GroupDetails() {
                         {member.email}
                       </div>
                       <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/45">
-                        Active member
+                        {t("Active member")}
                       </div>
                     </div>
                   </li>
@@ -212,7 +219,7 @@ export function GroupDetails() {
                           {invite.email}
                         </div>
                         <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/45">
-                          Invitation pending
+                          {t("Invitation pending")}
                         </div>
                       </div>
                     </div>
@@ -221,21 +228,25 @@ export function GroupDetails() {
                         <Button
                           size="icon"
                           variant="fina-ghost"
-                          aria-label={`Remove invitation for ${invite.email}`}
+                          aria-label={t("Remove invitation for {{value0}}", {
+                            value0: invite.email
+                          })}
                         >
                           <Trash2 />
                         </Button>
                       }
-                      title="Remove invitation?"
-                      description="This person will no longer be able to accept this invitation."
-                      confirmText="Remove invite"
+                      title={t("Remove invitation?")}
+                      description={t(
+                        "This person will no longer be able to accept this invitation."
+                      )}
+                      confirmText={t("Remove invite")}
                       onConfirm={async () => {
                         try {
                           await removeInvite.mutateAsync(invite.id)
                         } catch {
                           toast({
-                            title: "Error removing invite",
-                            description: "Please try again later",
+                            title: t("Error removing invite"),
+                            description: t("Please try again later"),
                             variant: "destructive"
                           })
                         }
@@ -246,22 +257,22 @@ export function GroupDetails() {
                 {!usersPerGroup?.length && !invites?.length ? (
                   <li className="p-10 text-center">
                     <Users className="mx-auto size-9" />
-                    <p className="mt-4 font-semibold">No people found</p>
+                    <p className="mt-4 font-semibold">{t("No people found")}</p>
                   </li>
                 ) : null}
               </ul>
             </FinaSurface>
 
             <FinaSurface elevation="sm" className="p-5">
-              <FinaSectionLabel>Invite / Email</FinaSectionLabel>
+              <FinaSectionLabel>{t("Invite / Email")}</FinaSectionLabel>
               <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em]">
-                Add a person
+                {t("Add a person")}
               </h3>
               <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
-                Create a pending invitation for this workspace.
+                {t("Create a pending invitation for this workspace.")}
               </p>
               <label className="mt-5 block font-mono text-[10px] font-semibold tracking-[0.16em]">
-                Email address
+                {t("Email address")}
                 <Input
                   type="email"
                   placeholder="name@example.com"
@@ -282,7 +293,7 @@ export function GroupDetails() {
                 }
               >
                 <Plus />
-                {addInvite.isPending ? "Creating…" : "Create invite"}
+                {addInvite.isPending ? t("Creating…") : t("Create invite")}
               </Button>
             </FinaSurface>
           </div>
@@ -291,21 +302,26 @@ export function GroupDetails() {
         <FinaSurface tone="danger" elevation="md" className="p-5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <FinaSectionLabel>Danger / Permanent</FinaSectionLabel>
+              <FinaSectionLabel>{t("Danger / Permanent")}</FinaSectionLabel>
               <h2 className="mt-2 flex items-center gap-2 text-xl font-semibold tracking-[-0.035em]">
-                <TriangleAlert className="size-5" /> Delete workspace
+                <TriangleAlert className="size-5" /> {t("Delete workspace")}
               </h2>
               <p className="mt-2 max-w-2xl text-sm font-semibold text-foreground/70">
-                This erases all data associated with the group. You must type
-                the exact group name to confirm.
+                {t(
+                  "This erases all data associated with the group. You must type the exact group name to confirm."
+                )}
               </p>
             </div>
             <ConfirmationDialog
-              trigger={<Button variant="fina-danger">Remove group</Button>}
-              title={`Remove ${group.name}?`}
-              description="All data associated with the group will be erased. This action cannot be undone."
+              trigger={
+                <Button variant="fina-danger">{t("Remove group")}</Button>
+              }
+              title={t("Remove {{value0}}?", { value0: group.name })}
+              description={t(
+                "All data associated with the group will be erased. This action cannot be undone."
+              )}
               requiredConfirmationText={group.name}
-              confirmText="Permanently remove"
+              confirmText={t("Permanently remove")}
               onConfirm={async (confirmation) => {
                 try {
                   await removeGroup.mutateAsync({
@@ -315,8 +331,8 @@ export function GroupDetails() {
                   navigate("/settings")
                 } catch {
                   toast({
-                    title: "Error removing group",
-                    description: "Please try again later",
+                    title: t("Error removing group"),
+                    description: t("Please try again later"),
                     variant: "destructive"
                   })
                 }

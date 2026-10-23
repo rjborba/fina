@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { localTestDatabaseUrl } from "./local-test-database.mjs";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
@@ -10,26 +10,6 @@ const requireFromApi = createRequire(
   join(repositoryRoot, "apps/api/package.json"),
 );
 const { Client } = requireFromApi("pg");
-
-function parseEnvironmentFile(path) {
-  return Object.fromEntries(
-    readFileSync(path, "utf8")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => /^[A-Z][A-Z0-9_]*=/.test(line))
-      .map((line) => {
-        const separator = line.indexOf("=");
-        const name = line.slice(0, separator);
-        const rawValue = line.slice(separator + 1);
-
-        try {
-          return [name, JSON.parse(rawValue)];
-        } catch {
-          return [name, rawValue.replace(/^['"]|['"]$/g, "")];
-        }
-      }),
-  );
-}
 
 function runTests(environment) {
   const result = spawnSync(pnpm, ["turbo", "run", "test:integration"], {
@@ -64,24 +44,9 @@ async function main() {
     return;
   }
 
-  let localEnvironment;
-  try {
-    localEnvironment = parseEnvironmentFile(
-      join(repositoryRoot, "apps/api/.env.local"),
-    );
-  } catch {
-    throw new Error(
-      "Local Supabase configuration is missing. Run `pnpm infra:start` first.",
-    );
-  }
-
-  if (!localEnvironment.DATABASE_URL) {
-    throw new Error(
-      "apps/api/.env.local does not contain the local Supabase DATABASE_URL.",
-    );
-  }
-
-  const adminUrl = assertLocalSupabase(localEnvironment.DATABASE_URL);
+  const adminUrl = assertLocalSupabase(
+    (await localTestDatabaseUrl()).toString(),
+  );
   const databaseName = `fina_test_${process.pid}_${Date.now()}`;
   const testUrl = new URL(adminUrl);
   testUrl.pathname = `/${databaseName}`;

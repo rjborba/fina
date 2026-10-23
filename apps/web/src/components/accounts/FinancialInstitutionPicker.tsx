@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+import { translate } from "@/i18n"
 import { forwardRef, useState, type ComponentPropsWithoutRef } from "react"
 import {
   FINANCIAL_INSTITUTIONS,
@@ -40,22 +42,24 @@ export const FinancialInstitutionPicker = forwardRef<
     value,
     onChange,
     accountType,
-    ariaLabel = "Financial institution",
+    ariaLabel = translate("Financial institution"),
     disabled,
     className,
     ...props
   },
   ref
 ) {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const institution = FINANCIAL_INSTITUTIONS.find((item) => item.id === value)
   const label =
     institution?.name ??
     (value === null
-      ? OTHER_INSTITUTION_LABEL
+      ? t(OTHER_INSTITUTION_LABEL)
       : accountType === "credit"
-        ? "Choose a card issuer"
-        : "Choose a financial institution")
+        ? t("Choose a card issuer")
+        : t("Choose a financial institution"))
   const choose = (id: FinancialInstitutionId | null) => {
     onChange(id)
     setOpen(false)
@@ -108,18 +112,21 @@ export const FinancialInstitutionPicker = forwardRef<
         className="w-[var(--radix-popover-trigger-width)] min-w-64 max-w-[calc(100vw-2rem)] rounded-xl border-fina-grid bg-fina-surface p-0 shadow-fina-md"
       >
         <Command
-          label="Search financial institutions"
+          label={t("Search financial institutions")}
           className="bg-transparent"
         >
           <CommandInput
-            placeholder="Search institutions..."
-            aria-label="Search financial institutions"
+            placeholder={t("Search institutions...")}
+            aria-label={t("Search financial institutions")}
             disabled={disabled}
             className="h-10 text-[13px]"
           />
-          <CommandList aria-label="Financial institutions" className="max-h-72">
+          <CommandList
+            aria-label={t("Financial institutions")}
+            className="max-h-72"
+          >
             <CommandEmpty className="py-5 text-[13px]">
-              No institutions found.
+              {t("No institutions found.")}
             </CommandEmpty>
             <CommandGroup>
               {FINANCIAL_INSTITUTIONS.map((item) => (
@@ -146,8 +153,15 @@ export const FinancialInstitutionPicker = forwardRef<
                 </CommandItem>
               ))}
               <CommandItem
-                value={OTHER_INSTITUTION_LABEL}
-                keywords={["custom", "generic", "none"]}
+                value={t(OTHER_INSTITUTION_LABEL)}
+                keywords={[
+                  "custom",
+                  "generic",
+                  "none",
+                  "outra",
+                  "genérica",
+                  "nenhuma"
+                ]}
                 disabled={disabled}
                 onSelect={() => choose(null)}
                 className="h-9 gap-2 rounded-md text-[13px]"
@@ -159,7 +173,7 @@ export const FinancialInstitutionPicker = forwardRef<
                   decorative
                 />
                 <span className="min-w-0 flex-1 truncate">
-                  {OTHER_INSTITUTION_LABEL}
+                  {t(OTHER_INSTITUTION_LABEL)}
                 </span>
                 {value === null ? (
                   <Check className="size-3.5 shrink-0" aria-hidden="true" />

@@ -1,4 +1,5 @@
 import { useToast } from "@/hooks/use-toast"
+import { useTranslation } from "react-i18next"
 import {
   Toast,
   ToastClose,
@@ -9,10 +10,11 @@ import {
 } from "@/components/ui/toast"
 
 export function Toaster() {
+  const { t } = useTranslation()
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
+    <ToastProvider label={t("Notification")}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
@@ -23,11 +25,11 @@ export function Toaster() {
               )}
             </div>
             {action}
-            <ToastClose />
+            <ToastClose aria-label={t("Close")} />
           </Toast>
         )
       })}
-      <ToastViewport />
+      <ToastViewport label={t("Notifications ({hotkey})")} />
     </ToastProvider>
   )
 }

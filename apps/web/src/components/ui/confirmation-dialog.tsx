@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+import { translate } from "@/i18n"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,10 +30,12 @@ export function ConfirmationDialog({
   title,
   description,
   onConfirm,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText = translate("Confirm"),
+  cancelText = translate("Cancel"),
   requiredConfirmationText
 }: ConfirmationDialogProps) {
+  const { t } = useTranslation()
+
   const [open, setOpen] = useState(false)
   const [confirmation, setConfirmation] = useState("")
 
@@ -56,9 +60,11 @@ export function ConfirmationDialog({
         </AlertDialogHeader>
         {requiredConfirmationText ? (
           <Input
-            aria-label="Confirmation name"
+            aria-label={t("Confirmation name")}
             autoComplete="off"
-            placeholder={`Type ${requiredConfirmationText} to confirm`}
+            placeholder={t("Type {{value0}} to confirm", {
+              value0: requiredConfirmationText
+            })}
             className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}

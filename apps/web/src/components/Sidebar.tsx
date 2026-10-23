@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   Banknote,
   Home,
@@ -76,6 +77,8 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
 // };
 
 export function Sidebar() {
+  const { t } = useTranslation()
+
   const location = useLocation()
   const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === "collapsed"
@@ -96,7 +99,7 @@ export function Sidebar() {
               Fina
             </div>
             <div className="mt-1 text-[10px] text-sidebar-foreground/50">
-              Financial workspace
+              {t("Financial workspace")}
             </div>
           </div>
         </div>
@@ -105,21 +108,21 @@ export function Sidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-[11px] font-medium text-sidebar-foreground/50">
-            Workspace
+            {t("Workspace")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAVIGATION_ITEMS.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={t(item.title)}>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.path}
-                    tooltip={item.title}
+                    tooltip={t(item.title)}
                     className="h-9 rounded-md border border-transparent px-3 text-[13px] font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
                   >
                     <NavLink to={item.path} end={item.path === "/"}>
                       {item.icon}
-                      <span>{item.title}</span>
+                      <span>{t(item.title)}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -133,9 +136,11 @@ export function Sidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={toggleSidebar}
-              tooltip={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              tooltip={
+                isCollapsed ? t("Expand sidebar") : t("Collapse sidebar")
+              }
               aria-label={
-                isCollapsed ? "Expand navigation" : "Collapse navigation"
+                isCollapsed ? t("Expand navigation") : t("Collapse navigation")
               }
               className="h-9 rounded-md border border-transparent px-3 text-xs font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
@@ -144,7 +149,7 @@ export function Sidebar() {
               ) : (
                 <PanelLeftClose className="size-4" />
               )}
-              <span>{isCollapsed ? "Expand" : "Collapse"}</span>
+              <span>{isCollapsed ? t("Expand") : t("Collapse")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

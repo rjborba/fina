@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
@@ -58,9 +59,14 @@ export function TransactionsSort({
   inlineCreditCardTransactions,
   onInlineCreditCardTransactionsChange
 }: TransactionsSortProps) {
+  const { t } = useTranslation()
+
   const direction = value.endsWith("-desc") ? "desc" : "asc"
   const field = value.replace(/-(asc|desc)$/, "")
-  const orderingLabel = options.find((option) => option.value === value)?.label
+  const orderingLabel = t(
+    options.find((option) => option.value === value)?.label ??
+      "Date — newest first"
+  )
   const DirectionIcon =
     direction === "desc" ? ArrowDownWideNarrow : ArrowUpNarrowWide
 
@@ -70,22 +76,25 @@ export function TransactionsSort({
         <Button
           variant="ghost"
           className="h-11 gap-1.5 rounded-md border border-fina-grid px-3 text-xs font-normal text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-foreground/30 focus-visible:bg-fina-canvas focus-visible:ring-0 data-[state=open]:bg-fina-canvas data-[state=open]:text-foreground md:h-7 md:px-2"
-          aria-label="Display options"
-          title={`Display options${onOpenChange ? " (Shift V)" : ""} · ${orderingLabel}`}
+          aria-label={t("Display options")}
+          title={t("Display options{{value0}} · {{value1}}", {
+            value0: onOpenChange ? " (Shift V)" : "",
+            value1: orderingLabel
+          })}
           aria-keyshortcuts={onOpenChange ? "Shift+V" : undefined}
         >
           <SlidersHorizontal className="size-3.5" />
-          <span>Display</span>
+          <span>{t("Display")}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"
         sideOffset={8}
-        aria-label="Display options"
+        aria-label={t("Display options")}
         className="fina-scrollbar max-h-[var(--radix-popover-content-available-height)] w-[304px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-fina-grid bg-fina-surface p-0 text-xs text-foreground shadow-fina-md"
       >
         <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <span className="text-muted-foreground">Ordering</span>
+          <span className="text-muted-foreground">{t("Ordering")}</span>
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -93,7 +102,9 @@ export function TransactionsSort({
               size="icon"
               className="size-7 text-muted-foreground hover:bg-fina-canvas hover:text-foreground focus-visible:border-transparent focus-visible:bg-fina-canvas focus-visible:text-foreground focus-visible:ring-0"
               aria-label={
-                direction === "desc" ? "Sort ascending" : "Sort descending"
+                direction === "desc"
+                  ? t("Sort ascending")
+                  : t("Sort descending")
               }
               title={orderingLabel}
               onClick={() => {
@@ -120,7 +131,7 @@ export function TransactionsSort({
               }}
             >
               <SelectTrigger
-                aria-label="Ordering"
+                aria-label={t("Ordering")}
                 className="h-7 w-32 rounded-md border-fina-grid bg-fina-canvas px-2 py-0 text-xs shadow-none focus:ring-0 focus-visible:border-foreground/30"
               >
                 <SelectValue />
@@ -141,7 +152,7 @@ export function TransactionsSort({
                       value={sortField.value}
                       className="text-xs focus:bg-fina-canvas focus:text-foreground"
                     >
-                      {sortField.label}
+                      {t(sortField.label)}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -151,12 +162,12 @@ export function TransactionsSort({
         {onInlineCreditCardTransactionsChange ||
         (displayProperties && onDisplayPropertiesChange) ? (
           <div className="space-y-3 border-t border-fina-grid px-4 py-3">
-            <p className="font-medium">List options</p>
+            <p className="font-medium">{t("List options")}</p>
             {onInlineCreditCardTransactionsChange ? (
               <label className="flex cursor-pointer items-center justify-between gap-3 text-muted-foreground">
-                <span>Inline credit card transactions</span>
+                <span>{t("Inline credit card transactions")}</span>
                 <Switch
-                  aria-label="Inline credit card transactions"
+                  aria-label={t("Inline credit card transactions")}
                   className="focus-visible:border-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0"
                   checked={inlineCreditCardTransactions}
                   onCheckedChange={onInlineCreditCardTransactionsChange}
@@ -167,11 +178,13 @@ export function TransactionsSort({
               <div
                 className="space-y-2"
                 role="group"
-                aria-label="Display properties"
+                aria-label={t("Display properties")}
               >
-                <p className="text-muted-foreground">Display properties</p>
+                <p className="text-muted-foreground">
+                  {t("Display properties")}
+                </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Import and card indicators always stay visible.
+                  {t("Import and card indicators always stay visible.")}
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {TRANSACTION_DISPLAY_PROPERTIES.map((property) => (
@@ -192,7 +205,7 @@ export function TransactionsSort({
                         })
                       }
                     >
-                      {property.label}
+                      {t(property.label)}
                     </button>
                   ))}
                 </div>

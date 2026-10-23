@@ -19,3 +19,9 @@ description: "React web application boundaries"
   used for local development.
 - The first browser journey is the secure account-to-CSV-import flow described
   in `PROJECT.md`; do not stabilize unrelated screens by expanding scope.
+- Translate application copy with react-i18next and maintain matching English
+  and Brazilian Portuguese catalogs in `apps/web/src/i18n/locales`. Use whole
+  messages, interpolation, and plural forms rather than joining translated
+  fragments. Never translate customer names, financial text, or transport values.
+  Use the shared locale-aware formatters for displayed numbers, BRL amounts,
+  and dates; CSV formats and machine-readable API values remain explicit.

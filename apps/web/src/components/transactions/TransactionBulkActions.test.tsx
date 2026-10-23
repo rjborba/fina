@@ -77,7 +77,7 @@ describe("TransactionBulkActions", () => {
     })
     const summary = within(toolbar).getByRole("status")
     expect(summary).toHaveTextContent("3 selected")
-    expect(summary).toHaveTextContent("Net -R$ 35,50")
+    expect(summary).toHaveTextContent("Net -R$35.50")
     expect(summary).toHaveTextContent("1 without an amount")
     expect(summary).toHaveAttribute("aria-atomic", "true")
     expect(within(summary).queryByRole("button")).not.toBeInTheDocument()
@@ -89,11 +89,11 @@ describe("TransactionBulkActions", () => {
     const { rerender } = render(
       <TransactionBulkActions {...props} selectedTotal={0} />
     )
-    expect(screen.getByRole("status")).toHaveTextContent("Net R$ 0,00")
+    expect(screen.getByRole("status")).toHaveTextContent("Net R$0.00")
     expect(screen.queryByText(/without an amount/)).not.toBeInTheDocument()
 
     rerender(<TransactionBulkActions {...props} selectedTotal={18} />)
-    expect(screen.getByRole("status")).toHaveTextContent("Net R$ 18,00")
+    expect(screen.getByRole("status")).toHaveTextContent("Net R$18.00")
   })
 
   it("exposes the loaded-row boundary and can select or clear the view", async () => {

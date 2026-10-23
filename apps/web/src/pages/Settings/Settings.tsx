@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowUpRight, Plus, Users } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input"
 import { useActiveGroup } from "@/contexts/ActiveGroupContext"
 import { useGroupsMutation } from "@/data/groups/useGroupsMutation"
 import { toast } from "@/hooks/use-toast"
+import { LanguageSelector } from "@/components/LanguageSelector"
 
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required")
@@ -31,6 +33,8 @@ const groupFormSchema = z.object({
 type GroupFormValues = z.infer<typeof groupFormSchema>
 
 export function Settings() {
+  const { t } = useTranslation()
+
   const { groups, selectedGroup } = useActiveGroup()
   const { addGroup } = useGroupsMutation()
 
@@ -46,13 +50,13 @@ export function Settings() {
       await addGroup.mutateAsync({ name: data.name.trim() })
       form.reset()
       toast({
-        title: "Group created",
-        description: "The new group has been created successfully."
+        title: t("Group created"),
+        description: t("The new group has been created successfully.")
       })
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to create group. Please try again.",
+        title: t("Error"),
+        description: t("Failed to create group. Please try again."),
         variant: "destructive"
       })
     }
@@ -60,23 +64,35 @@ export function Settings() {
 
   return (
     <FinaPage>
+      <section className="flex flex-wrap items-center justify-between gap-3 border-b border-fina-grid px-5 py-4 md:px-8">
+        <p className="text-xs text-foreground/60">
+          {t("Choose the language used throughout Fina on this browser.")}
+        </p>
+        <LanguageSelector />
+      </section>
       <FinaPageHeader
-        eyebrow="Settings"
+        eyebrow={t("Settings")}
         marker="06"
-        title="Workspaces"
-        description="Groups separate people and financial data. Open a workspace to manage its members, invitations, and lifecycle."
-        actions={<FinaBadge tone="surface">{groups.length} groups</FinaBadge>}
+        title={t("Workspaces")}
+        description={t(
+          "Groups separate people and financial data. Open a workspace to manage its members, invitations, and lifecycle."
+        )}
+        actions={
+          <FinaBadge tone="surface">
+            {t("groupsCount", { count: groups.length })}
+          </FinaBadge>
+        }
       />
 
       <main className="grid min-w-0 grid-cols-1 gap-8 p-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-start md:p-8">
         <section aria-labelledby="group-list-title">
           <div className="mb-4">
-            <FinaSectionLabel>Groups / Access</FinaSectionLabel>
+            <FinaSectionLabel>{t("Groups / Access")}</FinaSectionLabel>
             <h2
               id="group-list-title"
               className="mt-2 text-2xl font-semibold tracking-[-0.04em]"
             >
-              Available workspaces
+              {t("Available workspaces")}
             </h2>
           </div>
 
@@ -99,14 +115,15 @@ export function Settings() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-mono text-[10px] font-semibold tracking-[0.16em] text-foreground/45">
-                              Workspace / {String(index + 1).padStart(2, "0")}
+                              {t("Workspace /")}{" "}
+                              {String(index + 1).padStart(2, "0")}
                             </div>
                             <div className="mt-1 truncate text-lg font-semibold tracking-[-0.025em]">
                               {group.name}
                             </div>
                             {isActive ? (
                               <div className="mt-1 text-[10px] font-semibold tracking-[0.12em]">
-                                Active group
+                                {t("Active group")}
                               </div>
                             ) : null}
                           </div>
@@ -120,19 +137,21 @@ export function Settings() {
             ) : (
               <div className="p-10 text-center">
                 <Users className="mx-auto size-9" />
-                <p className="mt-4 font-semibold">No groups yet</p>
+                <p className="mt-4 font-semibold">{t("No groups yet")}</p>
               </div>
             )}
           </FinaSurface>
         </section>
 
         <FinaSurface elevation="sm" className="p-5 sm:p-6">
-          <FinaSectionLabel>New / Workspace</FinaSectionLabel>
+          <FinaSectionLabel>{t("New / Workspace")}</FinaSectionLabel>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-            Create group
+            {t("Create group")}
           </h2>
           <p className="mt-2 text-sm font-semibold leading-5 text-foreground/65">
-            A group is a private boundary for accounts, transactions and people.
+            {t(
+              "A group is a private boundary for accounts, transactions and people."
+            )}
           </p>
 
           <Form {...form}>
@@ -146,12 +165,12 @@ export function Settings() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-mono text-[10px] font-semibold tracking-[0.16em]">
-                      Group name
+                      {t("Group name")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         className="h-11 rounded-md border border-fina-grid bg-fina-surface font-semibold shadow-fina-sm focus-visible:ring-fina-violet"
-                        placeholder="e.g. Home"
+                        placeholder={t("e.g. Home")}
                         {...field}
                       />
                     </FormControl>
@@ -167,7 +186,9 @@ export function Settings() {
                 className="w-full"
               >
                 <Plus />
-                {form.formState.isSubmitting ? "Creating…" : "Create group"}
+                {form.formState.isSubmitting
+                  ? t("Creating…")
+                  : t("Create group")}
               </Button>
             </form>
           </Form>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -34,6 +35,7 @@ export const TransactionsDateFilter: FC<{
 }
 
 const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
+  const { t } = useTranslation()
   const [filter, setFilter] = useAtom(transactionFilterAtom)
   const [open, setOpen] = useState(false)
   const [displayYear, setDisplayYear] = useState(() =>
@@ -65,7 +67,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
   const summary =
     selectedMonths.length === 1
       ? dayjs(reviewMonthStart(selectedMonths[0])).format("MMM YYYY")
-      : `${selectedMonths.length} months`
+      : t("monthsCount", { count: selectedMonths.length })
 
   return (
     <div
@@ -77,7 +79,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
       <Button
         variant="fina-ghost"
         size="icon"
-        aria-label="Previous month"
+        aria-label={t("Previous month")}
         disabled={selectedMonths[0] === "0001-01"}
         className={cn(
           "size-6 text-muted-foreground",
@@ -101,7 +103,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
               "h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas",
               mobile && "h-11 min-w-0 flex-1 flex-col gap-0 px-1"
             )}
-            aria-label="Review months"
+            aria-label={t("Review months")}
             title={selectedMonths
               .map((month) => dayjs(reviewMonthStart(month)).format("MMM YYYY"))
               .join(", ")}
@@ -111,7 +113,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
                 aria-hidden="true"
                 className="text-[10px] leading-4 text-muted-foreground"
               >
-                Review
+                {t("Review period")}
               </span>
             ) : null}
             <span className="max-w-full truncate">{summary}</span>
@@ -119,7 +121,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          aria-label="Review months"
+          aria-label={t("Review months")}
           className="w-64 rounded-md border border-fina-grid bg-fina-surface p-0 shadow-fina-lg"
         >
           <div className="flex items-center justify-between border-b border-fina-grid px-2 py-1.5">
@@ -127,7 +129,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
               variant="fina-ghost"
               size="icon"
               className="size-7"
-              aria-label="Previous year"
+              aria-label={t("Previous year")}
               disabled={displayYear <= 1}
               onClick={() => setDisplayYear((year) => year - 1)}
             >
@@ -138,7 +140,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
               variant="fina-ghost"
               size="icon"
               className="size-7"
-              aria-label="Next year"
+              aria-label={t("Next year")}
               disabled={displayYear >= 9999}
               onClick={() => setDisplayYear((year) => year + 1)}
             >
@@ -185,8 +187,9 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
           {selectedMonths.length > 120 ? (
             <div className="space-y-2 border-t border-fina-grid px-3 py-2 text-xs text-muted-foreground">
               <p>
-                Choose up to 120 months. Start a new selection to edit this
-                range.
+                {t(
+                  "Choose up to 120 months. Start a new selection to edit this range."
+                )}
               </p>
               <Button
                 variant="fina-ghost"
@@ -197,7 +200,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
                   setDisplayYear(Number(currentMonth.slice(0, 4)))
                 }}
               >
-                Use current month
+                {t("Use current month")}
               </Button>
             </div>
           ) : null}
@@ -206,14 +209,14 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
               className="text-[11px] text-muted-foreground"
               aria-live="polite"
             >
-              {selectedMonths.length} selected
+              {t("selectedMonthsCount", { count: selectedMonths.length })}
             </span>
             <Button
               variant="fina-ghost"
               className="h-6 px-2 text-xs"
               onClick={() => setOpen(false)}
             >
-              Done
+              {t("Done")}
             </Button>
           </div>
         </PopoverContent>
@@ -221,7 +224,7 @@ const MonthlyReviewDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
       <Button
         variant="fina-ghost"
         size="icon"
-        aria-label="Next month"
+        aria-label={t("Next month")}
         disabled={selectedMonths.at(-1) === "9999-12"}
         className={cn(
           "size-6 text-muted-foreground",
@@ -250,6 +253,7 @@ function monthsInRange(filter: TransactionFilterType): string[] {
 }
 
 const CashFlowDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
+  const { t } = useTranslation()
   const [filterProps, setFilterProps] = useAtom(transactionFilterAtom)
   const [date, setDate] = useState<DateRange | undefined>({
     from: filterProps.startDate,
@@ -290,7 +294,7 @@ const CashFlowDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
       <Button
         variant="fina-ghost"
         size="icon"
-        aria-label="Previous month"
+        aria-label={t("Previous month")}
         className={cn(
           "size-6 text-muted-foreground",
           mobile && "h-11 w-9 shrink-0"
@@ -320,14 +324,14 @@ const CashFlowDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
               "h-7 px-1.5 text-xs font-normal text-muted-foreground hover:bg-fina-canvas",
               mobile && "h-11 min-w-0 flex-1 flex-col gap-0 px-1"
             )}
-            aria-label="Date range"
+            aria-label={t("Date range")}
           >
             {mobile ? (
               <span
                 aria-hidden="true"
                 className="text-[10px] leading-4 text-muted-foreground"
               >
-                Cash flow
+                {t("Cash flow")}
               </span>
             ) : null}
             <span className="max-w-full truncate whitespace-nowrap">
@@ -355,7 +359,7 @@ const CashFlowDateFilter: FC<{ mobile: boolean }> = ({ mobile }) => {
       <Button
         variant="fina-ghost"
         size="icon"
-        aria-label="Next month"
+        aria-label={t("Next month")}
         className={cn(
           "size-6 text-muted-foreground",
           mobile && "h-11 w-9 shrink-0"

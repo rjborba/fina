@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,8 @@ export function TransactionShortcuts({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -35,16 +38,16 @@ export function TransactionShortcuts({
       >
         <DialogHeader>
           <DialogTitle className="text-sm font-medium">
-            Keyboard shortcuts
+            {t("Keyboard shortcuts")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {shortcuts.map(([label, key]) => (
             <div
-              key={label}
+              key={t(label)}
               className="flex items-center justify-between gap-4 text-xs"
             >
-              <span className="text-muted-foreground">{label}</span>
+              <span className="text-muted-foreground">{t(label)}</span>
               <kbd className="whitespace-nowrap text-[11px] text-foreground">
                 {key}
               </kbd>

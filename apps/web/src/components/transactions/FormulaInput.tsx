@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import {
   formulaParts,
@@ -26,6 +27,8 @@ export function FormulaInput({
   options: FormulaOption[]
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
+
   const editor = useRef<HTMLDivElement>(null)
   const current = useRef(value)
   const composing = useRef(false)
@@ -391,7 +394,7 @@ export function FormulaInput({
           <ul
             id={`${id}-suggestions`}
             role="listbox"
-            aria-label="Formula references"
+            aria-label={t("Formula references")}
             className="fina-scrollbar max-h-40 overflow-y-auto"
           >
             {matches.map((option, index) => (
@@ -408,7 +411,7 @@ export function FormulaInput({
                 >
                   <span className="min-w-0 break-words">{option.name}</span>
                   <span className="shrink-0 text-[10px] text-foreground/50">
-                    {option.kind}
+                    {t(option.kind)}
                   </span>
                 </button>
               </li>
@@ -416,7 +419,7 @@ export function FormulaInput({
           </ul>
           {!matches.length ? (
             <p role="status" className="px-2 py-2 text-xs text-foreground/60">
-              No matching categories or tiles.
+              {t("No matching categories or tiles.")}
             </p>
           ) : null}
         </div>

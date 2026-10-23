@@ -169,7 +169,10 @@ test("keeps mobile pages, transaction controls and dialogs usable at narrow widt
   });
   await destination.click();
   await page
-    .getByRole("option", { name: `${accountName} (checkout)`, exact: true })
+    .getByRole("option", {
+      name: `${accountName} (Checking account)`,
+      exact: true,
+    })
     .click();
   await page
     .getByRole("button", { name: "Validate import", exact: true })

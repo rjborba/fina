@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import type { CreditCardBillDetail } from "@fina/types"
 import { cardMetadataKey } from "@fina/types"
 import { CreditCard } from "lucide-react"
@@ -5,10 +7,7 @@ import { CardLabel } from "@/components/creditCards/CardLabel"
 import { formatCardLabel } from "@/components/creditCards/cardLabelFormat"
 import { cn } from "@/lib/utils"
 
-const money = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const money = { format: formatCurrency }
 
 export function BillCardsBreakdown({
   summaries,
@@ -21,15 +20,18 @@ export function BillCardsBreakdown({
   selectedIds: readonly string[]
   onToggleCard: (id: string) => void
 }) {
+  const { t } = useTranslation()
+
   if (!summaries.length) return null
   return (
     <section aria-labelledby="bill-cards-title" className="mb-6">
       <h2 id="bill-cards-title" className="text-sm font-semibold">
-        Cards in this bill
+        {t("Cards in this bill")}
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        One shared bill. These subtotals include every purchase and refund, even
-        when the purchase list is filtered.
+        {t(
+          "One shared bill. These subtotals include every purchase and refund, even when the purchase list is filtered."
+        )}
       </p>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {summaries.map((summary) => {
@@ -38,7 +40,9 @@ export function BillCardsBreakdown({
             <li key={id}>
               <button
                 type="button"
-                aria-label={`Filter purchases by ${formatCardLabel(summary)}`}
+                aria-label={t("Filter purchases by {{value0}}", {
+                  value0: formatCardLabel(summary)
+                })}
                 aria-pressed={selectedIds.includes(id)}
                 onClick={() => onToggleCard(id)}
                 className={cn(
@@ -56,16 +60,19 @@ export function BillCardsBreakdown({
                     <CardLabel card={summary} className="truncate" />
                   </span>
                   <span className="mt-1 block text-xs text-muted-foreground">
-                    {summary.transactionCount} purchase
-                    {summary.transactionCount === 1 ? "" : "s"}
+                    {t("purchasesCount", { count: summary.transactionCount })}
                     {summary.unavailableValueCount > 0
-                      ? ` · ${summary.unavailableValueCount} without an amount`
+                      ? t(" · {{value0}} without an amount", {
+                          value0: summary.unavailableValueCount
+                        })
                       : ""}
                   </span>
                 </span>
                 <span
                   className="shrink-0 whitespace-nowrap text-[13px] tabular-nums"
-                  aria-label={`Card subtotal ${money.format(summary.total)}`}
+                  aria-label={t("Card subtotal {{value0}}", {
+                    value0: money.format(summary.total)
+                  })}
                 >
                   {money.format(summary.total)}
                 </span>
@@ -77,12 +84,12 @@ export function BillCardsBreakdown({
       {roundingAdjustment !== 0 ? (
         <p
           className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground"
-          aria-label="Card subtotal rounding adjustment"
+          aria-label={t("Card subtotal rounding adjustment")}
         >
           <span>
-            Rounding adjustment{" "}
+            {t("Rounding adjustment")}{" "}
             <span className="sr-only">
-              for amounts stored with more than two decimals
+              {t("for amounts stored with more than two decimals")}
             </span>
           </span>
           <span className="tabular-nums">

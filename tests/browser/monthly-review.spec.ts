@@ -426,7 +426,7 @@ async function importMonthFixture(
   if (profiles.length === 1) {
     await expect(destination).not.toHaveText("Select the account to confirm");
   }
-  const accountLabel = `${fixture.accountName} (${fixture.accountType})`;
+  const accountLabel = `${fixture.accountName} (${fixture.accountType === "credit" ? "Credit card" : "Checking account"})`;
   if ((await destination.textContent()) !== accountLabel) {
     await destination.click();
     await page.getByRole("option", { name: accountLabel, exact: true }).click();
@@ -973,7 +973,10 @@ test("inverts charges and refunds on a July card bill in June review while prese
   });
   await page.getByRole("combobox", { name: "Destination account" }).click();
   await page
-    .getByRole("option", { name: "Review fixture card (credit)", exact: true })
+    .getByRole("option", {
+      name: "Review fixture card (Credit card)",
+      exact: true,
+    })
     .click();
   await page.getByRole("button", { name: "Bill due in", exact: true }).click();
   await page.getByRole("button", { name: `July ${year}`, exact: true }).click();
@@ -1019,7 +1022,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
       .getByRole("row")
       .filter({ hasText: "Fixture July refund" })
       .locator('[data-column="value"] [data-field-value]'),
-  ).toHaveText(/^R\$\s*25,00$/);
+  ).toHaveText(/^R\$\s*25\.00$/);
   await expect(
     page
       .getByRole("row")
@@ -1031,7 +1034,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
       .getByRole("row")
       .filter({ hasText: "Fixture groceries" })
       .locator('[data-column="value"] [data-field-value]'),
-  ).toHaveText(/^[−-]R\$\s*100,00$/);
+  ).toHaveText(/^[−-]R\$\s*100\.00$/);
   await expect(
     page.getByText("Fixture older installment", { exact: true }),
   ).toBeVisible();
@@ -1598,7 +1601,7 @@ test("inverts charges and refunds on a July card bill in June review while prese
   await expect(billSummary).toHaveText(completeSummary);
   await expect(
     page.getByLabel("Matching purchases total", { exact: true }),
-  ).toHaveText(/Matching purchases total:\s*R\$\s*25,00/);
+  ).toHaveText(/Matching purchases total:\s*R\$\s*25\.00/);
   await expect(
     page.getByRole("grid", { name: "Transactions", exact: true }),
   ).toHaveAttribute("aria-rowcount", "1");
@@ -1855,7 +1858,7 @@ test("reviews selected nonadjacent months across years with the same inline and 
       .getByText("Review balance", { exact: true })
       .locator("../..")
       .locator("p"),
-  ).toHaveText(/^[−-]R\$\s*210,00$/);
+  ).toHaveText(/^[−-]R\$\s*210\.00$/);
   await page.keyboard.press("Escape");
   await expect(totals).not.toBeVisible();
 
@@ -1898,7 +1901,7 @@ test("reviews selected nonadjacent months across years with the same inline and 
       .getByText("Review balance", { exact: true })
       .locator("../..")
       .locator("p"),
-  ).toHaveText(/^[−-]R\$\s*210,00$/);
+  ).toHaveText(/^[−-]R\$\s*210\.00$/);
   await page.keyboard.press("Escape");
 
   const restoredBillQuery = page.waitForRequest(
@@ -2163,7 +2166,7 @@ test("combines account, import, amount, and date filters with matching totals an
   await expect(
     page.getByText("Filter fixture refund", { exact: true }),
   ).toHaveCount(0);
-  await expectReviewBalance(page, /^[−-]R\$\s*95,00$/);
+  await expectReviewBalance(page, /^[−-]R\$\s*95\.00$/);
 
   await reloadWithSavedTransactionFilters(page, {
     dateBasis: "monthly-review",
@@ -2207,7 +2210,7 @@ test("combines account, import, amount, and date filters with matching totals an
   await expect(bill).toBeVisible();
   await expect(
     bill.locator('[data-column="value"] [data-field-value]'),
-  ).toHaveText(/^[−-]R\$\s*40,00$/);
+  ).toHaveText(/^[−-]R\$\s*40\.00$/);
   await expect(ledger).toHaveAttribute("aria-rowcount", "3");
   await expectCompactTransactionList(page);
   await expect(bill.locator('[data-inline-metadata="import"]')).toHaveCount(0);
@@ -2216,7 +2219,7 @@ test("combines account, import, amount, and date filters with matching totals an
     path: "test-results/transactions-aligned-grouped.png",
     fullPage: true,
   });
-  await expectReviewBalance(page, /^[−-]R\$\s*95,00$/);
+  await expectReviewBalance(page, /^[−-]R\$\s*95\.00$/);
 
   menu = await openFilterProperty(page, "Import source");
   await menu
@@ -2227,7 +2230,7 @@ test("combines account, import, amount, and date filters with matching totals an
   await closeTransactionFilters(page);
   await expect(ledger).toHaveAttribute("aria-rowcount", "2");
   await expect(bill).toHaveCount(0);
-  await expectReviewBalance(page, /^[−-]R\$\s*60,00$/);
+  await expectReviewBalance(page, /^[−-]R\$\s*60\.00$/);
   await reloadWithSavedTransactionFilters(page, {
     dateBasis: "monthly-review",
     startDate: `${year}-06-01`,
@@ -2254,7 +2257,7 @@ test("combines account, import, amount, and date filters with matching totals an
   await expect(
     page.getByText("Filter fixture manual expense", { exact: true }),
   ).toBeVisible();
-  await expectReviewBalance(page, /^[−-]R\$\s*25,00$/);
+  await expectReviewBalance(page, /^[−-]R\$\s*25\.00$/);
 
   await clearTransactionFilters(page);
   await expect(
@@ -2405,7 +2408,7 @@ test("keeps a virtualized transaction list single-line while browsing and select
   await page.getByRole("combobox", { name: "Destination account" }).click();
   await page
     .getByRole("option", {
-      name: "Density fixture checking (checkout)",
+      name: "Density fixture checking (Checking account)",
       exact: true,
     })
     .click();
@@ -2990,12 +2993,12 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await row(descriptions[1]).hover();
   await checkbox(descriptions[1]).click();
   await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
-  await expect(bar).toContainText(/[−-]R\$\s*30,00/);
+  await expect(bar).toContainText(/[−-]R\$\s*30\.00/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await row(descriptions[3]).hover();
   await checkbox(descriptions[3]).click({ modifiers: ["Shift"] });
   await expect(bar.getByText("5 selected", { exact: true })).toBeVisible();
-  await expect(bar).toContainText(/[−-]R\$\s*70,00/);
+  await expect(bar).toContainText(/[−-]R\$\s*70\.00/);
   await bar.getByRole("button", { name: "Unselect all", exact: true }).click();
   await expect(bar).toHaveCount(0);
 
@@ -3004,7 +3007,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await row(descriptions[2]).hover();
   await checkbox(descriptions[2]).click();
   await expect(bar.getByText("2 selected", { exact: true })).toBeVisible();
-  await expect(bar).toContainText(/[−-]R\$\s*15,00/);
+  await expect(bar).toContainText(/[−-]R\$\s*15\.00/);
   const expectBarWithinLedger = async () => {
     await expect
       .poll(async () => {
@@ -3168,7 +3171,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await closeTransactionFilters(page);
   await expect(ledger).toHaveAttribute("aria-rowcount", "1");
   await expect(bar.getByText("1 selected", { exact: true })).toBeVisible();
-  await expect(bar).toContainText(/R\$\s*5,00/);
+  await expect(bar).toContainText(/R\$\s*5\.00/);
   await bar.getByRole("button", { name: "Unselect all", exact: true }).click();
   await page.reload();
   await expect(ledger).toHaveAttribute("aria-rowcount", "1");
@@ -3203,7 +3206,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
   await checkbox(descriptions[0]).click();
   await bar.getByRole("button", { name: "Select all", exact: true }).click();
   await expect(bar.getByText("4 selected", { exact: true })).toBeVisible();
-  await expect(bar).toContainText(/[−-]R\$\s*40,00/);
+  await expect(bar).toContainText(/[−-]R\$\s*40\.00/);
   await bar.getByRole("button", { name: "Unselect all", exact: true }).click();
   await expect(bar).toHaveCount(0);
 
@@ -3247,7 +3250,7 @@ test("selects transactions with hover and touch checkboxes and manages them from
     await expect(
       touchBar.getByText("2 selected", { exact: true }),
     ).toBeVisible();
-    await expect(touchBar).toContainText(/[−-]R\$\s*30,00/);
+    await expect(touchBar).toContainText(/[−-]R\$\s*30\.00/);
     const touchBounds = await touchBar.boundingBox();
     expect(touchBounds).not.toBeNull();
     expect(touchBounds!.x).toBeGreaterThanOrEqual(0);
@@ -3330,7 +3333,10 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   if (!(await destination.textContent())?.includes(accountName)) {
     await destination.click();
     await page
-      .getByRole("option", { name: `${accountName} (credit)`, exact: true })
+      .getByRole("option", {
+        name: `${accountName} (Credit card)`,
+        exact: true,
+      })
       .click();
   }
   await page.getByRole("button", { name: "Bill due in", exact: true }).click();
@@ -3486,7 +3492,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
       detailsPane.getByText("Transaction date", { exact: true }).boundingBox(),
       detailsPane.getByText("Card", { exact: true }).boundingBox(),
       installment.boundingBox(),
-      modal.getByText(/^-R\$\s*40,00$/).boundingBox(),
+      modal.getByText(/^-R\$\s*40\.00$/).boundingBox(),
     ]);
   expect(dateBounds!.y).toBeLessThan(cardBounds!.y);
   expect(Math.abs(installmentBounds!.x - amountBounds!.x)).toBeLessThan(1);
@@ -3735,7 +3741,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   await expect(installment).toBeInViewport();
   const [mobileInstallment, mobileAmount] = await Promise.all([
     installment.boundingBox(),
-    modal.getByText(/^-R\$\s*40,00$/).boundingBox(),
+    modal.getByText(/^-R\$\s*40\.00$/).boundingBox(),
   ]);
   expect(Math.abs(mobileInstallment!.x - mobileAmount!.x)).toBeLessThan(1);
   expect(mobileInstallment!.y + mobileInstallment!.height).toBeLessThanOrEqual(
@@ -3869,7 +3875,7 @@ test("saves a C6 column mapping and automatically reuses it across statements an
     if (!(await destination.textContent())?.includes(name)) {
       await destination.click();
       await page
-        .getByRole("option", { name: `${name} (credit)`, exact: true })
+        .getByRole("option", { name: `${name} (Credit card)`, exact: true })
         .click();
     }
   };
@@ -3942,7 +3948,7 @@ test("saves a C6 column mapping and automatically reuses it across statements an
   );
   await expect(
     page.getByRole("combobox", { name: "Destination account", exact: true }),
-  ).toHaveText(`${primaryName} (credit)`);
+  ).toHaveText(`${primaryName} (Credit card)`);
   await expect(
     page.getByRole("button", { name: "Validate import", exact: true }),
   ).toBeDisabled();
@@ -4175,9 +4181,9 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     await expect(categoryRows.nth(0)).toContainText(
       "Dividido Proporcionalmente",
     );
-    await expect(categoryRows.nth(0)).toContainText(/-R\$\s*100,00/);
+    await expect(categoryRows.nth(0)).toContainText(/-R\$\s*100\.00/);
     await expect(categoryRows.nth(1)).toContainText("Vale");
-    await expect(categoryRows.nth(1)).toContainText(/R\$\s*40,00/);
+    await expect(categoryRows.nth(1)).toContainText(/R\$\s*40\.00/);
     const firstRow = await categoryRows.nth(0).boundingBox();
     const secondRow = await categoryRows.nth(1).boundingBox();
     expect(firstRow).not.toBeNull();
@@ -4343,7 +4349,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await expect(
     logic.getByLabel("Category: Dividido Proporcionalmente", { exact: true }),
   ).toBeVisible();
-  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*30,00/);
+  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*30\.00/);
   const savedFirst = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
@@ -4355,7 +4361,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     name: "My Custom Tile",
     exact: true,
   });
-  await expect(first).toContainText(/-R\$\s*30,00/);
+  await expect(first).toContainText(/-R\$\s*30\.00/);
   const firstTitleColor = await first
     .getByRole("heading", { name: "My Custom Tile", exact: true })
     .evaluate((element) => getComputedStyle(element).color);
@@ -4410,7 +4416,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     name: "Combined tile",
     exact: true,
   });
-  await expect(combined).toContainText(/R\$\s*10,00/);
+  await expect(combined).toContainText(/R\$\s*10\.00/);
   await expect(combined.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );
@@ -4445,7 +4451,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   await section.scrollIntoViewIfNeeded();
   await page.screenshot({ path: "test-results/custom-values-tiles.png" });
   await page.reload();
-  await expect(combined).toContainText(/R\$\s*10,00/);
+  await expect(combined).toContainText(/R\$\s*10\.00/);
   await expect(combined.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );
@@ -4468,7 +4474,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
     .fill("Renamed tile");
   await logic.fill("{{Dividido Proporcionalmente}}*0.5");
   await section.getByRole("button", { name: "Save tile", exact: true }).click();
-  await expect(combined).toContainText(/-R\$\s*10,00/);
+  await expect(combined).toContainText(/-R\$\s*10\.00/);
   await expect(
     combined.getByLabel("Custom tile: Renamed tile", { exact: true }),
   ).toBeVisible();
@@ -4548,7 +4554,7 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   ).toBeVisible();
   await logic.press("End");
   await logic.pressSequentially("+ 1");
-  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*49,00/);
+  await expect(section.getByText(/^Preview:/)).toHaveText(/-R\$\s*49\.00/);
   expect(
     await logic.evaluate(
       (element) => element.scrollWidth <= element.clientWidth + 1,
@@ -4567,12 +4573,12 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   const mobileInput = (await savedMobile).postDataJSON();
   expect(mobileInput.color).toBeNull();
   expect(mobileInput.expression).toBe("{{Dividido Proporcionalmente}}*0.5+ 1");
-  await expect(renamed).toContainText(/-R\$\s*49,00/);
+  await expect(renamed).toContainText(/-R\$\s*49\.00/);
   await expect(renamed.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );
   await page.reload();
-  await expect(renamed).toContainText(/-R\$\s*49,00/);
+  await expect(renamed).toContainText(/-R\$\s*49\.00/);
   await expect(renamed.getByRole("img", { name: /^Tile color:/ })).toHaveCount(
     0,
   );

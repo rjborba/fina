@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { ArrowUpRight, Banknote, FileUp, List, Tag } from "lucide-react"
 import { Link } from "react-router"
 
@@ -48,6 +49,8 @@ const WORKSPACE_LINKS = [
 ] as const
 
 function Home() {
+  const { t } = useTranslation()
+
   const { selectedGroup } = useActiveGroup()
   const groupId = selectedGroup?.id?.toString()
   const { data: accounts } = useBankAccounts({ groupId })
@@ -57,13 +60,13 @@ function Home() {
   return (
     <FinaPage>
       <FinaPageHeader
-        eyebrow="Dashboard"
-        title="Financial overview"
+        eyebrow={t("Dashboard")}
+        title={t("Financial overview")}
         description={
           <>
-            Your working view for{" "}
-            <strong>{selectedGroup?.name ?? "Fina"}</strong>. Start with a
-            statement, then keep the ledger clean.
+            {t("Your working view for")}{" "}
+            <strong>{selectedGroup?.name ?? "Fina"}</strong>
+            {t(". Start with a statement, then keep the ledger clean.")}
           </>
         }
       />
@@ -72,16 +75,16 @@ function Home() {
         <section aria-labelledby="workspace-title">
           <div className="mb-4 flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <FinaSectionLabel>Quick access</FinaSectionLabel>
+              <FinaSectionLabel>{t("Quick access")}</FinaSectionLabel>
               <h2
                 id="workspace-title"
                 className="mt-1 text-lg font-semibold tracking-[-0.025em]"
               >
-                Your workspace
+                {t("Your workspace")}
               </h2>
             </div>
             <FinaBadge tone="surface">
-              {selectedGroup?.name ?? "No group"}
+              {selectedGroup?.name ?? t("No group")}
             </FinaBadge>
           </div>
 
@@ -107,12 +110,12 @@ function Home() {
                   <div className="mt-8">
                     <div className="flex items-end justify-between gap-4">
                       <h3 className="text-base font-semibold tracking-[-0.02em]">
-                        {item.label}
+                        {t(item.label)}
                       </h3>
                       <ArrowUpRight className="size-4 text-foreground/35 transition-colors group-hover:text-fina-violet" />
                     </div>
                     <p className="mt-2 max-w-xs text-sm leading-5 text-foreground/55">
-                      {item.description}
+                      {t(item.description)}
                     </p>
                   </div>
                 </Link>
@@ -122,13 +125,13 @@ function Home() {
         </section>
 
         <section
-          aria-label="Workspace totals"
+          aria-label={t("Workspace totals")}
           className="grid gap-4 md:grid-cols-3"
         >
           {[
-            ["Accounts", accounts?.length ?? "—", "Active money sources"],
-            ["Categories", categories?.length ?? "—", "Ledger labels"],
-            ["Imports", imports?.length ?? "—", "Statement files"]
+            [t("Accounts"), accounts?.length ?? "—", t("Active money sources")],
+            [t("Categories"), categories?.length ?? "—", t("Ledger labels")],
+            [t("Imports"), imports?.length ?? "—", t("Statement files")]
           ].map(([label, value, helper]) => (
             <FinaSurface key={label} elevation="sm" className="p-5">
               <FinaSectionLabel>{label}</FinaSectionLabel>

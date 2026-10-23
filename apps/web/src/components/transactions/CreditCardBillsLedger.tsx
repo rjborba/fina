@@ -1,3 +1,5 @@
+import { formatCurrency, formatDate } from "@/i18n"
+import { useTranslation } from "react-i18next"
 import { TransactionCommentButton } from "./TransactionCommentButton"
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal"
 import {
@@ -53,10 +55,7 @@ import {
 import { TransactionMetadataGrid } from "./TransactionMetadataGrid"
 import { buildTransactionRowLayout } from "./transactionRowLayout"
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-})
+const currencyFormatter = { format: formatCurrency }
 
 const statusDetails = {
   empty: { label: "Empty", tone: "sky" as const },
@@ -91,6 +90,8 @@ export function CreditCardBillsLedger({
   onUpdateTransaction,
   onDeleteTransactions
 }: CreditCardBillsLedgerProps) {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const { toast } = useToast()
   const { selectedGroup } = useActiveGroup()
@@ -219,8 +220,9 @@ export function CreditCardBillsLedger({
       if (!row) return
       if (row.kind === "bill") {
         toast({
-          title:
+          title: t(
             "Turn on inline credit card transactions to select bill purchases"
+          )
         })
         return
       }
@@ -229,7 +231,7 @@ export function CreditCardBillsLedger({
       )
       setSelectionAnchorId(row.transaction.id)
     },
-    [rowsByKey, toast]
+    [t, rowsByKey, toast]
   )
 
   const extendSelection = useCallback(
@@ -284,11 +286,11 @@ export function CreditCardBillsLedger({
       await onDeleteTransactions(ids)
       clearSelection()
       toast({
-        title: `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted`
+        title: t("transactionsDeleted", { count: ids.length })
       })
     } catch {
       toast({
-        title: "Could not delete the selected transactions",
+        title: t("Could not delete the selected transactions"),
         variant: "destructive"
       })
       throw new Error("Could not delete the selected transactions")
@@ -296,6 +298,7 @@ export function CreditCardBillsLedger({
       setIsDeletingSelected(false)
     }
   }, [
+    t,
     clearSelection,
     isSelectionBusy,
     onDeleteTransactions,
@@ -322,20 +325,24 @@ export function CreditCardBillsLedger({
           )
         if (failedCount > 0) {
           toast({
-            title: "Could not update all selected transactions",
-            description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+            title: t("Could not update all selected transactions"),
+            description: t(
+              "{{value0}} updated; {{value1}} failed. You can retry the selection.",
+              { value0: updatedCount, value1: failedCount }
+            ),
             variant: "destructive"
           })
           throw new Error("Could not update all selected transactions")
         }
         toast({
-          title: `${updatedCount} transaction${updatedCount === 1 ? "" : "s"} updated`
+          title: t("transactionsUpdated", { count: updatedCount })
         })
       } finally {
         setIsUpdatingCategory(false)
       }
     },
     [
+      t,
       categories,
       isSelectionBusy,
       onUpdateTransaction,
@@ -358,14 +365,17 @@ export function CreditCardBillsLedger({
         )
       if (failedCount > 0) {
         toast({
-          title: "Could not assign every selected purchase",
-          description: `${updatedCount} updated; ${failedCount} failed. You can retry the selection.`,
+          title: t("Could not assign every selected purchase"),
+          description: t(
+            "{{value0}} updated; {{value1}} failed. You can retry the selection.",
+            { value0: updatedCount, value1: failedCount }
+          ),
           variant: "destructive"
         })
         throw new Error("Could not assign every selected purchase")
       }
       toast({
-        title: `${updatedCount} purchase${updatedCount === 1 ? "" : "s"} updated`
+        title: t("purchasesUpdated", { count: updatedCount })
       })
     } finally {
       setIsUpdatingCard(false)
@@ -414,8 +424,9 @@ export function CreditCardBillsLedger({
         if (isModifiedClick) {
           event.preventDefault()
           toast({
-            title:
+            title: t(
               "Turn on inline credit card transactions to select bill purchases"
+            )
           })
           return
         }
@@ -434,6 +445,7 @@ export function CreditCardBillsLedger({
       openTransaction(row.transaction.id)
     },
     [
+      t,
       isSelectionBusy,
       navigate,
       openTransaction,
@@ -458,7 +470,7 @@ export function CreditCardBillsLedger({
   if (isError) {
     return (
       <div className="flex min-h-56 flex-1 items-center justify-center bg-fina-surface p-6 text-[13px] text-red-700 dark:bg-fina-canvas dark:text-red-300">
-        We could not load the grouped ledger. Try again in a moment.
+        {t("We could not load the grouped ledger. Try again in a moment.")}
       </div>
     )
   }
@@ -482,7 +494,9 @@ export function CreditCardBillsLedger({
         <div className="flex size-10 items-center justify-center rounded-lg bg-fina-lime text-fina-violet">
           <ArrowUpRight className="size-5" />
         </div>
-        <p className="mt-3 text-[13px] text-foreground/55">No transactions</p>
+        <p className="mt-3 text-[13px] text-foreground/55">
+          {t("No transactions")}
+        </p>
       </div>
     )
   }
@@ -492,7 +506,7 @@ export function CreditCardBillsLedger({
       ref={containerRef}
       tabIndex={-1}
       role="region"
-      aria-label="Transaction list"
+      aria-label={t("Transaction list")}
       className={cn(
         "transactions-list-shell relative min-h-64 flex-1 overflow-auto bg-fina-surface outline-none dark:bg-fina-canvas",
         selectedTransactionIds.size > 0 && "pb-28 sm:pb-20"
@@ -514,13 +528,15 @@ export function CreditCardBillsLedger({
           const status = isBill ? statusDetails[row.bill.status] : null
           const isFocused = focusedRowKey === row.key
           const formattedDate = row.date
-            ? dayjs(row.date).format(
-                dateBasis === "monthly-review"
-                  ? row.kind === "bill"
-                    ? "MMM YYYY"
-                    : "DD MMM YYYY"
-                  : "DD.MM.YY"
-              )
+            ? dateBasis === "monthly-review"
+              ? dayjs(row.date).format(
+                  row.kind === "bill" ? "MMM YYYY" : "DD MMM YYYY"
+                )
+              : formatDate(row.date, {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit"
+                })
             : "—"
           return (
             <VirtualizedTransactionRow
@@ -571,7 +587,9 @@ export function CreditCardBillsLedger({
                   className="flex h-full min-w-0 items-center"
                 >
                   <span className="sr-only">
-                    {dateBasis === "monthly-review" ? "Date:" : "Flow date:"}
+                    {dateBasis === "monthly-review"
+                      ? t("Date:")
+                      : t("Flow date:")}
                   </span>
                   <span
                     data-field-value
@@ -595,10 +613,12 @@ export function CreditCardBillsLedger({
                         tabIndex={-1}
                         data-list-open
                         data-testid="transaction-description"
-                        title={`${row.bill.accountName} bill`}
+                        title={t("{{value0}} bill", {
+                          value0: row.bill.accountName
+                        })}
                         className="min-w-12 shrink truncate text-left text-[13px]"
                       >
-                        {row.bill.accountName} bill
+                        {row.bill.accountName} {t("bill")}
                       </button>
                     }
                     descriptionContext={
@@ -607,16 +627,26 @@ export function CreditCardBillsLedger({
                           row.bill.matchingTransactionCount !== undefined &&
                           row.bill.matchingTransactionCount !==
                             row.bill.transactionCount
-                            ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
-                            : `${row.bill.transactionCount} transactions`
+                            ? t("{{value0}} of {{value1}} transactions match", {
+                                value0: row.bill.matchingTransactionCount,
+                                value1: row.bill.transactionCount
+                              })
+                            : t("transactionsCount", {
+                                count: row.bill.transactionCount
+                              })
                         }
                         className="hidden min-w-0 max-w-32 shrink truncate text-xs text-foreground/45 lg:block"
                       >
                         {row.bill.matchingTransactionCount !== undefined &&
                         row.bill.matchingTransactionCount !==
                           row.bill.transactionCount
-                          ? `${row.bill.matchingTransactionCount} of ${row.bill.transactionCount} transactions match`
-                          : `${row.bill.transactionCount} transactions`}
+                          ? t("{{value0}} of {{value1}} transactions match", {
+                              value0: row.bill.matchingTransactionCount,
+                              value1: row.bill.transactionCount
+                            })
+                          : t("transactionsCount", {
+                              count: row.bill.transactionCount
+                            })}
                       </span>
                     }
                     icons={{
@@ -641,7 +671,7 @@ export function CreditCardBillsLedger({
                           tone={status.tone}
                           className="max-w-full truncate border-0 px-1.5 py-0.5 text-[11px]"
                         >
-                          {status.label}
+                          {t(status.label)}
                         </FinaBadge>
                       ) : null
                     }}
@@ -664,16 +694,24 @@ export function CreditCardBillsLedger({
                   <span className="sr-only">
                     {row.kind === "bill" && row.bill.matchingTotal !== undefined
                       ? dateBasis === "cash-flow" && row.bill.payment
-                        ? "Payment value:"
-                        : "Full bill value:"
-                      : "Value:"}
+                        ? t("Payment value:")
+                        : t("Full bill value:")
+                      : t("Value:")}
                   </span>
                   <span
                     data-field-value
                     title={
                       row.kind === "bill" &&
                       row.bill.matchingTotal !== undefined
-                        ? `${dateBasis === "cash-flow" && row.bill.payment ? "Confirmed payment amount" : "Full bill amount"}; matching purchases: ${currencyFormatter.format(row.bill.matchingTotal)}`
+                        ? t("{{value0}}; matching purchases: {{value1}}", {
+                            value0:
+                              dateBasis === "cash-flow" && row.bill.payment
+                                ? t("Confirmed payment amount")
+                                : t("Full bill amount"),
+                            value1: currencyFormatter.format(
+                              row.bill.matchingTotal
+                            )
+                          })
                         : undefined
                     }
                     className={cn(
