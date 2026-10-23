@@ -1,3 +1,6 @@
+import { customFormulaReferenceName, tokenizeCustomFormula } from "@fina/types"
+
+export type FormulaMode = "simple" | "code"
 export type FormulaOption = {
   key: string
   name: string
@@ -10,11 +13,15 @@ export type FormulaPart = {
   start: number
   end: number
   reference?: FormulaOption
+  atomic?: boolean
+  display?: string
+  className?: string
 }
 
 export function formulaParts(
   value: string,
-  options: FormulaOption[]
+  options: FormulaOption[],
+  mode: FormulaMode = "simple"
 ): FormulaPart[] {
   const normalize = (name: string) =>
     name.normalize("NFKC").trim().toLowerCase()
@@ -29,29 +36,70 @@ export function formulaParts(
         previous === undefined || previous?.key === option.key ? option : null
       )
     }
-  const parts: FormulaPart[] = []
-  let offset = 0
-  for (const match of value.matchAll(/\{\{([^{}]+)\}\}/g)) {
-    const start = match.index!
-    const reference = keys.get(match[1]) ?? names.get(normalize(match[1]))
-    if (!reference) continue
-    if (start > offset)
-      parts.push({
-        text: value.slice(offset, start),
-        start: offset,
-        end: start
-      })
-    const end = start + match[0].length
-    parts.push({ text: match[0], start, end, reference })
-    offset = end
-  }
-  if (offset < value.length)
-    parts.push({ text: value.slice(offset), start: offset, end: value.length })
-  return parts
+  const tokens = tokenizeCustomFormula(value)
+  const isOperator = (index: number) => tokens[index]?.type === "operator"
+  return tokens.flatMap((token, index): FormulaPart[] => {
+    const part: FormulaPart = {
+      text: token.text,
+      start: token.start,
+      end: token.end
+    }
+    if (token.type === "reference") {
+      const name = customFormulaReferenceName(token.text)
+      part.reference = keys.get(name) ?? names.get(normalize(name)) ?? undefined
+      if (part.reference && mode === "simple") {
+        part.atomic = true
+        part.display = part.reference.name
+        part.className = FORMULA_REFERENCE_CLASS
+      }
+    }
+    if (mode === "code") {
+      part.className = FORMULA_SYNTAX_CLASS[token.type]
+    } else if (token.type === "operator") {
+      if (tokens[index - 1]?.type === "space" && !isOperator(index - 2))
+        part.start = tokens[index - 1].start
+      if (tokens[index + 1]?.type === "space") part.end = tokens[index + 1].end
+      part.text = value.slice(part.start, part.end)
+      part.display =
+        ({ "*": "×", "/": "÷", "-": "−" } as Record<string, string>)[
+          token.text
+        ] ?? token.text
+      part.atomic = true
+      part.className = FORMULA_OPERATOR_CLASS
+    } else if (
+      token.type === "space" &&
+      (isOperator(index - 1) || isOperator(index + 1))
+    ) {
+      // Spaces around operators become visual token spacing, while clipboard/source stay lossless.
+      return []
+    }
+    return [part]
+  })
+}
+
+export const FORMULA_OPERATOR_CLASS =
+  "mx-0.5 inline-flex min-w-4 select-none items-center justify-center rounded bg-foreground/5 px-0.5 align-baseline font-sans text-xs font-medium leading-5 text-foreground"
+export const FORMULA_SYNTAX_CLASS: Record<string, string> = {
+  keyword: "text-violet-700 dark:text-violet-300",
+  reference: "text-sky-700 dark:text-sky-300",
+  number: "text-emerald-700 dark:text-emerald-300",
+  operator: "text-foreground",
+  punctuation: "text-foreground/70",
+  invalid: "text-red-700 underline decoration-wavy dark:text-red-300"
 }
 
 export const FORMULA_REFERENCE_CLASS =
   "inline-block max-w-full select-none rounded bg-foreground/5 px-1 align-baseline font-sans text-[11px] font-normal leading-snug whitespace-normal break-words text-foreground"
+
+// Native multiline input can create block nodes instead of literal newlines.
+function blockPrefix(node: Node): string {
+  return node instanceof HTMLElement &&
+    ["DIV", "P"].includes(node.tagName) &&
+    !node.hasAttribute("contenteditable") &&
+    node.previousSibling
+    ? "\n"
+    : ""
+}
 
 export function readFormula(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE)
@@ -62,7 +110,7 @@ export function readFormula(node: Node): string {
     if (node.tagName === "BR")
       return node.parentNode?.childNodes.length === 1 ? "" : "\n"
   }
-  return Array.from(node.childNodes, readFormula).join("")
+  return blockPrefix(node) + Array.from(node.childNodes, readFormula).join("")
 }
 
 function pointOffset(
@@ -74,6 +122,7 @@ function pointOffset(
   let total = 0
   let found = false
   const visit = (current: Node) => {
+    total += blockPrefix(current).length
     if (current === node) {
       total +=
         current instanceof HTMLElement &&
@@ -132,6 +181,11 @@ export function selectFormula(root: HTMLElement, start: number, end = start) {
   const point = (position: number): [Node, number] => {
     let remaining = position
     const visit = (node: Node): [Node, number] | null => {
+      const prefix = blockPrefix(node).length
+      if (prefix) {
+        if (remaining <= prefix) return [node, 0]
+        remaining -= prefix
+      }
       if (node.nodeType === Node.TEXT_NODE) {
         if (remaining <= readFormula(node).length) return [node, remaining]
         remaining -= readFormula(node).length
@@ -170,21 +224,27 @@ export function selectFormula(root: HTMLElement, start: number, end = start) {
 export function renderFormula(
   root: HTMLElement,
   value: string,
-  options: FormulaOption[]
+  options: FormulaOption[],
+  mode: FormulaMode = "simple",
+  labelForKind: (kind: FormulaOption["kind"]) => string = (kind) => kind
 ) {
   const fragment = document.createDocumentFragment()
-  for (const part of formulaParts(value, options)) {
-    if (!part.reference) fragment.append(document.createTextNode(part.text))
+  for (const part of formulaParts(value, options, mode)) {
+    if (!part.className) fragment.append(document.createTextNode(part.text))
     else {
       const chip = document.createElement("span")
-      chip.dataset.formulaToken = part.text
-      chip.dataset.formulaChip = part.reference.key
-      chip.setAttribute("contenteditable", "false")
-      chip.draggable = false
-      chip.className = FORMULA_REFERENCE_CLASS
-      chip.textContent = part.reference.name
-      chip.title = `${part.reference.kind}: ${part.reference.name}`
-      chip.setAttribute("aria-label", chip.title)
+      if (part.atomic) {
+        chip.dataset.formulaToken = part.text
+        chip.setAttribute("contenteditable", "false")
+        chip.draggable = false
+      }
+      chip.className = part.className
+      chip.textContent = part.display ?? part.text
+      if (part.reference) {
+        chip.dataset.formulaChip = part.reference.key
+        chip.title = `${labelForKind(part.reference.kind)}: ${part.reference.name}`
+        chip.setAttribute("aria-label", chip.title)
+      }
       fragment.append(chip)
     }
   }

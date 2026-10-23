@@ -103,7 +103,10 @@ Application labels, accessibility text, validation, CSV guidance, bill statuses,
 shortcuts, and formula errors are translated. Customer-created names, notes,
 descriptions, filenames, and existing default workspace names remain verbatim.
 CSV mapping formats, formula decimal syntax, normalized previews, and API
-transport values remain independent of the interface locale. Supabase Auth errors
+transport values remain independent of the interface locale. Simple/Code formula
+controls, help, and parser errors follow the language; keywords, operators, and
+reference source stay unchanged, including while switching with unsaved drafts.
+Supabase Auth errors
 are mapped by public codes; API errors retain their stable codes and request IDs
 and are localized at the browser boundary, with safe fallbacks for unknown
 messages. Auth-provider pages and email templates are managed by their providers.
@@ -663,16 +666,47 @@ contrast instead of a muted color, in both light and dark themes.
 Existing, fully typed or pasted known references also become chips, including
 explicit ID tokens; unresolved or ambiguous references stay editable as text so
 validation cannot silently reinterpret them. Saved tiles display the same chips.
-Operators, numbers and parentheses remain ordinary text and long expressions
-wrap inside the editor. The caret lands after a selected chip; arrow navigation
+In **Simple** mode, arithmetic operators are compact neutral tokens: `*`, `/` and
+`-` display as `×`, `÷` and `−`; `+` uses the same token treatment. Spaces around
+operators become consistent visual spacing without changing source syntax,
+reference names, decimals or invalid adjacent numbers. Long expressions wrap
+inside the editor. The caret lands after a selected chip; arrow navigation
 skips it as a unit, and Backspace/Delete remove the whole reference. Undo/redo,
 selection, IME composition and plain-text copy/cut/paste are supported. Clipboard
-text and the saved/API expression retain the original `{{...}}` syntax for
+text and the saved/API expression retain the original operator/reference syntax for
 compatibility with existing formulas; braces no longer trigger autocomplete.
 Rich HTML is never interpreted. History is bounded and discarded with the editor, and
-switching tile/workspace resets it. This is a UI-only representation change,
-requiring no migration or formula rewrite. Remaining formula text disables font
+switching tile/workspace resets it. Operator/reference token display requires
+no migration or formula rewrite. Remaining formula text disables font
 ligatures and inherited stylistic features so literal braces remain distinct.
+
+**Code** is an additional entry mode with multiline syntax highlighting for
+keywords, references, numbers, operators and braces in light and dark themes.
+It supports nested `if (condition) { ... } else if (...) { ... } else { ... }`
+blocks, early `return` statements, comparisons `>`, `<`, `>=`, `<=`, `==`, `!=`,
+`===`, `!==`, boolean values `true`/`false`, and `&&`, `||`, `!` with the usual
+arithmetic/comparison/boolean precedence. Conditions accept numbers (zero is
+false) or booleans; arithmetic and return values must be numbers. Every execution
+path must return a number, using complete branches or a final return. Semicolons
+are optional at newlines, closing braces and end of input. Branches and boolean
+operators evaluate lazily, so unused arithmetic failures do not affect the result.
+References use `#value`, `#{Category name}` for names with spaces/punctuation, or
+explicit `#category:ID` / `#tile:ID`; existing `{{...}}` references remain supported.
+Typing `#` or `@` offers the existing workspace-scoped suggestions. Enter inserts
+a newline with indentation, Tab inserts two spaces, Shift+Tab leaves the editor,
+and Ctrl/Cmd+Enter saves. Copy/paste and undo preserve exact source, including
+line breaks. A conditional example is available beside the editor. Simple and
+Code keep separate unsaved drafts while editing; switching a simple formula to
+Code initially wraps it in `return`. The saved expression determines the mode
+when reopened; drafts are discarded on save/cancel. Saved code retains its
+highlighting and line breaks in the tile footer. Both modes share the same bounded
+parser/interpreter in `@fina/types` and existing API expression contract, without
+schema changes. Deploy the matching API before the web client.
+Browser verification covers conditional autocomplete, multiline indentation,
+mode drafts, highlighting, preview, save/reload and mobile/light/dark layouts.
+Concurrent worktrees can set `FINA_BROWSER_TEST_PORT` (default 4180) to run the
+same isolated browser fixture on an unused loopback port without reusing another
+worktree's server.
 
 Tiles calculate from the same signed category totals used in the displayed
 period summary, including its period and filters, not from bill payments or an
@@ -682,9 +716,12 @@ are loading, failed or incomplete (including the ledger pagination limit).
 Division by zero, non-finite/oversized results and unavailable dependencies show
 an error, never Infinity/NaN or a fabricated zero. Errors propagate to dependent
 tiles. Syntax errors, unresolved/ambiguous names and direct/indirect cycles are
-rejected on save. Runtime arithmetic errors can be saved because a formula may
-be valid in another period. JavaScript, functions and arbitrary code are never
-executed. Limit each workspace to 100 tiles and each formula to 256 tokens,
+rejected on save, including references in unused branches. Those branches also
+participate in cycle detection and dependency-protected deletion. Runtime
+arithmetic errors can be saved because a formula may be valid in another period.
+Code is an interpreted formula language: JavaScript, function calls, property
+access, assignment and loops are never executed. Limit each workspace to 100
+tiles and each formula to 256 tokens,
 32 nesting levels and 16,000 characters.
 
 The Nest API exposes membership-checked `/groups/:groupId/custom-values` CRUD

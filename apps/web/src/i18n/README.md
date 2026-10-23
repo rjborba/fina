@@ -23,6 +23,10 @@ labels and date-fns calendars follow the selected language. CSV parsing formats,
 normalized preview dates, API dates, and formula decimal dots are explicit and
 must not follow interface language. Do not translate user names, account/category
 names, card labels, notes, transaction descriptions, filenames, or formula tokens.
+Simple/Code mode labels, guidance, and parser errors are localized, but formula
+keywords (`if`, `else`, `return`), operators, and reference syntax remain literal.
+Pass translated reference-kind labels to the imperative formula editor and repaint
+them on language changes without altering its source, selection, or history.
 
 `localizeMessage` handles known schema/parser/formula messages at their display
 boundary without changing shared contracts. `errors.ts` maps stable API/Auth

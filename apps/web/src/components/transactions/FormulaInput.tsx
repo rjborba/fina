@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { customFormulaHashReference } from "@fina/types"
 import {
   formulaParts,
   formulaSelection,
@@ -7,6 +8,7 @@ import {
   renderFormula,
   selectFormula,
   type FormulaOption,
+  type FormulaMode,
   type FormulaSelection
 } from "./formulaEditor"
 
@@ -19,20 +21,21 @@ export function FormulaInput({
   value,
   onChange,
   options,
-  disabled
+  disabled,
+  mode = "simple"
 }: {
   id: string
   value: string
   onChange: (value: string) => void
   options: FormulaOption[]
   disabled?: boolean
+  mode?: FormulaMode
 }) {
   const { t } = useTranslation()
 
   const editor = useRef<HTMLDivElement>(null)
   const current = useRef(value)
   const composing = useRef(false)
-  const renderedOptions = useRef("")
   const history = useRef<{ entries: Snapshot[]; index: number }>({
     entries: [{ value, selection: { start: value.length, end: value.length } }],
     index: 0
@@ -43,10 +46,16 @@ export function FormulaInput({
   const [dismissed, setDismissed] = useState(false)
   const [active, setActive] = useState(0)
   const beforeCaret = value.slice(0, caret)
-  const start = beforeCaret.lastIndexOf("@")
+  const start = Math.max(
+    beforeCaret.lastIndexOf("@"),
+    mode === "code" ? beforeCaret.lastIndexOf("#") : -1
+  )
   const search = start >= 0 ? beforeCaret.slice(start + 1) : null
   const opened =
-    focused && !dismissed && search !== null && !/[{}]/.test(search)
+    focused &&
+    !dismissed &&
+    search !== null &&
+    !/[{}\n;()+*/<>=!&|]/.test(search)
   const matches = opened
     ? options
         .filter(
@@ -61,14 +70,6 @@ export function FormulaInput({
   useLayoutEffect(() => {
     const root = editor.current
     if (!root || composing.current) return
-    const signature = JSON.stringify(options)
-    const expected = formulaParts(value, options)
-      .filter((part) => part.reference)
-      .map((part) => part.text)
-    const existing = Array.from(
-      root.querySelectorAll<HTMLElement>("[data-formula-token]"),
-      (node) => node.dataset.formulaToken
-    )
     const selection = formulaSelection(root)
     if (current.current !== value) {
       current.current = value
@@ -79,21 +80,14 @@ export function FormulaInput({
         index: 0
       }
     }
-    if (
-      readFormula(root) !== value ||
-      renderedOptions.current !== signature ||
-      JSON.stringify(expected) !== JSON.stringify(existing)
-    ) {
-      renderFormula(root, value, options)
-      if (selection && document.activeElement === root)
-        selectFormula(
-          root,
-          Math.min(selection.start, value.length),
-          Math.min(selection.end, value.length)
-        )
-    }
-    renderedOptions.current = signature
-  }, [value, options])
+    renderFormula(root, value, options, mode, t)
+    if (selection && document.activeElement === root)
+      selectFormula(
+        root,
+        Math.min(selection.start, value.length),
+        Math.min(selection.end, value.length)
+      )
+  }, [value, options, mode, t])
 
   useEffect(() => {
     const changed = () => {
@@ -126,7 +120,7 @@ export function FormulaInput({
   ) => {
     const root = editor.current!
     if (next.length > MAX_LENGTH) {
-      renderFormula(root, current.current, options)
+      renderFormula(root, current.current, options, mode, t)
       selectFormula(root, Math.min(selection.start, current.current.length))
       return
     }
@@ -139,7 +133,7 @@ export function FormulaInput({
     }
     current.current = next
     if (paint) {
-      renderFormula(root, next, options)
+      renderFormula(root, next, options, mode, t)
       root.focus()
       selectFormula(root, selection.start, selection.end)
     }
@@ -161,7 +155,11 @@ export function FormulaInput({
       start: current.current.length,
       end: current.current.length
     }
-    replace(selection.start, selection.end, text.replace(/\r?\n/g, " "))
+    replace(
+      selection.start,
+      selection.end,
+      text.replace(/\r\n?/g, "\n").replace(/\n/g, mode === "code" ? "\n" : " ")
+    )
   }
   const choose = (option: FormulaOption) => {
     const nameEnd = start + 1 + option.name.length
@@ -170,7 +168,13 @@ export function FormulaInput({
       option.name.toLowerCase()
         ? Math.max(caret, nameEnd)
         : caret
-    replace(start, replaceEnd, `{{${option.token}}}`)
+    replace(
+      start,
+      replaceEnd,
+      mode === "code"
+        ? customFormulaHashReference(option.token)
+        : `{{${option.token}}}`
+    )
     setDismissed(true)
   }
   const restore = (direction: -1 | 1) => {
@@ -185,9 +189,9 @@ export function FormulaInput({
   const eraseReference = (backward: boolean) => {
     const selection = formulaSelection(editor.current!)
     if (!selection || selection.start !== selection.end) return false
-    const reference = formulaParts(current.current, options).find(
+    const reference = formulaParts(current.current, options, mode).find(
       (part) =>
-        part.reference &&
+        part.atomic &&
         (backward
           ? part.end === selection.start
           : part.start === selection.start)
@@ -205,6 +209,15 @@ export function FormulaInput({
       formulaSelection(root) ?? { start: next.length, end: next.length },
       false
     )
+  }
+  const newline = () => {
+    const selection = formulaSelection(editor.current!)
+    if (!selection) return
+    const before = current.current.slice(0, selection.start)
+    const line = before.slice(before.lastIndexOf("\n") + 1)
+    const indentation =
+      /^\s*/.exec(line)![0] + (line.trimEnd().endsWith("{") ? "  " : "")
+    insert(`\n${indentation}`)
   }
   // React's before-input polyfill does not expose native inputType (mobile undo/delete).
   useLayoutEffect(() => {
@@ -228,7 +241,8 @@ export function FormulaInput({
         event.inputType === "insertLineBreak"
       ) {
         event.preventDefault()
-        root.closest("form")?.requestSubmit()
+        if (mode === "code") newline()
+        else root.closest("form")?.requestSubmit()
       }
     }
     root.addEventListener("beforeinput", beforeInput)
@@ -251,10 +265,14 @@ export function FormulaInput({
           opened && matches.length ? `${id}-option-${activeIndex}` : undefined
         }
         aria-describedby={`${id}-help`}
-        aria-multiline="false"
-        data-placeholder="Type @ to add a category or custom tile"
+        aria-multiline={mode === "code"}
+        data-placeholder={
+          mode === "code"
+            ? "if (#value > 0) { return 1 } else { return 0 }"
+            : t("Type @ to add a category or custom tile")
+        }
         spellCheck={false}
-        className="min-h-9 w-full min-w-0 whitespace-pre-wrap break-words rounded-md border border-input bg-transparent px-3 py-1.5 font-mono text-xs leading-6 shadow-xs outline-none [font-feature-settings:normal] [font-variant-ligatures:none] empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-disabled:opacity-50"
+        className={`w-full min-w-0 whitespace-pre-wrap break-words rounded-md border border-input bg-transparent px-3 py-1.5 font-mono text-xs leading-6 shadow-xs outline-none [font-feature-settings:normal] [font-variant-ligatures:none] empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-disabled:opacity-50 ${mode === "code" ? "min-h-48 bg-fina-canvas py-3" : "min-h-9"}`}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         onInput={typed}
@@ -347,7 +365,13 @@ export function FormulaInput({
           }
           if (event.key === "Enter") {
             event.preventDefault()
-            editor.current?.closest("form")?.requestSubmit()
+            if (mode === "code" && !event.metaKey && !event.ctrlKey) newline()
+            else editor.current?.closest("form")?.requestSubmit()
+            return
+          }
+          if (event.key === "Tab" && mode === "code" && !event.shiftKey) {
+            event.preventDefault()
+            insert("  ")
             return
           }
           if (event.key === "Backspace" || event.key === "Delete") {
@@ -364,9 +388,9 @@ export function FormulaInput({
             event.altKey
           )
             return
-          const reference = formulaParts(current.current, options).find(
+          const reference = formulaParts(current.current, options, mode).find(
             (part) =>
-              part.reference &&
+              part.atomic &&
               (event.key === "ArrowLeft"
                 ? part.end === selection.start
                 : event.key === "ArrowRight" && part.start === selection.start)
@@ -375,9 +399,9 @@ export function FormulaInput({
             ? event.key === "ArrowLeft"
               ? reference.start
               : reference.end
-            : event.key === "Home"
+            : mode === "simple" && event.key === "Home"
               ? 0
-              : event.key === "End"
+              : mode === "simple" && event.key === "End"
                 ? current.current.length
                 : null
           if (position !== null) {

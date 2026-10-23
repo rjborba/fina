@@ -16,14 +16,17 @@ import {
   evaluateCustomValues,
   FormulaError,
   hasInvalidFormulaNameCharacters,
+  isCustomFormulaCode,
   parseCustomFormula,
   rewriteCustomFormula,
   SaveCustomValueSchema,
+  tokenizeCustomFormula,
   type CategoryOutput,
   type CustomValue,
   type CustomValueColumnSpan
 } from "@fina/types"
 import { FormulaInput, type FormulaOption } from "./FormulaInput"
+import type { FormulaMode } from "./formulaEditor"
 import { FormulaText } from "./FormulaText"
 import { CategoryAppearance } from "@/components/categories/CategoryAppearance"
 import { getCategoryColorClassName } from "@/components/categories/categoryAppearanceOptions"
@@ -59,6 +62,8 @@ export function CustomValuesSection({
     expression: string
     color: CategoryColor | null
     columnSpan: CustomValueColumnSpan
+    mode: FormulaMode
+    alternateExpression?: string
   } | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState("")
@@ -97,10 +102,20 @@ export function CustomValuesSection({
   let syntaxError = ""
   if (editing?.expression.trim()) {
     try {
-      if (editing.expression.replace(/\{\{[^{}]*\}\}/g, "").includes("@"))
+      if (
+        tokenizeCustomFormula(editing.expression).some(
+          (token) => token.type !== "reference" && token.text.includes("@")
+        )
+      )
         throw new FormulaError(
           "Choose a category or custom tile from the @ suggestions."
         )
+      if (editing.mode === "simple" && isCustomFormulaCode(editing.expression))
+        throw new FormulaError(
+          "Choose Code mode to write if / else and return statements."
+        )
+      if (editing.mode === "code" && !isCustomFormulaCode(editing.expression))
+        throw new FormulaError("Use return to finish your code with a number.")
       parseCustomFormula(editing.expression)
       const original = tiles.find((tile) => tile.id === editing.id)
       const originalNames = original
@@ -140,6 +155,30 @@ export function CustomValuesSection({
           ? failure.message
           : t("Invalid formula.")
     }
+  }
+  const switchMode = (mode: FormulaMode) => {
+    if (!editing || mode === editing.mode) return
+    let expression = editing.alternateExpression
+    if (expression === undefined) {
+      if (mode === "code")
+        expression = editing.expression.trim()
+          ? `return ${editing.expression};`
+          : ""
+      else {
+        const singleReturn = /^\s*return\s+([\s\S]*?);?\s*$/.exec(
+          editing.expression
+        )?.[1]
+        expression =
+          singleReturn && !isCustomFormulaCode(singleReturn) ? singleReturn : ""
+      }
+    }
+    setError("")
+    setEditing({
+      ...editing,
+      expression,
+      mode,
+      alternateExpression: editing.expression
+    })
   }
   const save = async () => {
     if (!editing || pending) return
@@ -191,7 +230,8 @@ export function CustomValuesSection({
               title: "",
               expression: "",
               color: null,
-              columnSpan: 1
+              columnSpan: 1,
+              mode: "simple"
             })
           }}
         >
@@ -303,21 +343,47 @@ export function CustomValuesSection({
             </div>
           </div>
           <div>
-            <label
-              id={`${formId}-logic-label`}
-              htmlFor={`${formId}-logic`}
-              onClick={() =>
-                document.getElementById(`${formId}-logic`)?.focus()
-              }
-              className="mb-1.5 block text-xs font-medium"
-            >
-              {t("Logic")}
-            </label>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <label
+                id={`${formId}-logic-label`}
+                htmlFor={`${formId}-logic`}
+                onClick={() =>
+                  document.getElementById(`${formId}-logic`)?.focus()
+                }
+                className="block text-xs font-medium"
+              >
+                {t("Logic")}
+              </label>
+              <div
+                role="radiogroup"
+                aria-label={t("Logic mode")}
+                className="flex rounded-md bg-foreground/5 p-0.5"
+              >
+                {(["simple", "code"] as const).map((mode) => (
+                  <label
+                    key={mode}
+                    className="relative cursor-pointer rounded px-2.5 py-1 text-[11px] text-foreground/60 has-[:checked]:bg-fina-surface has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-fina-violet has-[:disabled]:opacity-50"
+                  >
+                    <input
+                      type="radio"
+                      name={`${formId}-mode`}
+                      value={mode}
+                      checked={editing.mode === mode}
+                      disabled={pending}
+                      onChange={() => switchMode(mode)}
+                      className="absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+                    />
+                    {mode === "simple" ? t("Simple") : t("Code")}
+                  </label>
+                ))}
+              </div>
+            </div>
             <FormulaInput
-              key={editing.id ?? "new"}
+              key={`${editing.id ?? "new"}-${editing.mode}`}
               id={`${formId}-logic`}
               value={editing.expression}
               disabled={pending}
+              mode={editing.mode}
               options={options.filter(
                 (option) => option.key !== `tile:${editing.id}`
               )}
@@ -327,10 +393,37 @@ export function CustomValuesSection({
               id={`${formId}-logic-help`}
               className="mt-2 text-[11px] leading-relaxed text-foreground/55"
             >
+              {editing.mode === "simple"
+                ? t(
+                    "Type @ to add category or custom-tile chips. Use + − × ÷ and parentheses; decimals use a dot. Spaces around operators are tidied automatically."
+                  )
+                : t(
+                    "Type # or @ to choose a value. Use if / else if / else, comparisons and &&, ||, !. Return a number on every path; semicolons are optional. Enter adds a line; Tab indents; Shift+Tab leaves the editor."
+                  )}{" "}
               {t(
-                "Type @ to add category or custom-tile chips. Use + − * / and parentheses; decimals use a dot. Values keep the category totals’ signs."
+                "Values keep the category totals’ signs. Each mode keeps its own draft until you save or cancel."
               )}
             </p>
+            {editing.mode === "code" ? (
+              <details className="mt-2 text-[11px] text-foreground/65">
+                <summary className="cursor-pointer">
+                  {t("Conditional example")}
+                </summary>
+                <div className="mt-2 rounded-md bg-fina-canvas p-3 font-mono leading-5">
+                  <FormulaText
+                    value={
+                      "if (#value > 0) {\n  return 1\n} else {\n  return 0\n}"
+                    }
+                    options={[]}
+                  />
+                </div>
+                <p className="mt-1">
+                  {t(
+                    "Replace #value with a category or tile. Names with spaces use #{Category name}."
+                  )}
+                </p>
+              </details>
+            ) : null}
           </div>
           <p
             role="status"
@@ -469,7 +562,10 @@ export function CustomValuesSection({
                           title: tile.title,
                           expression: tile.expression,
                           color: tile.color,
-                          columnSpan: tile.columnSpan
+                          columnSpan: tile.columnSpan,
+                          mode: isCustomFormulaCode(tile.expression)
+                            ? "code"
+                            : "simple"
                         })
                       }}
                     >
