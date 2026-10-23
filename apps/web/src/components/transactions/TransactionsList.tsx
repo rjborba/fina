@@ -140,8 +140,9 @@ const TransactionLedger = function TransactionLedger({
             rowKey={transaction.id}
             index={virtualRow.index}
             start={virtualRow.start}
-            notePreview={transaction.observation}
-            flagged={Boolean(transaction.observation?.trim())}
+            flagged={
+              transaction.commentCount > 0 && !transaction.conversationResolved
+            }
             isSelected={isSelected}
             isFocused={isFocused}
             selectionDisabled={selectionDisabled}
@@ -158,7 +159,6 @@ const TransactionLedger = function TransactionLedger({
           >
             <TransactionCommentButton
               transaction={transaction}
-              onUpdateTransaction={onUpdateTransaction}
               disabled={selectionDisabled}
             />
             {displayProperties.date ? (

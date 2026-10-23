@@ -1,4 +1,7 @@
 import {
+  AddTransactionCommentSchema,
+  ResolveTransactionConversationSchema,
+  TransactionConversationSchema,
   CustomValueParamsSchema,
   CustomValueItemParamsSchema,
   SaveCustomValueSchema,
@@ -213,3 +216,13 @@ export class GroupMemberListOutputDto extends createZodDto(
 export class GroupMemberOutputDto extends createZodDto(GroupMemberSchema) {}
 
 export class RenameGroupInputDto extends createZodDto(RenameGroupInputSchema) {}
+
+export class AddTransactionCommentDto extends createZodDto(
+  AddTransactionCommentSchema,
+) {}
+export class ResolveTransactionConversationDto extends createZodDto(
+  ResolveTransactionConversationSchema,
+) {}
+export class TransactionConversationDto extends createZodDto(
+  TransactionConversationSchema,
+) {}

@@ -149,8 +149,14 @@ class TransactionUpdateQueue {
     this.publishing = true
     try {
       notifyManager.batch(() => {
-        if (serverTransaction)
-          this.patchCaches(serverTransaction.id, serverTransaction)
+        if (serverTransaction) {
+          const financial: Partial<TransactionOutput> = { ...serverTransaction }
+          // Conversation mutations have their own serialized cache lifecycle.
+          // A delayed category response must not restore old thread status.
+          delete financial.commentCount
+          delete financial.conversationResolved
+          this.patchCaches(serverTransaction.id, financial)
+        }
         for (const [id, record] of this.records) {
           this.captureBaseline(
             id,

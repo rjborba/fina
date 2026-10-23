@@ -1052,31 +1052,44 @@ test("inverts charges and refunds on a July card bill in June review while prese
     .getByRole("row")
     .filter({ hasText: "Fixture groceries" });
   await commentedPurchase
-    .getByRole("button", { name: "Add transaction note" })
+    .getByRole("button", { name: "Add transaction comment" })
     .click();
   const noteDialog = page.getByRole("dialog", {
-    name: "Transaction note",
+    name: "Transaction conversation",
     exact: true,
   });
   await noteDialog
-    .getByRole("textbox", { name: "Transaction note" })
+    .getByRole("textbox", { name: "Comment" })
     .fill("Check this charge");
-  await noteDialog.getByRole("button", { name: "Save note" }).click();
-  await expect(noteDialog).toHaveCount(0);
+  await noteDialog.getByRole("button", { name: "Send comment" }).click();
+  await expect(
+    noteDialog.getByText("Check this charge", { exact: true }),
+  ).toBeVisible();
+  await noteDialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(commentedPurchase).toHaveAttribute("data-flagged", "true");
-  await commentedPurchase.locator('[data-column="date"]').hover();
-  await expect(page.getByRole("tooltip")).toHaveText("Check this charge");
-  await page.locator(".transactions-list-shell").focus();
-  await page.mouse.move(0, 0);
-  await expect(page.getByRole("tooltip")).toHaveCount(0);
   await page.reload();
   await commentedPurchase
-    .getByRole("button", { name: "Edit transaction note" })
+    .getByRole("button", { name: "Open transaction conversation" })
     .click();
   await expect(
-    noteDialog.getByRole("textbox", { name: "Transaction note" }),
-  ).toHaveValue("Check this charge");
-  await noteDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    noteDialog.getByText("Check this charge", { exact: true }),
+  ).toBeVisible();
+  await noteDialog
+    .getByRole("button", { name: "Resolve conversation" })
+    .click();
+  await expect(noteDialog.getByRole("status")).toHaveText("Resolved");
+  await noteDialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(commentedPurchase).not.toHaveAttribute("data-flagged", "true");
+  await commentedPurchase
+    .getByRole("button", { name: "Open transaction conversation" })
+    .click();
+  await noteDialog.getByRole("button", { name: "Reopen conversation" }).click();
+  await expect(noteDialog.getByRole("status")).toHaveText("Unresolved");
+  await noteDialog
+    .getByRole("button", { name: "Resolve conversation" })
+    .click();
+  await expect(noteDialog.getByRole("status")).toHaveText("Resolved");
+  await noteDialog.getByRole("button", { name: "Close", exact: true }).click();
   await commentedPurchase
     .getByRole("button", { name: "Open transaction: Fixture groceries" })
     .click();
@@ -1084,32 +1097,61 @@ test("inverts charges and refunds on a July card bill in June review while prese
     name: "Fixture groceries",
     exact: true,
   });
-  await expect(
-    purchaseDetails.getByText("Check this charge", { exact: true }),
-  ).toBeVisible();
   await purchaseDetails
-    .getByRole("button", { name: "Edit note", exact: true })
+    .getByRole("button", { name: "Open transaction conversation", exact: true })
     .click();
-  await purchaseDetails
-    .getByRole("textbox", { name: "Transaction note" })
-    .fill("Updated in details");
-  await purchaseDetails.getByRole("button", { name: "Save note" }).click();
+  await noteDialog
+    .getByRole("textbox", { name: "Reply to conversation" })
+    .fill("Reply from details");
+  await noteDialog.getByRole("button", { name: "Send reply" }).click();
   await expect(
-    purchaseDetails.getByText("Updated in details", { exact: true }),
+    noteDialog.getByText("Reply from details", { exact: true }),
   ).toBeVisible();
+  await expect(noteDialog.getByRole("status")).toHaveText("Unresolved");
+  await expect(noteDialog.getByRole("listitem")).toHaveCount(2);
+  await noteDialog.getByRole("button", { name: "Close", exact: true }).click();
   await purchaseDetails
     .getByRole("button", { name: "Close", exact: true })
     .click();
   await commentedPurchase
-    .getByRole("button", { name: "Edit transaction note" })
+    .getByRole("button", { name: "Open transaction conversation" })
     .click();
   await expect(
-    noteDialog.getByRole("textbox", { name: "Transaction note" }),
-  ).toHaveValue("Updated in details");
+    noteDialog.getByText("Reply from details", { exact: true }),
+  ).toBeVisible();
   await expectFiniteAnimationsSettled(page);
-  await page.screenshot({ path: "test-results/transaction-note-dialog.png" });
-  await noteDialog.getByRole("button", { name: "Remove comment" }).click();
-  await expect(noteDialog).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/transaction-conversation-dialog.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await expectFiniteAnimationsSettled(page);
+  await page.screenshot({
+    path: "test-results/transaction-conversation-dark.png",
+  });
+  await page.setViewportSize({ width: 390, height: 700 });
+  await expectFiniteAnimationsSettled(page);
+  await expect
+    .poll(() =>
+      noteDialog.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return (
+          bounds.left >= 0 &&
+          bounds.right <= innerWidth &&
+          bounds.top >= 0 &&
+          bounds.bottom <= innerHeight
+        );
+      }),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: "test-results/transaction-conversation-mobile.png",
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await noteDialog
+    .getByRole("button", { name: "Resolve conversation" })
+    .click();
+  await noteDialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(commentedPurchase).not.toHaveAttribute("data-flagged", "true");
 
   await expectCompactTransactionList(page);
@@ -3457,7 +3499,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   await expect(modal.getByLabel("Card name", { exact: true })).toHaveCount(0);
   await expect(modal.getByText("Considered", { exact: true })).toHaveCount(0);
   await expect(modal.getByText("Calculated", { exact: true })).toHaveCount(0);
-  for (const label of ["Transaction date", "Card", "Account", "Note"]) {
+  for (const label of ["Transaction date", "Card", "Account", "Conversation"]) {
     await expect(modal.getByText(label, { exact: true })).toBeVisible();
   }
   const categoryPane = modal.getByRole("region", {
@@ -3595,7 +3637,7 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   await expect(groceryCategory).toBeEnabled();
   await expect(diningCategory).toBeEnabled();
   await expect(
-    modal.getByRole("button", { name: "Add note", exact: true }),
+    modal.getByRole("button", { name: "Add transaction comment", exact: true }),
   ).toBeEnabled();
   await diningCategory.click();
   await expect(diningCategory).toHaveAttribute("aria-pressed", "true");
@@ -3632,17 +3674,27 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
   await page.unroute("**/transactions/*", failCategoryRequest);
   await groceryCategory.click();
   await expect(groceryCategory).toHaveAttribute("aria-pressed", "true");
-  await modal.getByRole("button", { name: "Add note", exact: true }).click();
   await modal
-    .getByRole("textbox", { name: "Transaction note" })
+    .getByRole("button", { name: "Add transaction comment", exact: true })
+    .click();
+  const conversationDialog = page.getByRole("dialog", {
+    name: "Transaction conversation",
+    exact: true,
+  });
+  await conversationDialog
+    .getByRole("textbox", { name: "Comment" })
     .fill("Review this purchase with the household.");
-  await modal.getByRole("button", { name: "Save note", exact: true }).click();
+  await conversationDialog
+    .getByRole("button", { name: "Send comment", exact: true })
+    .click();
   await expect(
-    modal.getByRole("textbox", { name: "Transaction note" }),
-  ).toHaveCount(0);
-  await expect(
-    modal.getByRole("button", { name: "Edit note", exact: true }),
-  ).toContainText("Review this purchase with the household.");
+    conversationDialog.getByText("Review this purchase with the household.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await conversationDialog
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   const [categoryBounds, detailsBounds] = await Promise.all([
     categoryPane.boundingBox(),
     detailsPane.boundingBox(),
@@ -3779,7 +3831,8 @@ test("imports three C6 card labels directly and preserves transaction metadata, 
     installmentCurrent: "3",
     installmentTotal: 12,
     category: { name: "Groceries" },
-    observation: "Review this purchase with the household.",
+    commentCount: 1,
+    conversationResolved: false,
   });
   expect(detail.bill.total).toBe(-125);
   await expect(

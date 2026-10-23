@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
+import { TransactionConversationsService } from './transaction-conversations.service';
 import {
   CreateTransactionInputDto,
   DeleteTransactionOutputDto,
@@ -20,6 +21,9 @@ import {
   TransactionCardValuesQueryDto,
   TransactionCardValuesOutputDto,
   TransactionCardValueDto,
+  AddTransactionCommentDto,
+  ResolveTransactionConversationDto,
+  TransactionConversationDto,
 } from '../contracts/api-dtos';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user';
@@ -33,7 +37,45 @@ import { ZodSerializerDto } from 'nestjs-zod';
 
 @Controller('transactions')
 export class TransactionsController {
-  constructor(private readonly transactionsService: TransactionsService) {}
+  constructor(
+    private readonly transactionsService: TransactionsService,
+    private readonly conversations: TransactionConversationsService,
+  ) {}
+
+  @Get(':id/conversation')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: TransactionConversationDto })
+  @ZodSerializerDto(TransactionConversationDto)
+  conversation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+  ) {
+    return this.conversations.read(user.id, params.id);
+  }
+
+  @Post(':id/conversation/messages')
+  @ApiParam({ name: 'id', type: String })
+  @ApiCreatedResponse({ type: TransactionConversationDto })
+  @ZodSerializerDto(TransactionConversationDto)
+  addComment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+    @Body() input: AddTransactionCommentDto,
+  ) {
+    return this.conversations.add(user.id, params.id, input.body);
+  }
+
+  @Patch(':id/conversation')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: TransactionConversationDto })
+  @ZodSerializerDto(TransactionConversationDto)
+  resolveConversation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+    @Body() input: ResolveTransactionConversationDto,
+  ) {
+    return this.conversations.resolve(user.id, params.id, input.resolved);
+  }
 
   @Post()
   @ApiCreatedResponse({ type: TransactionOutputDto })

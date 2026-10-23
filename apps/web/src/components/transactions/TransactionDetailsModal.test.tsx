@@ -56,6 +56,13 @@ vi.mock("@/data/transactions/useTransactionsMutation", () => ({
 }))
 
 vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }))
+vi.mock("@/data/transactions/useTransactionConversation", () => ({
+  useTransactionConversation: () => ({
+    query: { data: { transactionId: "7", resolved: false, messages: [] } },
+    add: { isPending: false },
+    resolve: { isPending: false }
+  })
+}))
 
 const transaction: TransactionOutput = {
   id: "7",
@@ -70,6 +77,8 @@ const transaction: TransactionOutput = {
   installmentCurrent: null,
   creditDueDate: null,
   observation: null,
+  commentCount: 0,
+  conversationResolved: false,
   toBeConsideredAt: null,
   calculatedDate: "2026-09-27",
   billPayment: null,
@@ -129,7 +138,12 @@ describe("TransactionDetailsModal", () => {
     expect(
       screen.queryByText("Considered", { exact: true })
     ).not.toBeInTheDocument()
-    for (const label of ["Transaction date", "Card", "Account", "Note"]) {
+    for (const label of [
+      "Transaction date",
+      "Card",
+      "Account",
+      "Conversation"
+    ]) {
       expect(screen.getByText(label, { exact: true })).toBeVisible()
     }
     expect(screen.getByText("Personal · ••0042")).toBeVisible()
@@ -155,10 +169,10 @@ describe("TransactionDetailsModal", () => {
     expect(within(facts).getByText("Personal account")).toBeVisible()
     expect(within(facts).queryByText("3/12")).not.toBeInTheDocument()
     expect(
-      within(facts).getByRole("button", { name: "Add note" })
+      within(facts).getByRole("button", { name: "Add transaction comment" })
     ).toBeVisible()
     expect(facts).toHaveTextContent(
-      /Transaction date.*Card.*Account.*Note.*Credit due date.*Source.*Workspace.*Added/
+      /Transaction date.*Card.*Account.*Conversation.*Credit due date.*Source.*Workspace.*Added/
     )
     expect(screen.getByText(/^Added /)).toBeVisible()
     expect(screen.getByText("Credit due date")).toBeVisible()
@@ -167,7 +181,7 @@ describe("TransactionDetailsModal", () => {
     expect(screen.getByRole("button", { name: /Uncategorized/ })).toBeVisible()
   })
 
-  it("cancels note editing with Escape without closing transaction details or categorizing", async () => {
+  it("closes the thread with Escape without closing transaction details or categorizing", async () => {
     const onOpenChange = vi.fn()
     render(
       <TransactionDetailsModal
@@ -180,14 +194,16 @@ describe("TransactionDetailsModal", () => {
         onPreviousTransaction={vi.fn()}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: "Add note" }))
-    const editor = screen.getByRole("textbox", { name: "Transaction note" })
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add transaction comment" })
+    )
+    const editor = screen.getByRole("textbox", { name: "Comment" })
     fireEvent.change(editor, { target: { value: "Draft 123" } })
     fireEvent.keyDown(editor, { key: "1", code: "Digit1" })
     fireEvent.keyDown(editor, { key: "Escape", code: "Escape" })
     await waitFor(() =>
       expect(
-        screen.queryByRole("textbox", { name: "Transaction note" })
+        screen.queryByRole("textbox", { name: "Comment" })
       ).not.toBeInTheDocument()
     )
     expect(onOpenChange).not.toHaveBeenCalled()

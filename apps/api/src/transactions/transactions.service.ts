@@ -18,6 +18,7 @@ import { Bankaccounts } from '../bankaccounts/entities/bankaccount.entity';
 import { Categories } from '../categories/entities/category.entity';
 import { Imports } from '../imports/entities/import.entity';
 import { Transactions } from './entities/transaction.entity';
+import { appendTransactionComment } from './transaction-conversations.service';
 import {
   toDateTimeOutput,
   toNullableDateOutput,
@@ -76,7 +77,7 @@ export class TransactionsService {
     const billDueDate = this.resolveBillDueDate(account, input.billMonth);
     this.assertCardMetadata(account, input);
     const saved = await this.dataSource.transaction(async (manager) => {
-      return manager.getRepository(Transactions).save(
+      const transaction = await manager.getRepository(Transactions).save(
         manager.getRepository(Transactions).create({
           description: input.description,
           value: input.value,
@@ -85,7 +86,6 @@ export class TransactionsService {
           installmentTotal: input.installmentTotal,
           installmentCurrent: input.installmentCurrent,
           creditDueDate: billDueDate,
-          observation: input.observation,
           removed: false,
           toBeConsideredAt: billDueDate,
           calculatedDate: toNullableDateOutput(input.date),
@@ -97,6 +97,16 @@ export class TransactionsService {
           import: input.importId ? { id: input.importId } : null,
         }),
       );
+      if (input.observation) {
+        await appendTransactionComment(
+          manager,
+          transaction.id,
+          input.groupId,
+          userId,
+          input.observation,
+        );
+      }
+      return transaction;
     });
     return this.findOne(userId, saved.id);
   }
@@ -338,8 +348,6 @@ export class TransactionsService {
     if (input.creditDueDate !== undefined) {
       current.creditDueDate = toNullableDateOutput(input.creditDueDate);
     }
-    if (input.observation !== undefined)
-      current.observation = input.observation;
     if (input.toBeConsideredAt !== undefined) {
       current.toBeConsideredAt = toNullableDateOutput(input.toBeConsideredAt);
     }
@@ -360,7 +368,13 @@ export class TransactionsService {
     if (input.cardLast4 !== undefined) current.cardLast4 = input.cardLast4;
     this.assertCardMetadata(nextAccount ?? current.bankaccount, current);
     await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Transactions).save(current);
+      // Thread state belongs to the locked conversation mutations. Never save a
+      // stale copy while applying an unrelated category/financial edit.
+      await manager.getRepository(Transactions).save({
+        ...current,
+        commentCount: undefined,
+        conversationResolved: undefined,
+      });
     });
     return this.findOne(userId, id);
   }
@@ -505,6 +519,8 @@ export class TransactionsService {
       installmentCurrent: transaction.installmentCurrent ?? null,
       creditDueDate: toNullableDateOutput(transaction.creditDueDate),
       observation: transaction.observation ?? null,
+      commentCount: transaction.commentCount,
+      conversationResolved: transaction.conversationResolved,
       toBeConsideredAt: toNullableDateOutput(transaction.toBeConsideredAt),
       calculatedDate: toNullableDateOutput(transaction.calculatedDate),
       reviewMonth:
