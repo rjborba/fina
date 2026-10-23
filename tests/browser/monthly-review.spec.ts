@@ -4008,6 +4008,29 @@ test("creates, chains, edits and deletes workspace custom summary tiles safely",
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.name));
   await signInAsFixture(page);
+  const workspaceName = "Custom summary fixture workspace";
+  await page.goto("/settings");
+  await page
+    .getByRole("textbox", { name: "Group name", exact: true })
+    .fill(workspaceName);
+  const workspaceCreated = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/groups" &&
+      response.ok(),
+  );
+  await page.getByRole("button", { name: "Create group", exact: true }).click();
+  await workspaceCreated;
+  await page.getByRole("button", { name: /Active workspace$/ }).click();
+  await page
+    .getByRole("menuitem", { name: workspaceName, exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: `${workspaceName} Active workspace`,
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.goto("/categories");
   for (const name of ["Dividido Proporcionalmente", "Vale"]) {
     await page.getByRole("textbox", { name: "Category name" }).fill(name);
